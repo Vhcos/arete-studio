@@ -318,7 +318,8 @@ export default function AreteDemo() {
                     </ResponsiveContainer>
                   </div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {outputs.items.map((it, idx) => (
+                    {outputs.items.map(
+                     (it: { title: string; hint?: string; score: number; reason: string }, idx: number) => (
                       <div key={idx} className="rounded-xl border p-3 bg-card">
                         <div className="flex items-center justify-between">
                           <div>
