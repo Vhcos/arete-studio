@@ -403,7 +403,9 @@ export default function AreteDemo() {
                     <div className="text-xl font-bold mt-1" style={{ color: accent }}>{outputs.verdict.title}</div>
                     <p className="text-sm mt-1">{outputs.verdict.subtitle}</p>
                     <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {outputs.verdict.actions.map((a, i) => (<li key={i}>{a}</li>))}
+                      {(outputs.verdict?.actions ?? []).map((a: string, i: number) => (
+                        <li key={i}>{a}</li>
+                      ))}
                     </ul>
                   </div>
                   <div className="rounded-xl border p-4">
