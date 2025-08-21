@@ -25,6 +25,8 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
+import type { CSSProperties } from "react";
+
 
 /**
  * ARETE – DEMO (actualizado con UI azul y cambios de copy)
@@ -71,6 +73,7 @@ function capitalGap(capital: number, acumDeficit: number){
 export default function AreteDemo() {
   const [primaryHue] = useState(215); // azul
   const accent = `hsl(${primaryHue} 90% 45%)`;
+  const styleAccent: CSSProperties & Record<'--accent', string> = { '--accent': accent };
   const accentSoft = toHSLA(accent, 0.07);
 
   // -------------------- Formulario --------------------
@@ -159,7 +162,7 @@ export default function AreteDemo() {
 
   // -------------------- Render --------------------
   return (
-    <div className="min-h-screen p-6" style={{ "--accent": accent }}>
+    <div className="min-h-screen p-6" style={styleAccent}>
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
