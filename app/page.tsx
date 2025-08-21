@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities, @typescript-eslint/no-unused-vars */
 import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -582,7 +583,7 @@ function computeScores(input: any) {
 
 function heuristicValor(text: string) {
   const t = (text || "").toLowerCase();
-  let score = Math.min(6, (t.length / 180) * 6);
+  const score = Math.min(6, (t.length / 180) * 6);
   const signals = ["únic", "diferenc", "exclus", "patent", "propiedad", "marca", "comunid", "red", "datos", "ia", "autom", "software", "logística", "cost", "tiempo", "mejor", "rápid", "barat"];
   let bonus = 0; for (const s of signals) { if (t.includes(s)) { bonus += 1; if (bonus >= 4) break; } }
   return clamp(score + bonus, 0, 10);

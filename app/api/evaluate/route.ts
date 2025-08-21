@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/evaluate/route.ts
 import OpenAI from "openai";
 
