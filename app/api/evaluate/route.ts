@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/evaluate/route.ts
 import OpenAI from "openai";
-
 // Ejecuta en Node.js (más simple con SDK oficial)
 export const runtime = "nodejs";
 // Evita cache de Vercel en esta ruta
@@ -52,7 +51,6 @@ Puntaje preliminar usuario: ${scores?.total}
 
     const resp = await client.responses.create({
       model: "gpt-4.1-mini",
-      response_format: { type: "json_object" },
       input: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -60,9 +58,10 @@ Puntaje preliminar usuario: ${scores?.total}
     });
 
     const text = (resp as any).output_text ?? "{}";
-    let parsed: any;
+    let parsed: unknown;
     try { parsed = JSON.parse(text); }
     catch { parsed = { narrative: text }; }
+
 
     const safe = ensureShape(parsed);
 
