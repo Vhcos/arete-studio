@@ -405,13 +405,15 @@ export default function AreteDemo() {
                     <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
                       {(outputs.verdict?.actions ?? []).map((a: string, i: number) => (
                         <li key={i}>{a}</li>
-                      ))}
+                    ))}
                     </ul>
                   </div>
                   <div className="rounded-xl border p-4">
                     <div className="text-sm text-muted-foreground">Top riesgos</div>
                     <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {outputs.topRisks.map((r, i) => (<li key={i}>{r}</li>))}
+                      {(outputs.topRisks ?? []).map((r: string, i: number) => (
+                        <li key={i}>{r}</li>
+                     ))}
                     </ul>
                   </div>
                   <div className="rounded-xl border p-4">
