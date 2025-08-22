@@ -419,7 +419,9 @@ export default function AreteDemo() {
                   <div className="rounded-xl border p-4">
                     <div className="text-sm text-muted-foreground">Experimentos sugeridos (2 semanas)</div>
                     <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {outputs.experiments.map((r, i) => (<li key={i}>{r}</li>))}
+                      {(outputs.experiments ?? []).map((r: string, i: number) => (
+                        <li key={i}>{r}</li>
+                      ))}
                     </ul>
                   </div>
                 </div>
@@ -655,7 +657,7 @@ function buildPECruve({ clientsPE, mcUnit, gastosFijos, mesesUsuario, precio }: 
     return { clientesMes, mcTotal, deficit };
   }
 
-  const data = months.map((m, idx) => {
+    const data = months.map((m: number, idx: number) => {
     const u = makeRow(pctUser[idx]);
     const t = makeRow(pct12[idx]);
     return {
