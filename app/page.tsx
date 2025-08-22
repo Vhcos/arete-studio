@@ -29,7 +29,7 @@ import type { CSSProperties } from "react";
 
 
 /**
- * ARETE – DEMO (actualizado con UI azul y cambios de copy)
+ * ARETE (actualizado con UI azul y cambios de copy)
  * • Campos con **acento azul**: bordes y fondos suaves para guiar la vista.
  * • Cambios de etiquetas y ayudas solicitados por el usuario.
  * • LTV ahora usa **frecuencia anual** (veces que compra en 12 meses) × MC unit.
@@ -77,18 +77,18 @@ export default function AreteDemo() {
   const accentSoft = toHSLA(accent, 0.07);
 
   // -------------------- Formulario --------------------
-  const [idea, setIdea] = useState("Abrir un restaurant de menú ejecutivo en Ñuñoa con ticket $8.500");
-  const [ventajaTexto, setVentajaTexto] = useState("Rotación rápida en 45 min; menú saludable; integración con apps; programa corporativo");
-  const [rubro, setRubro] = useState("restaurant");
-  const [ubicacion, setUbicacion] = useState("Ñuñoa, RM, Chile");
+  const [idea, setIdea] = useState("");
+  const [ventajaTexto, setVentajaTexto] = useState("");
+  const [rubro, setRubro] = useState("");
+  const [ubicacion, setUbicacion] = useState("");
 
   // Dinero / conteos
-  const [capitalTrabajo, setCapitalTrabajo] = useState("12.000.000");
-  const [gastosFijos, setGastosFijos] = useState("4.000.000");
-  const [ingresosMeta, setIngresosMeta] = useState("5.000.000"); // promedio 12m
-  const [ticket, setTicket] = useState("8.500");
-  const [costoUnit, setCostoUnit] = useState("4.500");
-  const [cac, setCac] = useState("20.000");
+  const [capitalTrabajo, setCapitalTrabajo] = useState("");
+  const [gastosFijos, setGastosFijos] = useState("");
+  const [ingresosMeta, setIngresosMeta] = useState(""); // promedio 12m
+  const [ticket, setTicket] = useState("");
+  const [costoUnit, setCostoUnit] = useState("");
+  const [cac, setCac] = useState("");
   const [frecuenciaAnual, setFrecuenciaAnual] = useState(6); // veces/año
 
   // blandos / cualitativos (0–10)
@@ -103,7 +103,7 @@ export default function AreteDemo() {
   const [redApoyo, setRedApoyo] = useState(5);
 
   // Supuestos y ajustes
-  const [supuestos, setSupuestos] = useState("Afluencia oficinas; permisos en 60 días");
+  const [supuestos, setSupuestos] = useState("");
   const [clientesManual, setClientesManual] = useState<string>("");
   const [mesesPE, setMesesPE] = useState<number>(6);
 
@@ -170,7 +170,7 @@ export default function AreteDemo() {
             <div className="p-2 rounded-2xl shadow-sm" style={{ background: accent }}>
               <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Arete · Evaluador de Ideas (demo)</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Arete · Evaluador de Ideas</h1>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => navigator.clipboard.writeText(JSON.stringify(outputs.report, null, 2))}>Copiar informe</Button>
