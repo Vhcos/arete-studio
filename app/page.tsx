@@ -152,13 +152,72 @@ export default function AreteDemo() {
     try {
       const input = baseOut.report.input;
       const scores = { total: baseOut.totalScore, byKey: Object.fromEntries(baseOut.items.map((it: any) => [it.key, it.score])) };
-      const res = await fetch("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input, scores }) });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setIaData(data);
-    } catch (err) { console.error(err); alert("No se pudo usar IA. Asegúrate de tener /api/evaluate configurado."); }
-    finally { setIaLoading(false); }
+
+      const res = await fetch('/api/evaluate?stream=1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input, scores }),
+      });
+
+      const ctype = res.headers.get('content-type') || '';
+      // === Streaming SSE ===
+      if (ctype.includes('text/event-stream')) {
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        if (!reader) throw new Error('No readable stream');
+
+        // Reset parcial para que el usuario "vea" la narrativa crecer
+        setIaData(null);
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // Partimos por bloques SSE (separados por \n\n)
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
+
+          for (const chunk of parts) {
+            const lines = chunk.split('\n');
+            let event = 'message';
+            let data = '';
+            for (const line of lines) {
+              if (line.startsWith('event:')) event = line.slice(6).trim();
+              else if (line.startsWith('data:')) data += line.slice(5).trim();
+            }
+
+            if (event === 'narrative') {
+              // Actualiza narrativa en vivo
+              setIaData((prev: any) => ({ ...(prev || {}), narrative: ((prev?.narrative || '') + data) }));
+            } else if (event === 'final') {
+              // JSON final
+              try {
+                const obj = JSON.parse(data);
+                setIaData((prev: any) => ({ ...(prev || {}), ...obj }));
+              } catch {
+                console.error('Final JSON parse failed', data);
+              }
+            } else if (event === 'error') {
+              console.error('SSE error:', data);
+            }
+          }
+        }
+      } else {
+        // === Fallback JSON (sin streaming) ===
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        setIaData(data);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('No se pudo usar IA. Revisa /api/evaluate y OPENAI_API_KEY.');
+    } finally {
+      setIaLoading(false);
+    }
   }
+
 
   // -------------------- Render --------------------
   return (
