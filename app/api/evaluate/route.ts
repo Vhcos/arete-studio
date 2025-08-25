@@ -50,7 +50,7 @@ Puntaje preliminar usuario: ${scores?.total}
 `;
 
     const resp = await client.responses.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4o-mini",
       input: [
         { role: "system", content: system },
         { role: "user", content: user },
