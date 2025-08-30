@@ -120,3 +120,44 @@
     @apply bg-background text-foreground;
   }
 }
+/* === PRINT HELPERS (solo-sección) === */
+@page { size: A4; margin: 16mm; }
+
+@media print {
+  /* Oculta cualquier UI que no deba imprimirse */
+  .no-print { display: none !important; }
+
+  /* ---------- Imprimir SOLO TABLERO ---------- */
+  body.print-tablero * { display: none !important; }
+  /* Muestra toda la cadena de ancestros del #tablero */
+  body.print-tablero *:has(#tablero) { display: block !important; }
+  /* Muestra el #tablero y sus descendientes con su display natural */
+  body.print-tablero #tablero,
+  body.print-tablero #tablero * { display: revert !important; }
+
+  /* ---------- Imprimir SOLO INFORME ---------- */
+  body.print-informe * { display: none !important; }
+  /* Muestra la cadena de ancestros del #informe */
+  body.print-informe *:has(#informe) { display: block !important; }
+  /* Muestra el #informe y sus descendientes con su display natural */
+  body.print-informe #informe,
+  body.print-informe #informe * { display: revert !important; }
+}
+
+/* === FIN HELPERS IMPRESIÓN === */
+
+/* Mantener bloques juntos en impresión */
+@media print {
+  #informe .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+  #informe h2, #informe h3 { break-after: avoid; page-break-after: avoid; }
+  #informe table { break-inside: auto; }
+  #informe tr, #informe .card { break-inside: avoid; page-break-inside: avoid; }
+}
+
+@media print {
+  #informe table th, #informe table td {
+    white-space: nowrap;       /* no cortes raros tipo “Buenos / Aires” */
+    word-break: keep-all;
+  }
+}
+/* Evitar que tablas se salgan del contenedor en pantallas pequeñas */

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
 import {
   Radar,
@@ -26,6 +27,65 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { CSSProperties } from "react";
+// ✅ ahora (funciona con tu estructura):
+import type { StandardReport } from './types/report';
+import { buildNonAIReport } from './lib/nonAI-report';
+import type { AiPlan, CompetitiveRow, RegulationRow } from './types/plan';
+import type { ChartPoint } from './types/report';
+
+
+export function sanitizeTxt(s: string, max = 120) {
+  return String(s ?? '')
+    .replace(/[<>]/g, '')          // quita tags
+    .replace(/\r?\n/g, ' ')         // saltos de línea -> espacio
+    .replace(/\s{2,}/g, ' ')        // colapsa espacios múltiples
+    .trim()
+    .slice(0, max);
+}
+
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function sanitizeEmail(s: string) {
+  // NO validamos aquí: solo limpiamos para que el usuario pueda escribir
+  return String(s ?? '')
+    .toLowerCase()
+    .replace(/\s/g, '')                  // fuera espacios
+    .replace(/[^a-z0-9._%+\-@]/gi, '')   // solo chars permitidos
+    .slice(0, 120);
+}
+
+// úsalo para mostrar el error:
+export function isEmailValid(s: string) {
+  return emailRe.test(s);
+}
+
+
+// === Renombres SOLO para UI (no toques las claves internas del cálculo) ===
+const DISPLAY_RENAME: Record<string, string> = {
+  'MC unitario': 'Margen de contribución',
+  'Clientes P.E': 'Clientes en equilibrio',
+  'Ventas P.E': 'Ventas en equilibrio',
+  'Runway estimado': 'Autonomía de caja',
+  'SAM12': 'Tamaño de mercado anual (SAM)',
+  'CAC': 'Costo de marketing por cliente',
+};
+
+// (Opcional) renombres de hints / subtítulos si quieres armonizar también los textos de ayuda
+const DISPLAY_HINTS: Record<string, string> = {
+  'MC unitario': 'Margen de contribución por unidad vendida.',
+  'Clientes P.E': 'Clientes mínimos para llegar al punto de equilibrio.',
+  'Ventas P.E': 'Ventas mínimas para llegar al punto de equilibrio.',
+  'Runway estimado': 'Meses que puedes operar con la caja disponible.',
+  'SAM12': 'Tamaño de mercado atendible en 12 meses.',
+  'CAC': 'Costo promedio para adquirir un cliente.',
+};
+
+function uiTitle(title: string) {
+  return DISPLAY_RENAME[title] ?? title;
+}
+function uiHint(title: string, fallback: string) {
+  return DISPLAY_HINTS[title] ?? fallback;
+}
 
 
 /**
@@ -35,7 +95,7 @@ import type { CSSProperties } from "react";
  * • LTV ahora usa **frecuencia anual** (veces que compra en 12 meses) × MC unit.
  */
 
-// -------------------- Helpers GLOBALES --------------------
+// -------------------- Helpers GLOBALES useState--------------------
 function formatCLPLike(s: string) {
   if (s == null) return "";
   s = String(s).replace(/\s+/g, "");
@@ -91,6 +151,15 @@ export default function AreteDemo() {
   const [cac, setCac] = useState("");
   const [frecuenciaAnual, setFrecuenciaAnual] = useState(6); // veces/año
 
+  // --- NUEVOS estados (deben ir arriba, antes de usarlos) ---
+  const [traficoMes, setTraficoMes] = useState('');        // visitas/leads por mes
+  const [convPct, setConvPct] = useState('');              // % conversión
+  const [marketingMensual, setMarketingMensual] = useState(''); // CLP/mes
+  const [costoPct, setCostoPct] = useState('');            // % del precio
+  // NUEVOS
+  const [ventaAnual, setVentaAnual] = useState('');        // 10) Venta primer año (12m)
+  const [inversionInicial, setInversionInicial] = useState(''); // 20) Inversión inicial
+
   // blandos / cualitativos (0–10)
   const [urgencia, setUrgencia] = useState(5);
   const [accesibilidad, setAccesibilidad] = useState(7);
@@ -106,6 +175,61 @@ export default function AreteDemo() {
   const [supuestos, setSupuestos] = useState("");
   const [clientesManual, setClientesManual] = useState<string>("");
   const [mesesPE, setMesesPE] = useState<number>(6);
+  
+  // Supuestos y ajustes IA
+  const [aiPlan, setAiPlan] = useState<AiPlan | null>(null);
+
+
+  // Email
+  const [emailSending, setEmailSending] = useState(false);
+  type SendOpts = { to?: string; silent?: boolean; reason?: string };
+
+
+  async function sendReportEmail(args: {
+     to?: string;
+     reason?: string;
+     report?: any;
+     aiPlan?: any;
+     silent?: boolean;
+     user?: { projectName?: string; founderName?: string; email?: string; idea?: string; rubro?: string; ubicacion?: string; };
+  }) {
+     const res = await fetch('/api/email-report', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(args),
+    });
+     const j = await res.json();
+     if (j.ok) {
+       alert(j.to && j.to !== args.to ? 'Enviado (modo test) al correo.' : 'Informe enviado.');
+     } else if (j.skipped) {
+       alert('Email desactivado (skipped). Revisa variables de entorno.');
+     } else {
+       alert('No se pudo enviar el email.');
+    }
+   } 
+  
+  //Campos: Proyecto, Emprendedor y Email (obligatorio)
+  const [projectName, setProjectName] = useState('');
+  const [founderName, setFounderName] = useState('');
+  const [email, setEmail] = useState('');
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailOK = emailRe.test(email);
+
+  const isValidEmail = (s: string) => /\S+@\S+\.\S+/.test(s);
+
+  const canRunAI = useMemo(
+   () =>
+    isValidEmail(email) &&
+    idea.trim().length >= 8 &&        // evita “Hola”
+    rubro.trim().length > 0 &&
+    ubicacion.trim().length > 0,
+  [email, idea, rubro, ubicacion]
+ );
+   
+
+   // Derivadas desde ventaAnual (si viene) o desde tu campo mensual legacy:
+    const ventaAnualN      = parseNumberCL(ventaAnual);
+    const ventaMensualCalc = ventaAnualN > 0 ? ventaAnualN / 12 : parseNumberCL(ingresosMeta);
 
   // -------------------- Cálculo --------------------
   const baseOut = useMemo(() => {
@@ -113,7 +237,7 @@ export default function AreteDemo() {
       idea, ventajaTexto, rubro, ubicacion,
       capitalTrabajo: parseNumberCL(capitalTrabajo),
       gastosFijos: parseNumberCL(gastosFijos),
-      ingresosMeta: parseNumberCL(ingresosMeta),
+      ingresosMeta: ventaMensualCalc,
       ticket: parseNumberCL(ticket), costoUnit: parseNumberCL(costoUnit),
       cac: parseNumberCL(cac), frecuenciaAnual: parseNumberCL(frecuenciaAnual),
       urgencia: parseNumberCL(urgencia), accesibilidad: parseNumberCL(accesibilidad), competencia: parseNumberCL(competencia),
@@ -122,14 +246,34 @@ export default function AreteDemo() {
       supuestos,
       clientesManual: parseNumberCL(clientesManual || 0),
       mesesPE,
+      traficoMes:        parseNumberCL(traficoMes),
+      convPct:           parseNumberCL(convPct),           // en %
+      marketingMensual:  parseNumberCL(marketingMensual),  // CLP
+      costoPct:          parseNumberCL(costoPct),          // en %
+      inversionInicial: parseNumberCL(inversionInicial),
     } as const;
     return computeScores(input);
   }, [idea, ventajaTexto, rubro, ubicacion, capitalTrabajo, gastosFijos, ingresosMeta, ticket, costoUnit, cac, frecuenciaAnual, urgencia, accesibilidad, competencia, experiencia, pasion, planesAlternativos, toleranciaRiesgo, testeoPrevio, redApoyo, supuestos, clientesManual, mesesPE]);
+  // ---- Informe SIN IA + IA ----
+   const nonAIReport = useMemo(
+     () => buildNonAIReport(baseOut.report.input, baseOut.report.meta),
+     [baseOut]
+   );
+   const [aiReport, setAiReport] = useState<StandardReport | null>(null);
+
 
   const [iaData, setIaData] = useState<any>(null);
   const [iaLoading, setIaLoading] = useState(false);
   const outputs = useMemo(() => applyIA(baseOut, iaData), [baseOut, iaData]);
   const scoreColor = colorFor(outputs.totalScore);
+  const chartDataUI: ChartPoint[] = useMemo(
+  () =>
+    outputs.chartData.map((d: ChartPoint) => ({
+      ...d,
+      name: uiTitle(String(d.name)), // renombra para la UI
+    })),
+  [outputs.chartData]
+);
 
   const TooltipContent = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null;
@@ -148,75 +292,61 @@ export default function AreteDemo() {
   };
 
   async function handleEvaluateAI() {
-    setIaLoading(true);
+   setIaLoading(true);
+   try {
+     const input = baseOut.report.input;
+     const scores = {
+       total: baseOut.totalScore,
+       byKey: Object.fromEntries(baseOut.items.map((it: any) => [it.key, it.score])),
+    };
+
+     const res = await fetch('/api/evaluate', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ input, scores }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    // guarda informe IA y dispara envío interno
+    setAiReport(data.standardReport ?? null);
+
+    // ==== Extra: pedir plan competitivo / regulatorio a la IA ====
     try {
-      const input = baseOut.report.input;
-      const scores = { total: baseOut.totalScore, byKey: Object.fromEntries(baseOut.items.map((it: any) => [it.key, it.score])) };
+     const resPlan = await fetch('/api/plan', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+         input,                    // el mismo input que ya envías a /api/evaluate
+         meta: { rubro, ubicacion, idea }, // contexto útil
+       }),
+     });
 
-      const res = await fetch('/api/evaluate?stream=1', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, scores }),
-      });
+     const dataPlan = await resPlan.json();
+     if (dataPlan?.ok && dataPlan.plan) {
+       setAiPlan(dataPlan.plan);
+     } else {
+       console.warn('Plan IA no disponible:', dataPlan?.error || dataPlan);
+     }
 
-      const ctype = res.headers.get('content-type') || '';
-      // === Streaming SSE ===
-      if (ctype.includes('text/event-stream')) {
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        if (!reader) throw new Error('No readable stream');
+   } catch (e) {
+     console.error('No se pudo obtener plan IA:', e);
+   }
 
-        // Reset parcial para que el usuario "vea" la narrativa crecer
-        setIaData(null);
-
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          // Partimos por bloques SSE (separados por \n\n)
-          const parts = buffer.split('\n\n');
-          buffer = parts.pop() || '';
-
-          for (const chunk of parts) {
-            const lines = chunk.split('\n');
-            let event = 'message';
-            let data = '';
-            for (const line of lines) {
-              if (line.startsWith('event:')) event = line.slice(6).trim();
-              else if (line.startsWith('data:')) data += line.slice(5).trim();
-            }
-
-            if (event === 'narrative') {
-              // Actualiza narrativa en vivo
-              setIaData((prev: any) => ({ ...(prev || {}), narrative: ((prev?.narrative || '') + data) }));
-            } else if (event === 'final') {
-              // JSON final
-              try {
-                const obj = JSON.parse(data);
-                setIaData((prev: any) => ({ ...(prev || {}), ...obj }));
-              } catch {
-                console.error('Final JSON parse failed', data);
-              }
-            } else if (event === 'error') {
-              console.error('SSE error:', data);
-            }
-          }
-        }
-      } else {
-        // === Fallback JSON (sin streaming) ===
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        setIaData(data);
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert('No se pudo usar IA. Revisa /api/evaluate y OPENAI_API_KEY.');
-    } finally {
-      setIaLoading(false);
-    }
+    // envía el email silencioso (si está configurado)
+    void sendReportEmail({ silent: true, reason: 'evaluate-ia' });
+    // guarda data IA para cálculos / visualizaciones extra
+    // si sigues usando la fusión con IA
+    setIaData(data);
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo usar IA. Revisa /api/evaluate y la API key.');
+  } finally {
+    setIaLoading(false);
   }
+}
+
+//----------------------FIN DE LOS USESTATE Y FUNCIONES----------------------
 
 
   // -------------------- Render --------------------
@@ -229,11 +359,47 @@ export default function AreteDemo() {
             <div className="p-2 rounded-2xl shadow-sm" style={{ background: accent }}>
               <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Arete · Evaluador de Ideas</h1>
+        <div className="flex items-start justify-between gap-4">
+          </div>
+            <h1 className="text-2xl font-bold tracking-tight">Areté · Evalúa tu Idea en 5m con IA</h1>
+            <p className="text-sm text-muted-foreground -mt-1">
+            Cumple tu propósito de la mejor manera 
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigator.clipboard.writeText(JSON.stringify(outputs.report, null, 2))}>Copiar informe</Button>
-            <Button onClick={handleEvaluateAI} disabled={iaLoading}>{iaLoading ? "Evaluando IA…" : "Evaluar con IA"}</Button>
+           <Button
+             variant="outline"
+             onClick={() => {
+               const s = nonAIReport.sections;
+               const txt = [
+                 `Rubro: ${s.industryBrief}`,
+                 `Competencia: ${s.competitionLocal}`,
+                 `FODA + Mercado: ${s.swotAndMarket}`,
+                 `Veredicto: ${s.finalVerdict}`,
+                 `Score: ${nonAIReport.ranking.score}/100`
+               ].join('\n');
+               navigator.clipboard.writeText(txt);
+               alert('Informe copiado al portapapeles.');
+             }}
+           >
+             Copiar informe (texto)
+           <div className="flex items-center gap-2"></div>  
+           </Button>
+            <Button
+               onClick={() =>
+                  sendReportEmail({
+                   to: email,               // correo del usuario
+                   reason: 'user-asked',
+                   report: aiReport ?? nonAIReport, // prioriza IA si ya está
+                   aiPlan,                  // si ya generaste plan 100 palabras
+                   user: { projectName, founderName, email, idea, rubro, ubicacion },
+                })
+               }
+               disabled={!emailOK || emailSending}
+            >
+              Informe a mi email
+            </Button>
+            <Button onClick={handleEvaluateAI} disabled={!canRunAI || iaLoading}>Evaluar con IA</Button>
             <Button onClick={() => downloadJSON(outputs.report, `arete_result_${Date.now()}.json`)}><Download className="mr-2 h-4 w-4" /> Descargar JSON</Button>
           </div>
         </div>
@@ -248,73 +414,277 @@ export default function AreteDemo() {
           {/* FORM */}
           <TabsContent value="form">
             <Card className="border-none shadow-sm">
-              <CardHeader><CardTitle>Describe tu idea</CardTitle></CardHeader>
+                 <div>
+                   <Label>Nombre del proyecto</Label>
+                  <Input
+                   value={projectName}
+                   onChange={(e) => setProjectName(e.target.value)}                // crudo
+                   onBlur={(e) => setProjectName(sanitizeTxt(e.target.value, 80))} // limpia al salir
+                   placeholder="p. ej. Joyería de Autor"
+                 />
+
+                  <Label>Nombre del Emprendedor/a</Label>
+                  <Input
+                   value={founderName}
+                   onChange={(e) => setFounderName(e.target.value)}                // crudo
+                   onBlur={(e) => setFounderName(sanitizeTxt(e.target.value, 80))} // limpia al salir
+                   placeholder="p. ej. Carola Plaza"
+                 />
+              
+                  <Label>Email de Notificaciones</Label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
+                    onBlur={(e) => setEmail(sanitizeEmail(e.target.value))}
+                    placeholder="tucorreo@ejemplo.com"
+                    autoComplete="email"
+                    inputMode="email"
+                    spellCheck={false}
+                    autoCapitalize="off"
+                  />
+                   {!emailOK && email.length > 0 && (
+                     <p className="text-xs text-destructive mt-1">Escribe un email válido.</p>
+                   )}
+                </div>
+            <CardHeader><CardTitle>Describe tu idea</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">   </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Idea (1–2 frases)</Label>
                   <Textarea rows={3} value={idea} onChange={e => setIdea(e.target.value)} className="border-2" style={{ borderColor: accent }} />
                 </div>
-
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Tu ventaja diferenciadora (texto)</Label>
                   <Textarea rows={3} value={ventajaTexto} onChange={e => setVentajaTexto(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="¿Qué harás distinto o especial? tecnología, experiencia, costos, tiempo, marca, red, datos, etc." />
                   <p className="text-xs text-muted-foreground">La IA asignará una <strong>nota 1–10</strong> a esta ventaja al presionar "Evaluar con IA". Sin IA, usamos una heurística local.</p>
                 </div>
-
-                <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Venta mensual promedio primer año – CLP</Label>
-                  <Input type="text" inputMode="numeric" value={ingresosMeta} onChange={e => setIngresosMeta(formatCLPLike(e.target.value))} className="border-2" style={{ borderColor: accent }} />
-                  <p className="text-xs text-muted-foreground">Se usa para calcular clientes/mes junto al ticket promedio.</p>
-                </div>
-                <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Ticket / tarifa promedio – CLP</Label>
-                  <Input type="text" inputMode="numeric" value={ticket} onChange={e => setTicket(formatCLPLike(e.target.value))} className="border-2" style={{ borderColor: accent }} />
-                </div>
-                <ClientesCalc ingresosMeta={ingresosMeta} ticket={ticket} clientesManual={clientesManual} onClientesManual={setClientesManual} accent={accent} accentSoft={accentSoft} />
-
-                <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Indica tu estimación de llegada a punto de equilibrio (meses)</Label>
-                  <select className="w-full border-2 rounded-md px-3 py-2" value={mesesPE} onChange={e => setMesesPE(parseInt(e.target.value))} style={{ borderColor: accent }}>
-                    {[3,6,9,12].map(m => <option key={m} value={m}>{m} meses</option>)}
-                  </select>
-                  <p className="text-xs text-muted-foreground">Se usa para la curva "{mesesPE}m P.E.". La ruta 12m usa ~8% de avance mensual.</p>
-                </div>
-
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Indica oportunidades y amenazas que pueden afectar tu negocio</Label>
                   <Textarea rows={3} value={supuestos} onChange={e => setSupuestos(e.target.value)} className="border-2" style={{ borderColor: accent }} />
                 </div>
-
-                <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                <div className="md:col-span-2 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Rubro</Label>
                   <Input value={rubro} onChange={e => setRubro(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="restaurant / almacén / asesorías / software / otro" />
                 </div>
-                <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                <div className="md:col-span-1 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Ubicación</Label>
                   <Input value={ubicacion} onChange={e => setUbicacion(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="Comuna, Región, País" />
                 </div>
 
                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Capital de trabajo disponible para iniciar operación después de inversión inicial (CLP)</Label>
-                  <Input type="text" inputMode="numeric" value={capitalTrabajo} onChange={e => setCapitalTrabajo(formatCLPLike(e.target.value))} className="border-2" style={{ borderColor: accent }} />
+                  <Label>Inversión inicial ($)</Label> {/* 20) usuario */}
+                  <Input
+                    type="text" inputMode="numeric"
+                    value={inversionInicial}
+                    onChange={(e) => setInversionInicial(formatCLPLike(e.target.value))}
+                    className="border-2" style={{ borderColor: accent }}/>
+                 <p className="text-xs text-muted-foreground">
+                     Ayuda: “Corresponde a todos los gastos que debes hacer 
+                     antes de abrir tu negocio a los clientes “
+                   </p>
+               </div>
+               <div className="md:col-span-2 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                 <Label>Capital de trabajo disponible… ($)</Label>
+                 <Input
+                    type="text" inputMode="numeric"
+                    value={capitalTrabajo}
+                    onChange={(e) => setCapitalTrabajo(formatCLPLike(e.target.value))}
+                    className="border-2" style={{ borderColor: accent }}/>
+                 <p className="text-xs text-muted-foreground">
+                     "Ayuda: Corresponde al capital disponible que tienes para la puesta en marcha de tu negocio 
+                     después de tu inversión inicial, o bien el capital disponible que cuentas hasta que tu negocio
+                     llegue al punto de equilibrio.”
+                   </p>
+               </div>
+
+                {/* === Volúmenes y ticket === */}
+               <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                 <Label>Venta primer año (12 primeros meses) – $</Label> {/* 10) usuario */}
+                 <Input
+                   type="text" inputMode="numeric"
+                   value={ventaAnual}
+                   onChange={(e) => setVentaAnual(formatCLPLike(e.target.value))}
+                   className="border-2" style={{ borderColor: accent }}
+                 />
+               </div>
+
+               <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                 <Label>Ticket / tarifa promedio por cliente – $</Label> {/* 11) usuario */}
+                 <Input
+                   type="text" inputMode="numeric"
+                   value={ticket}
+                   onChange={(e) => setTicket(formatCLPLike(e.target.value))}
+                   className="border-2" style={{ borderColor: accent }}
+                 />
+               </div>
+                 
+                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                <Label className="mt-2">Anota % de  Conversión de visitas se convierte en clientes: </Label>
+                <Input type="number" step="0.1"
+                  value={convPct}
+                  onChange={e => setConvPct(e.target.value)}
+                  className="border-2" style={{ borderColor: accent }} />
+                <p className="text-xs text-muted-foreground">
+                     Ayuda: “Porcentaje del tráfico mensual que compra. Si no tienes datos, 
+                      usa 1% a 4 % (e-commerce), 3% a 10 % (tienda), 10% a 30 % (servicios).”
+                   </p>
                 </div>
+
+               {(() => {
+                 const vAnual   = parseNumberCL(ventaAnual);
+                 const t        = parseNumberCL(ticket);
+                 const ventaMensual      = (vAnual > 0 ? vAnual / 12 : 0);        // 13) calculado
+                 const clientesAnuales   = (t > 0 ? vAnual / t : 0);              // 12) calculado
+                 const clientesMensuales = (t > 0 ? clientesAnuales / 12 : 0);    // 14) calculado
+
+                 return (
+                   <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="rounded-xl border-2 p-3" style={{ borderColor: accent, background: 'white' }}>
+                       <div className="text-xs text-muted-foreground">Venta mensual (calculado)</div>
+                       <div className="font-semibold">${fmtCL(ventaMensual)}</div>
+                     </div>
+                     <div className="rounded-xl border-2 p-3" style={{ borderColor: accent, background: 'white' }}>
+                       <div className="text-xs text-muted-foreground">Clientes anuales (calculado)</div>
+                       <div className="font-semibold">{fmtNum(clientesAnuales)}</div>
+                     </div>
+                     <div className="rounded-xl border-2 p-3" style={{ borderColor: accent, background: 'white' }}>
+                       <div className="text-xs text-muted-foreground">Clientes mensuales (calculado)</div>
+                       <div className="font-semibold">{fmtNum(clientesMensuales)}</div>
+                       <div className="text-xs mt-1 text-muted-foreground">
+                         Puedes ajustar manualmente:
+                       </div>
+                       <Input
+                         type="text" inputMode="numeric"
+                         value={clientesManual}
+                         onChange={(e) => setClientesManual(formatCLPLike(e.target.value))}
+                         placeholder="p.ej. 120"
+                         className="mt-1"
+                      />
+                   </div>
+                 </div>
+                );
+              })()}
+                 {/* GASTOS Y COSTOS VARIABLES */}
+
                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Gastos fijos mensuales (CLP)</Label>
+                  <Label>Gastos fijos mensuales ($)</Label>
                   <Input type="text" inputMode="numeric" value={gastosFijos} onChange={e => setGastosFijos(formatCLPLike(e.target.value))} className="border-2" style={{ borderColor: accent }} />
                 </div>
+                <div className="space-y-2 rounded-xl border-2 p-3"
+                    style={{ borderColor: accent, background: accentSoft }}>
+                  <Label>Costo variable (% del precio, opcional)</Label>
+                  <Input type="number" step="0.1"
+                         value={costoPct}
+                         onChange={e => setCostoPct(e.target.value)}
+                         className="border-2" style={{ borderColor: accent }} />
+                  <p className="text-xs text-muted-foreground">
+                     Si no conoces el costo unitario exacto, ingresa un % del precio y lo calculamos automáticamente.
+                   </p>
+                </div>
+                <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                  <Label>Costo variable unitario ($)</Label>
+                  <Input type="text" inputMode="numeric" value={costoUnit} onChange={e => setCostoUnit(formatCLPLike(e.target.value))} className="border-2" style={{ borderColor: accent }} />
+                </div>
+                {(() => {
+                  const price = parseNumberCL(ticket);
+                  const costU = parseNumberCL(costoUnit);
+                  const pct   = parseNumberCL(costoPct);
+                  const costoDesdePct = (!costU || costU === 0) && pct > 0 ? price * (pct/100) : 0;
+                  const costoUsado    = (costU && costU > 0) ? costU : costoDesdePct;
+                  const mcUnitario    = Math.max(0, price - costoUsado); // 17) MC unitario
+
+                  const gfMes   = parseNumberCL(gastosFijos);
+                  const gfAnual = gfMes * 12;                              // 19) GF año (12m)
+
+                 return (
+                    <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="rounded-xl border-2 p-3" style={{ borderColor: accent, background: 'white' }}>
+                        <div className="text-xs text-muted-foreground">Margen de contribución unitario (calculado)</div>
+                        <div className="font-semibold">${fmtCL(mcUnitario)}</div>
+                        <div className="text-[15px] text-muted-foreground mt-1">
+                        Se calcula como <b>Ticket − Costo Variable</b>. Si no hay costo unitario, usa % del precio.
+                        </div>
+                     </div>
+                     <div className="rounded-xl border-2 p-3" style={{ borderColor: accent, background: 'white' }}>
+                       <div className="text-xs text-muted-foreground">Gastos fijos año (12meses)</div>
+                        <div className="font-semibold">${fmtCL(gfAnual)}</div>
+                     </div>
+                   </div>
+                 );
+                })()}
+                
+                {/* CANALES & MARKETING (nuevo) */}
+                <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3"
+                 style={{ borderColor: accent, background: accentSoft }}>
+                <Label>Tráfico mensual (visitas / leads): Personas únicas que llegan a tu web, tienda o canal y consultan en un mes</Label>
+                <Input type="text" inputMode="numeric"
+                  value={traficoMes}
+                  onChange={e => setTraficoMes(formatCLPLike(e.target.value))}
+                  className="border-2" style={{ borderColor: accent }} />
+                  
+                <Label className="mt-2">Gasto de marketing mensual – CLP</Label>
+                <Input type="text" inputMode="numeric"
+                  value={marketingMensual}
+                  onChange={e => setMarketingMensual(formatCLPLike(e.target.value))}
+                  className="border-2" style={{ borderColor: accent }} />
+
+                {/* Derivados visibles (solo referencia, no editables) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-sm">
+                 <div className="rounded-md border bg-white p-2">
+                   <div className="text-muted-foreground">Clientes estimados por marketing</div>
+                   <div className="font-semibold">
+                     {fmtNum((parseNumberCL(traficoMes) * (parseNumberCL(convPct)/100)) || 0)}
+                   </div>
+                 </div>
+                 <div className="rounded-md border bg-white p-2">
+                   <div className="text-muted-foreground">CAC estimado</div>
+                   <div className="font-semibold">
+                     {(() => {
+                       const traf = parseNumberCL(traficoMes);
+                       const conv = (parseNumberCL(convPct) / 100);
+                       const cli  = traf * conv;
+                       const mkt  = parseNumberCL(marketingMensual);
+                       return cli > 0 ? `$${fmtCL(Math.round(mkt/cli))}` : '—';
+                     })()}
+                   </div>
+                   <div className="text-xs text-muted-foreground">Se usa si no ingresas un CAC manual.</div>
+                 </div>
+                 <div className="rounded-md border bg-white p-2">
+                   <div className="text-muted-foreground">LTV (aprox)</div>
+                   <div className="font-semibold">
+                     {(() => {
+                       const price = parseNumberCL(ticket);
+                       const cost  = parseNumberCL(costoUnit);
+                       const mc    = Math.max(0, price - cost);
+                       const freq  = parseNumberCL(frecuenciaAnual) || 6;
+                       return `$${fmtCL(Math.round(mc * freq))}`;
+                     })()}
+                    </div>
+                  </div>
+                 </div>
+                </div>
+
+                      {/* CAC, Frecuencia, Riesgos */}
                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Frecuencia de compra (anual)</Label>
                   <Input type="number" value={frecuenciaAnual} onChange={e => setFrecuenciaAnual(parseFloat(e.target.value) || 0)} className="border-2" style={{ borderColor: accent }} />
                   <p className="text-xs text-muted-foreground">Frecuencia = cuántas veces en un año cliente repite compras/servicio (para calcular LTV).</p>
                 </div>
-                <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Costo variable unitario (CLP)</Label>
-                  <Input type="text" inputMode="numeric" value={costoUnit} onChange={e => setCostoUnit(formatCLPLike(e.target.value))} className="border-2" style={{ borderColor: accent }} />
-                </div>
+                
+                
                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>CAC (costo de adquisición por cliente, CLP)</Label>
                   <Input type="text" inputMode="numeric" value={cac} onChange={e => setCac(formatCLPLike(e.target.value))} className="border-2" style={{ borderColor: accent }} />
                   <p className="text-xs text-muted-foreground">CAC = cuánto te cuesta, en promedio, conseguir un cliente en campañas de marketing.</p>
+                </div>
+
+                <div className="md:col-span-1 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                  <Label>Indica tu estimación de llegada a punto de equilibrio (meses)</Label>
+                  <select className="w-full border-2 rounded-md px-3 py-2" value={mesesPE} onChange={e => setMesesPE(parseInt(e.target.value))} style={{ borderColor: accent }}>
+                    {[3,6,9,12].map(m => <option key={m} value={m}>{m} meses</option>)}
+                  </select>
+                  <p className="text-xs text-muted-foreground">Se usa para la curva "{mesesPE}m P.E.". La ruta 12m usa ~8% de avance mensual.</p>
                 </div>
 
                 <div className="md:col-span-3 rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
@@ -356,7 +726,11 @@ export default function AreteDemo() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <CardContent>
+                  <div className="no-print mb-3">
+                   <Button onClick={() => printOnly('tablero')}>Imprimir tablero</Button>
+                  </div>
+                  <section id="tablero" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-3 -mt-2">
                   <div className="text-xs text-muted-foreground flex items-center gap-2">
                     <span className="rounded-md px-2 py-0.5 bg-red-600 text-white">ROJO &lt; 40</span>
@@ -368,12 +742,12 @@ export default function AreteDemo() {
                 <div className="lg:col-span-2">
                   <div className="h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart data={outputs.chartData} outerRadius="80%">
-                        <PolarGrid />
-                        <PolarAngleAxis dataKey="name" />
-                        <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                        <Radar name="Puntaje" dataKey="value" stroke={accent} fill={accent} fillOpacity={0.35} />
-                      </RadarChart>
+                       <RadarChart data={chartDataUI} outerRadius="80%">
+                         <PolarGrid />
+                         <PolarAngleAxis dataKey="name" />
+                         <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                         <Radar name="Puntaje" dataKey="value" stroke={accent} fill={accent} fillOpacity={0.35} />
+                       </RadarChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -381,10 +755,12 @@ export default function AreteDemo() {
                      (it: { title: string; hint?: string; score: number; reason: string }, idx: number) => (
                       <div key={idx} className="rounded-xl border p-3 bg-card">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{it.title}</div>
-                            {it.hint && <div className="text-xs text-muted-foreground">{it.hint}</div>}
-                          </div>
+                            <div className="font-medium">{uiTitle(String(it.title))}</div>
+                            {it.hint && (
+                               <div className="text-xs text-muted-foreground">
+                                  {uiHint(String(it.title), String(it.hint))}
+                               </div>
+                            )}        
                           <Badge className={badgeClass(colorFor(it.score * 10))}>{it.score.toFixed(1)}/10</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{it.reason}</p>
@@ -420,25 +796,25 @@ export default function AreteDemo() {
                     <div className="text-sm text-muted-foreground">Punto de equilibrio</div>
                     <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <div className="text-muted-foreground">MC unitario</div>
+                        <div className="text-muted-foreground">Margen de Contribución Unitario</div>
                         <div className="font-semibold">${fmtCL(outputs.pe.mcUnit)}</div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground">Clientes P.E. (mes)</div>
+                        <div className="text-muted-foreground">Clientes en equilibrio</div>
                         <div className="font-semibold">{Number.isFinite(outputs.pe.clientsPE)? fmtNum(outputs.pe.clientsPE) : '—'}</div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground">Venta P.E. (mes)</div>
+                        <div className="text-muted-foreground">Ventas en equilibrio</div>
                         <div className="font-semibold">${fmtCL(outputs.pe.ventasPE)}</div>
                       </div>
                       <div>
-                        <div className="text-muted-foreground">Runway estimado</div>
+                        <div className="text-muted-foreground">Autonomía de caja</div>
                         <div className="font-semibold">{Number.isFinite(outputs.pe.runwayMeses)? `${outputs.pe.runwayMeses.toFixed(1)} meses` : '—'}</div>
                       </div>
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
-                      Nota: <strong>MC = Ventas − Costos de venta</strong> (margen de contribución unitario = precio − costo variable).<br/>
-                      <strong>Runway</strong> = meses sin venta para cubrir gastos fijos con capital de trabajo.
+                      <strong>Margen de contribución = Ventas − Costos de venta</strong>.<br/>
+                      <strong>Autonomía de caja</strong> = Meses sin venta para cubrir gastos fijos con capital de trabajo.
                     </div>
                     <div className="mt-2 text-sm">
                       {(() => {
@@ -484,6 +860,7 @@ export default function AreteDemo() {
                     </ul>
                   </div>
                 </div>
+               </section> 
               </CardContent>
             </Card>
           </TabsContent>
@@ -493,15 +870,158 @@ export default function AreteDemo() {
             <Card className="border-none shadow-sm">
               <CardHeader><CardTitle>Informe</CardTitle></CardHeader>
               <CardContent>
-                <pre className="whitespace-pre-wrap text-sm leading-6">{outputs.explainer}</pre>
+               <div className="no-print mb-4">
+                 <Button
+                   onClick={() => {
+                     printOnly('informe');
+                     void sendReportEmail({ silent: true, reason: 'print-informe' });
+                   }}
+                   disabled={emailSending}
+                 >
+                   Imprimir informe
+                 </Button>
+               </div>
+               <div className="rounded-md border bg-white p-4 text-sm">
+                  <div><span className="font-semibold">Proyecto:</span> {projectName || '—'}</div>
+                  <div><span className="font-semibold">Emprendedor/a:</span> {founderName || '—'}</div>
+                  <div><span className="font-semibold">Email:</span> {email || '—'}</div>
+               </div>
+               
+               <div id="informe" className="space-y-6">
+                 <div>
+                   <h2 className="text-lg font-bold">Informe (SIN IA)</h2>
+                   <ReportView report={nonAIReport} />
+                 </div>
+
+                 {aiReport && (
+                   <>
+                   <div>
+                     <h2 className="text-lg font-bold">Evaluación (IA)</h2>
+                      <ReportView report={aiReport} />
+                   </div>
+
+                    {/* Plan 100 palabras */}
+                    {aiPlan && (
+                     <>
+                       <div className="mt-6 space-y-4">
+                         <h3 className="text-lg font-bold mt-6">Plan (100 palabras)</h3>
+                         <div className="rounded-md border bg-white p-4 text-sm leading-relaxed avoid-break">
+                           {aiPlan.plan100}
+                         </div>
+                       </div>
+
+                       {/* Botón copiar plan – fuera de impresión */}
+                       <div className="no-print mt-3">
+                         <button
+                           className="mt-2 rounded-md border px-3 py-1 text-sm"
+                           onClick={() => {
+                             navigator.clipboard.writeText(aiPlan.plan100);
+                             alert('Plan copiado.');
+                           }}
+                         >
+                         Copiar plan
+                       </button>
+                     </div>
+
+                    {/* Tablas IA */}
+                   <h3 className="text-lg font-bold mt-6">Mapa competitivo</h3>
+                   <div className="avoid-break">
+                     <CompetitiveTable rows={aiPlan.competencia} />
+                   </div>
+
+                   <h3 className="text-lg font-bold mt-6">Checklist regulatorio</h3>
+                   <div className="avoid-break">
+                      <RegulationTable rows={aiPlan.regulacion} />
+                   </div>
+                 </>
+               )}
+            </>
+      )}
+               </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
     </div>
+    
   );
 }
+// --------------------Render del bloque nuevo en el Informe (IA)--------------------
+
+function CompetitiveTable({ rows }: { rows: CompetitiveRow[] }) {
+  if (!rows?.length) return <p className="text-sm text-muted-foreground">Sin datos.</p>;
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50">
+          <tr className="text-left">
+            <th className="p-2">Empresa</th>
+            <th className="p-2">Ciudad/País</th>
+            <th className="p-2">Segmento</th>
+            <th className="p-2">Propuesta</th>
+            <th className="p-2">Precio (ARPU)</th>
+            <th className="p-2">Canal</th>
+            <th className="p-2">Switching</th>
+            <th className="p-2">Moat</th>
+            <th className="p-2">Evidencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t">
+              <td className="p-2">{r.empresa}</td>
+              <td className="p-2">{r.ciudad}</td>
+              <td className="p-2">{r.segmento}</td>
+              <td className="p-2">{r.propuesta}</td>
+              <td className="p-2">{r.precio}</td>
+              <td className="p-2">{r.canal}</td>
+              <td className="p-2">{r.switching_cost}</td>
+              <td className="p-2">{r.moat}</td>
+              <td className="p-2">{r.evidencia}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RegulationTable({ rows }: { rows: RegulationRow[] }) {
+  if (!rows?.length) return <p className="text-sm text-muted-foreground">Sin datos.</p>;
+  return (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50">
+          <tr className="text-left">
+            <th className="p-2">Área</th>
+            <th className="p-2">Qué aplica</th>
+            <th className="p-2">Requisito</th>
+            <th className="p-2">Plazo</th>
+            <th className="p-2">Riesgo</th>
+            <th className="p-2">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t">
+              <td className="p-2">{r.area}</td>
+              <td className="p-2">{r.que_aplica}</td>
+              <td className="p-2">{r.requisito}</td>
+              <td className="p-2">{r.plazo}</td>
+              <td className="p-2">{r.riesgo}</td>
+              <td className="p-2">{r.accion}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
+// -------------------- Componentes UI --------------------
+
 
 function SliderField({ label, value, onChange, accent, accentSoft }: { label: string; value: number; onChange: (n: number) => void; accent: string; accentSoft: string; }) {
   return (
@@ -536,6 +1056,18 @@ function ClientesCalc({ ingresosMeta, ticket, clientesManual, onClientesManual, 
   );
 }
 
+
+
+function escapeHtml(s: string) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+
+
+
 function badgeClass(color: "red" | "amber" | "green") { return color === "green" ? "bg-green-600" : color === "amber" ? "bg-amber-500" : "bg-red-600"; }
 function colorFor(score0to100: number): "red" | "amber" | "green" { if (score0to100 < 40) return "red"; if (score0to100 < 70) return "amber"; return "green"; }
 
@@ -568,21 +1100,46 @@ function rubroBase(rubro: string) {
 function computeScores(input: any) {
   const base = rubroBase(input.rubro);
 
-  const clientsCalc = input.ticket > 0 ? input.ingresosMeta / input.ticket : 0;
-  const clientsManual = input.clientesManual && input.clientesManual > 0 ? input.clientesManual : undefined;
-  const clientsUsed = typeof clientsManual === 'number' ? clientsManual : clientsCalc;
+  // --- NUEVOS CÁLCULOS (antes no estaban) ---
+  // Clientes por dos vías
+  const clientsCalc     = input.ticket > 0 ? input.ingresosMeta / input.ticket : 0; // tu cálculo actual (meta/ticket)
+  const trafico         = Math.max(0, input.traficoMes || 0);
+  const conv            = Math.max(0, Math.min(1, (input.convPct || 0) / 100));
+  const clientsFromMkt  = trafico * conv; // visitas/leads * conversión
 
+  // Ajuste manual ya existente
+  const clientsManual   = input.clientesManual && input.clientesManual > 0 ? input.clientesManual : undefined;
+
+  // El que “rige” (preferencia: manual > marketing > meta)
+  const clientsUsed     = typeof clientsManual === 'number'
+   ? clientsManual
+   : (clientsFromMkt > 0 ? clientsFromMkt : clientsCalc);
+
+   // Precio y costo 
   const price = Math.max(0, input.ticket);
-  const cost = Math.max(0, Math.min(input.costoUnit, price));
+  // costo unitario: toma el unitario SI existe; si no, usa % del precio (opcional)
+  let cost = Math.max(0, Math.min(input.costoUnit || 0, price));
+  if ((!input.costoUnit || input.costoUnit === 0) && input.costoPct > 0) {
+  cost = Math.max(0, Math.min(price * (input.costoPct / 100), price));
+  }
   const mcUnit = Math.max(0, price - cost);
   const margin = price > 0 ? (price - cost) / price : 0;
-  const marginScore = clamp(scaleRange(margin, base.marginEsperado[0], base.marginEsperado[1]) * 10, 0, 10);
 
-  // LTV con frecuencia anual (veces en 12m)
-  const ltv = (input.frecuenciaAnual > 0 ? input.frecuenciaAnual : 6) * (price - cost);
-  const cac = Math.max(0, input.cac || 0);
+  
+  // CAC: usa el ingresado; si está vacío, calcula con marketing/clientsFromMkt
+  const cacFromMkt = clientsFromMkt > 0 ? (input.marketingMensual || 0) / clientsFromMkt : 0;
+
+  // --- PUNTOS que ya calculabas (se mantienen) ---
+  const marginScore = clamp(scaleRange(margin, rubroBase(input.rubro).marginEsperado[0], rubroBase(input.rubro).marginEsperado[1]) * 10, 0, 10);
+
+
+   // LTV con frecuencia anual (ya lo tenías; solo asegúrate de usar “mcUnit”):
+  const ltv = (input.frecuenciaAnual > 0 ? input.frecuenciaAnual : 6) * mcUnit;
+  const cac = Math.max(0, input.cac || cacFromMkt);
+
+  // ratio usando el CAC “usado” (ingresado o estimado)
   const ltvCacRatio = cac > 0 ? ltv / cac : (ltv > 0 ? 3 : 0);
-  const unitScore = clamp(scaleRange(ltvCacRatio, 1, 3) * 10, 0, 10);
+  const unitScore   = clamp(scaleRange(ltvCacRatio, 1, 3) * 10, 0, 10);
 
   // problema & valor
   const claridad = Math.min(2, (input.idea?.length || 0) / 140);
@@ -631,9 +1188,17 @@ function computeScores(input: any) {
 
   const totalScore = Math.round(items.reduce((acc, it) => acc + (WEIGHTS[it.key as keyof typeof WEIGHTS] || 0) * (it.score / 10), 0));
   const verdict = buildVerdict(totalScore, input);
-  const chartData = items.map(it => ({ name: it.title.split(" ")[0], value: it.score }));
-  const meta = { clientsCalc, clientsManual: clientsManual ?? null, clientsUsed, sam12_user, ingresosMeta: input.ingresosMeta, ticket: input.ticket, runwayMeses, mcUnit, clientsPE, ventasPE };
-
+  const chartData: ChartPoint[] = items.map((it: any) => ({
+     name: it.title.split(' ')[0],
+     value: it.score,
+  }));
+  const meta = {
+  clientsCalc, clientsManual: clientsManual ?? null, clientsUsed,
+  clientsFromMkt, trafico, convPct: input.convPct,
+  ingresosMeta: input.ingresosMeta, ticket: input.ticket,
+  runwayMeses, mcUnit, clientsPE, ventasPE,
+  ltv, cacUsado: cac, ltvCacRatio,
+};
   const report = { input, items, totalScore, verdict, meta };
   const explainer = [
     `Score global: ${totalScore}/100 (${verdict.title}).`,
@@ -733,38 +1298,69 @@ function buildPECruve({ clientsPE, mcUnit, gastosFijos, mesesUsuario, precio }: 
   const capitalSuficiente = acumDeficitUsuario <= 0 ? true : undefined;
   return { data, acumDeficitUsuario, capitalSuficiente };
 }
+type Key = keyof typeof WEIGHTS;
+
+type EvalItem = {
+  key: Key;
+  title: string;
+  score: number;
+  reason?: string;
+  hint?: string;
+};
 
 function applyIA(baseOut: any, ia: any) {
   if (!ia) return baseOut;
-  const reasons = ia.reasons || {};
-  const hints = ia.hints || {};
-  const iaScores = ia?.scores?.byKey || {};
-  const meta = ia.meta || {};
 
-  const items = baseOut.items.map((it: any) => {
-    const overrideScore = typeof iaScores[it.key] === 'number' ? clamp(iaScores[it.key], 0, 10) : it.score;
-    const reason = reasons[it.key] ?? it.reason;
-    const hint = hints[it.key] ?? it.hint;
-    return { ...it, score: overrideScore, reason, hint };
+  const byKey: Partial<Record<Key, number>> = ia?.scores?.byKey ?? {};
+  const reasons: Partial<Record<Key, string>> = ia?.reasons ?? {};
+  const hints: Partial<Record<Key, string>> = ia?.hints ?? {};
+  const meta = ia?.meta ?? {};
+
+  // 1) No pisar score si IA no entrega número
+  const items: EvalItem[] = (baseOut.items as EvalItem[]).map((it) => {
+    const hasNum = typeof byKey[it.key] === 'number' && Number.isFinite(byKey[it.key]!);
+    const score = hasNum ? Math.max(0, Math.min(10, byKey[it.key]!)) : it.score;
+    return {
+      ...it,
+      score,
+      reason: reasons[it.key] ?? it.reason,
+      hint:   hints[it.key]   ?? it.hint,
+    };
   });
 
-  const idxM = items.findIndex((x: any) => x.key === 'mercado');
+  // 2) Ajuste de texto fila “mercado” (opcional, conserva tu lógica)
+  const idxM = items.findIndex((x) => x.key === 'mercado');
   if (idxM >= 0) {
-    const samUser12 = baseOut?.report?.meta?.sam12_user;
-    const clientsCalc = baseOut?.report?.meta?.clientsCalc;
-    const clientsManual = baseOut?.report?.meta?.clientsManual;
-    const samIA12 = typeof meta.sam12_est === 'number' ? meta.sam12_est : (typeof meta.samMonthly_est === 'number' ? meta.samMonthly_est * 12 : undefined);
-    const sup = meta?.assumptionsText || meta?.assumptions || '';
     const prev = items[idxM];
-    const userTxt = `Usuario: ${fmtNum(clientsCalc)}${clientsManual?` (ajuste ${fmtNum(clientsManual)}`:''}/mes → SAM12 ${fmtNum(samUser12)}`;
-    const iaTxt = samIA12 ? ` · IA: ${fmtNum(samIA12)} en 12m${sup?` · Supuestos IA: ${String(sup)}`:''}` : '';
-    items[idxM] = { ...prev, reason: `${userTxt}${iaTxt}`, hint: hints['mercado'] ?? prev.hint };
+    // … tu armado de userTxt / iaTxt aquí …
+    const userTxt = prev.reason || '';
+    const iaTxt = meta.samMonthly_est ? ` IA: Estimación IA = ${meta.samMonthly_est}/mes. Supuestos: ${meta.assumptionsText || ''}` : '';
+    items[idxM] = { ...prev, reason: `${userTxt}${iaTxt ? ' ·' + iaTxt : ''}`, hint: prev.hint };
   }
 
-  const totalScore = Math.round(items.reduce((acc: number, it: any) => acc + (WEIGHTS[it.key as keyof typeof WEIGHTS] || 0) * (it.score / 10), 0));
-  const chartData = items.map((it: any) => ({ name: it.title.split(" ")[0], value: it.score }));
-  return { ...baseOut, items, chartData, totalScore, verdict: ia.verdict || baseOut.verdict, experiments: Array.isArray(ia.experiments) && ia.experiments.length ? ia.experiments : baseOut.experiments, topRisks: Array.isArray(ia.risks) && ia.risks.length ? ia.risks : baseOut.topRisks, explainer: ia.narrative || baseOut.explainer };
+  // 3) Totales (tipados)
+  const totalScore = Math.round(
+    items.reduce((acc: number, it: EvalItem) => {
+      const w = (WEIGHTS as Record<Key, number>)[it.key] ?? 0;
+      return acc + w * (it.score / 10);
+    }, 0)
+  );
+
+  const chartData = items.map((it) => ({ name: it.title.split(' ')[0], value: it.score }));
+
+  // 4) ¡OJO! No tocar report.ranking.score del informe base
+  return {
+    ...baseOut,
+    items,
+    chartData,
+    totalScore,
+    verdict: ia?.verdict || baseOut.verdict,
+    // deja el score original
+    report: { ...(baseOut.report ?? {}), ranking: { ...(baseOut.report?.ranking ?? {}) } },
+  };
 }
+
+
 
 // -------------------- Smoke tests (console) --------------------
 (function runAreteSmokeTests() {
@@ -816,4 +1412,45 @@ function downloadJSON(obj: any, filename: string) {
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
+}
+
+function printOnly(target: 'tablero' | 'informe') {
+  const cls = target === 'tablero' ? 'print-tablero' : 'print-informe';
+  const body = document.body;
+  body.classList.add(cls);
+
+  // pequeño delay para asegurar reflow antes de imprimir
+  setTimeout(() => {
+    window.print();
+  }, 50);
+
+  const cleanup = () => {
+    body.classList.remove(cls);
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+}
+
+
+function ReportView({ report }:{ report: StandardReport }) {
+  const s = report.sections;
+  return (
+    <div className="rounded-xl border p-4 bg-white/5">
+      <Item t="Rubro">{s.industryBrief}</Item>
+      <Item t="Competencia local ($)">{s.competitionLocal}</Item>
+      <Item t="FODA + Tamaño de Mercado">{s.swotAndMarket}</Item>
+      <Item t="Veredicto con 3 proximos pasos">{s.finalVerdict}</Item>
+      <div className="mt-3 text-xs text-muted-foreground">
+        Score: {report.ranking.score}/100 · {report.ranking.constraintsOK ? '✓ Consistente' : '⚠︎ Revisar campos'}
+      </div>
+    </div>
+  );
+}
+function Item({t, children}:{t:string; children:React.ReactNode}){
+  return (
+    <div className="mb-3">
+      <div className="text-sm font-semibold opacity-80">{t}</div>
+      <div className="text-sm">{children}</div>
+    </div>
+  );
 }

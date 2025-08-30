@@ -1,32 +1,45 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/api/evaluate/route.ts
 export const runtime = 'edge';
-export const preferredRegion = ['gru1']; // São Paulo (más cerca de Chile)
+export const preferredRegion = ['gru1'];
 
 import OpenAI from 'openai';
+import { z } from 'zod';
+import { rankStandardReport } from '../../lib/nonAI-report';
+import type { StandardReport } from '../../types/report';
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// POST /api/evaluate[?stream=1]
-export async function POST(request: Request) {
-  const url = new URL(request.url);
-  const wantStream = url.searchParams.get('stream') === '1';
+const AiSchema = z.object({
+  industryBrief: z.string(),
+  competitionLocal: z.string(),
+  swotAndMarket: z.string(),
+  finalVerdict: z.string(),
+  metrics: z.object({ marketEstimateCLP: z.number().optional() }).optional(),
+}).strict();
 
-  let body: any = null;
+export async function POST(request: Request) {
+  // 1) Validaciones básicas para evitar 500 silenciosos
+  if (!process.env.OPENAI_API_KEY) {
+    return json({ error: 'OPENAI_API_KEY missing on server (.env.local)' }, 500);
+  }
+
+  let body:any;
   try { body = await request.json(); }
   catch { return json({ error: 'Bad JSON' }, 400); }
 
   const { input, scores } = body || {};
+  if (!input) return json({ error: 'Missing input' }, 400);
+
+  // 2) Prompt corto (determinista para JSON)
   const sys =
-    'Eres analista de startups. Devuelve SOLO JSON con: ' +
-    'scores.byKey (1-10), reasons{}, hints{}, verdict{title,subtitle,actions[]}, ' +
-    'risks[], experiments[], meta{sam12_est,assumptionsText}, narrative (<=1000 chars). ' +
-    'Nada de texto extra.';
+    'Eres analista de startups. RESPONDE SOLO JSON con {industryBrief, competitionLocal, swotAndMarket, finalVerdict, metrics{marketEstimateCLP}}. ' +
+    'Reglas: industryBrief ≤30 palabras; competitionLocal ≤50 palabras (con precios $); swotAndMarket ≤50 palabras (FODA + mercado CLP si posible); ' +
+    'finalVerdict honesto (VERDE/ÁMBAR/ROJO + razón). Nada fuera del JSON.';
 
   const usr = makeUserPrompt(input, scores);
 
-  // === Modo NO streaming (compatibilidad) ===
-  if (!wantStream) {
+  let raw = '';
+  try {
     const r = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.2,
@@ -35,97 +48,97 @@ export async function POST(request: Request) {
         { role: 'user', content: usr },
       ],
     });
-    const text = r.choices[0]?.message?.content?.trim() ?? '{}';
-    return safeJson(text);
+    raw = (r.choices[0]?.message?.content || '').trim();
+  } catch (e:any) {
+    // Devuelve por qué falló exactamente (clave para ti)
+    return json({
+      error: 'OpenAI request failed',
+      details: e?.message ?? e,
+      status: e?.status,
+      type: e?.error?.type,
+    }, 500);
   }
 
-  // === Modo streaming (SSE) ===
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      let narrative = '';
-      const send = (event: string, data: string) =>
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+  // 3) Normalizar a StandardReport (tolerante si el JSON viene mal)
+  const standardReport = toStandardReport(raw);
 
-      try {
-        send('status', 'starting');
-
-        // 1) Stream de la narrativa (tokens en vivo)
-        const s = await client.chat.completions.create({
-          model: 'gpt-4o-mini',
-          temperature: 0.2,
-          stream: true,
-          messages: [
-            { role: 'system', content: 'Escribe solo la narrativa del informe (<=700 palabras). SIN JSON.' },
-            { role: 'user', content: usr },
-          ],
-        });
-
-        for await (const part of s) {
-          const token = part.choices[0]?.delta?.content || '';
-          if (token) {
-            narrative += token;
-            // Enviamos en vivo para la UI
-            send('narrative', escapeSSE(token));
-          }
-        }
-
-        // 2) JSON final (una sola respuesta, sin stream)
-        const final = await client.chat.completions.create({
-          model: 'gpt-4o-mini',
-          temperature: 0,
-          messages: [
-            { role: 'system', content: sys },
-            { role: 'user', content: usr },
-          ],
-        });
-
-        const text = final.choices[0]?.message?.content?.trim() ?? '{}';
-        let obj: any;
-        try { obj = JSON.parse(text); }
-        catch { obj = { error: 'LLM JSON parse failed', raw: text }; }
-
-        if (!obj.narrative) obj.narrative = narrative;
-
-        send('final', JSON.stringify(obj));
-        send('done', 'ok');
-        controller.close();
-      } catch (err: any) {
-        send('error', escapeSSE(err?.message || 'stream error'));
-        controller.close();
-      }
+  // 4) Payload compatible con tu applyIA (narrativa + título)
+  const aiPayload = {
+    scores: { byKey: scores?.byKey ?? {} },
+    reasons: {},
+    hints: {},
+    verdict: {
+      title: standardToTitle(standardReport.sections.finalVerdict),
+      subtitle: standardReport.sections.finalVerdict,
+      actions: []
     },
-  });
+    risks: [],
+    experiments: [],
+    meta: {},
+    narrative: [
+      standardReport.sections.industryBrief,
+      standardReport.sections.competitionLocal,
+      standardReport.sections.swotAndMarket,
+      standardReport.sections.finalVerdict,
+    ].join('\n\n'),
+  };
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-    },
-  });
+  // 5) En dev, te mando contexto útil para depurar si algo sale raro
+  const debug = process.env.NODE_ENV !== 'production' ? { prompt: { sys, usr }, raw } : undefined;
+
+  return json({ aiPayload, standardReport, debug });
 }
 
-// ---------- helpers ----------
-function escapeSSE(s: string) { return String(s).replace(/\r?\n/g, '\\n'); }
-function json(obj: any, status = 200) {
+// -------- helpers
+function json(obj:any, status=200){
   return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
 }
-function safeJson(textFromLLM: string) {
-  try { return json(JSON.parse(textFromLLM)); }
-  catch { return json({ error: 'LLM JSON parse failed', raw: textFromLLM }, 200); }
-}
-function makeUserPrompt(input: any, scores: any) {
-  const safe = (v: any) => (v ?? '').toString().slice(0, 400);
-  // Prompt corto (cada carácter cuenta)
+function safe(v:any){ return (v ?? '').toString().slice(0, 400); }
+function makeUserPrompt(input:any, scores:any){
   return [
     `idea:${safe(input?.idea)}`,
     `ventaja:${safe(input?.ventajaTexto)}`,
     `rubro:${safe(input?.rubro)}@${safe(input?.ubicacion)}`,
-    `ventas:${input?.ingresosMeta}|ticket:${input?.ticket}|costo:${input?.costoUnit}|CAC:${input?.cac}|freq:${input?.frecuenciaAnual}`,
-    `GF:${input?.gastosFijos}|capital:${input?.capitalTrabajo}|mesesPE:${input?.mesesPE}`,
-    `scoresLocal:${JSON.stringify(scores?.byKey || {})}`,
-    `supuestos:${safe(input?.supuestos)}`
+    `ventas_mensual:${num(input?.ingresosMeta)}|ticket:${num(input?.ticket)}|costo_unit:${num(input?.costoUnit)}|CAC:${num(input?.cac)}|frecuencia_anual:${num(input?.frecuenciaAnual)}`,
+    `gastos_fijos:${num(input?.gastosFijos)}|capital_trabajo:${num(input?.capitalTrabajo)}|meses_PE:${num(input?.mesesPE)}`,
+    `seniales:${safe(input?.testeoPrevio)}`,
   ].join('\n');
+}
+function num(x:any){ const n = typeof x==='string' ? parseFloat(x.replace(/\./g,'').replace(',','.')) : +x; return isFinite(n) ? n : 0; }
+
+function toStandardReport(aiText:string): StandardReport {
+  let parsed:any = {};
+  try { parsed = JSON.parse(aiText); } catch { parsed = {}; }
+  const safe = AiSchema.safeParse(parsed);
+  const v = safe.success
+    ? safe.data
+    : { industryBrief:'', competitionLocal:'', swotAndMarket:'', finalVerdict:'', metrics:{} };
+
+  const sections = {
+    industryBrief: v.industryBrief || '',
+    competitionLocal: v.competitionLocal || '',
+    swotAndMarket: v.swotAndMarket || '',
+    finalVerdict: v.finalVerdict || '',
+  };
+
+  const ranking = rankStandardReport({
+    ...sections,
+    marketEstimateCLP: v.metrics?.marketEstimateCLP,
+  });
+
+  return {
+    source: 'AI',
+    createdAt: new Date().toISOString(),
+    sections,
+    metrics: { marketEstimateCLP: v.metrics?.marketEstimateCLP },
+    ranking,
+  };
+}
+
+function standardToTitle(finalVerdict: string){
+  if (/VERDE/i.test(finalVerdict)) return 'VERDE – Avanzar';
+  if (/ÁMBAR|AMBAR/i.test(finalVerdict)) return 'ÁMBAR – Ajustar';
+  if (/ROJO/i.test(finalVerdict)) return 'ROJO – Pausar';
+  return 'Evaluación';
 }
 
