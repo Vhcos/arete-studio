@@ -354,21 +354,27 @@ export default function AreteDemo() {
     <div className="min-h-screen p-6" style={styleAccent}>
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-2xl shadow-sm" style={{ background: accent }}>
               <Sparkles className="h-5 w-5 text-white" />
             </div>
         <div className="flex items-start justify-between gap-4">
           </div>
-            <h1 className="text-2xl font-bold tracking-tight">Areté · Evalúa tu Idea en 5m con IA</h1>
-            <p className="text-sm text-muted-foreground -mt-1">
-            Cumple tu propósito de la mejor manera 
-            </p>
+
+            <h1 className="text-2xl font-bold tracking-tight">
+             <span className="hidden sm:inline">Areté · Evalúa tu Idea de Negocio con IA</span>
+             <span className="sm:hidden">Areté · Evalúa tu Idea de Negocio</span>
+           </h1>
+           <p className="text-sm text-muted-foreground -mt-1">
+            Cumple tu propósito de la mejor manera
+           </p>
+
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
            <Button
              variant="outline"
+             className="hidden sm:inline-flex"
              onClick={() => {
                const s = nonAIReport.sections;
                const txt = [
@@ -382,8 +388,8 @@ export default function AreteDemo() {
                alert('Informe copiado al portapapeles.');
              }}
            >
-             Copiar informe (texto)
-           <div className="flex items-center gap-2"></div>  
+             Copiar informe
+          <div className="flex flex-wrap gap-2 sm:justify-end"></div>  
            </Button>
             <Button
                onClick={() =>
@@ -400,12 +406,12 @@ export default function AreteDemo() {
               Informe a mi email
             </Button>
             <Button onClick={handleEvaluateAI} disabled={!canRunAI || iaLoading}>Evaluar con IA</Button>
-            <Button onClick={() => downloadJSON(outputs.report, `arete_result_${Date.now()}.json`)}><Download className="mr-2 h-4 w-4" /> Descargar JSON</Button>
+            <Button onClick={() => downloadJSON(outputs.report, `arete_result_${Date.now()}.json`)}><Download className="mr-2 h-4 w-4" /> Descargar Informe</Button>
           </div>
         </div>
 
         <Tabs defaultValue="form">
-          <TabsList className="w-full grid grid-cols-3 md:w-auto">
+          <TabsList className="mt-2 w-full grid grid-cols-3 md:w-auto">
             <TabsTrigger value="form"><Settings className="h-4 w-4 mr-2" />Formulario</TabsTrigger>
             <TabsTrigger value="board"><Rocket className="h-4 w-4 mr-2" />Tablero</TabsTrigger>
             <TabsTrigger value="explain"><Sparkles className="h-4 w-4 mr-2" />Informe</TabsTrigger>
@@ -447,7 +453,7 @@ export default function AreteDemo() {
                      <p className="text-xs text-destructive mt-1">Escribe un email válido.</p>
                    )}
                 </div>
-            <CardHeader><CardTitle>Describe tu idea</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Completa los cuadros esto te orientara con lo necesario para tu idea</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">   </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
