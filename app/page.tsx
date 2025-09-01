@@ -32,7 +32,7 @@ import type { StandardReport } from './types/report';
 import { buildNonAIReport } from './lib/nonAI-report';
 import type { AiPlan, CompetitiveRow, RegulationRow } from './types/plan';
 import type { ChartPoint } from './types/report';
-
+import Link from "next/link";
 
 export function sanitizeTxt(s: string, max = 120) {
   return String(s ?? '')
@@ -372,6 +372,12 @@ export default function AreteDemo() {
 
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
+             <Link
+               href="/ayuda"
+               className="inline-flex items-center rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+            >
+               Guia de uso
+            </Link>
            <Button
              variant="outline"
              className="hidden sm:inline-flex"
@@ -406,6 +412,8 @@ export default function AreteDemo() {
               Informe a mi email
             </Button>
             <Button onClick={handleEvaluateAI} disabled={!canRunAI || iaLoading}>Evaluar con IA</Button>
+           
+
             <Button onClick={() => downloadJSON(outputs.report, `arete_result_${Date.now()}.json`)}><Download className="mr-2 h-4 w-4" /> Descargar Informe</Button>
           </div>
         </div>
@@ -948,6 +956,16 @@ export default function AreteDemo() {
             </Card>
           </TabsContent>
         </Tabs>
+        {/* FAB de Ayuda (solo móvil) */}
+          <Link
+           href="/ayuda"
+           className="fixed bottom-4 right-4 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-black text-white shadow-lg sm:hidden"
+           aria-label="Ayuda"
+           title="Ayuda"
+          >
+            ?
+         </Link>
+
       </div>
     </div>
     
