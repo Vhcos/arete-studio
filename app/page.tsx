@@ -461,7 +461,11 @@ export default function AreteDemo() {
                      <p className="text-xs text-destructive mt-1">Escribe un email válido.</p>
                    )}
                 </div>
-            <CardHeader><CardTitle>Completa los cuadros esto te orientara con lo necesario para tu idea</CardTitle></CardHeader>
+            
+                     <p className="md:col-span-3 space-y-2">
+                         1. Estas en formulario una vez completo 2. Ve a Tablero revisa tu puntaje y recomendaciones 3. Mira tu Informe y toma acción
+                     </p>
+               <CardHeader><CardTitle>Completa los cuadros esto te orientara con lo necesario para tu idea</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">   </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
