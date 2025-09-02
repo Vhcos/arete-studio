@@ -1,11 +1,19 @@
-export const runtime = 'edge';
+// app/api/debug/route.ts
+export const runtime = "edge";
+
+function json(obj: unknown, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 export async function GET() {
-  const key = process.env.OPENAI_API_KEY || '';
-  const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
-  return Response.json({
-    hasKey: Boolean(key),
-    keyTail: key ? key.slice(-6) : null, // máscara segura
-    model
+  const key = process.env.OPENAI_API_KEY || "";
+  const tail = key ? key.slice(-6) : "";
+  return json({
+    hasKey: !!key,
+    keyTail: tail,
+    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
   });
 }

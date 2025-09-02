@@ -1,43 +1,78 @@
-export const runtime = 'edge';
-import OpenAI from 'openai';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export const runtime = "edge";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+import OpenAI from "openai";
 
-function json(obj:any, status=200){
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+function json(obj: any, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { "Content-Type": "application/json" },
   });
 }
 
+// Fallback por si el modelo envía texto extra (no debería con json_object)
+function pickJson(s: string) {
+  const i = s.indexOf("{");
+  const j = s.lastIndexOf("}");
+  if (i >= 0 && j > i) {
+    try { return JSON.parse(s.slice(i, j + 1)); } catch {}
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
-  if (!process.env.OPENAI_API_KEY) return json({ ok:false, error:'OPENAI_API_KEY missing' }, 500);
+  if (!process.env.OPENAI_API_KEY) {
+    return json({ ok: false, error: "OPENAI_API_KEY missing" }, 500);
+  }
 
-  const { input } = await req.json().catch(() => ({ input:{} }));
-  const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
+  const { input = {} } = (await req.json().catch(() => ({ input: {} }))) as any;
 
-  const sys = "Devuelve SOLO un JSON con: title, summary, steps (5 items cortos). Nada de texto fuera del JSON.";
-  const usr = `Negocio:\n${JSON.stringify(input)}\n\nResponde JSON válido.`;
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-  let raw = '';
+  const system =
+    "Eres un consultor de negocios. Devuelve SOLO un JSON válido con { title, summary, steps[] }. Nada de texto adicional.";
+  const user = [
+    `Idea: ${input.idea ?? ""}`,
+    `Ubicación: ${input.ubicacion ?? ""}`,
+    `Rubro: ${input.rubro ?? ""}`,
+    input.ingresosMeta ? `Meta de ingresos (CLP/mes): ${input.ingresosMeta}` : "",
+    "",
+    "Genera un plan inicial (≤100 palabras en summary) y 4–6 pasos accionables.",
+    'Formato JSON: {"title":string,"summary":string,"steps":string[]}',
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   try {
-    const r = await client.responses.create({
+    const r = await client.chat.completions.create({
       model,
-      input: [
-        { role: 'system', content: sys },
-        { role: 'user',   content: usr },
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
       ],
-      text: { format: { type: 'json_object' } },
-      max_output_tokens: 600,
+      max_tokens: 600,
     });
 
-    raw = (r.output_text ?? '').trim();
-    if (!raw) return json({ ok:false, error:'empty_output_text' }, 502);
+    const raw = r.choices?.[0]?.message?.content?.trim() ?? "";
+    if (!raw) return json({ ok: false, error: "empty_output_text" }, 502);
 
-    const plan = JSON.parse(raw);
-    return json({ ok:true, plan, meta:{ model } });
-  } catch (e:any) {
-    return json({ ok:false, error:'OpenAI request failed', details:String(e?.message||e), raw }, 500);
+    const data = pickJson(raw) ?? {};
+    const plan = {
+      title: data.title ?? "Plan",
+      summary: data.summary ?? "",
+      steps: Array.isArray(data.steps) ? data.steps : [],
+    };
+
+    return json({ ok: true, plan, meta: { modelUsed: model } });
+  } catch (e: any) {
+    return json(
+      { ok: false, error: "OpenAI request failed", details: String(e?.message ?? e) },
+      500
+    );
   }
 }
 
