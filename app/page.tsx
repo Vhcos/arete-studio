@@ -949,6 +949,8 @@ const costoVariableMes =
                   </ul>
                 </div>
 
+             
+          
                 {/* Sliders */}
                 <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-5">
                   <SliderField label="Tu idea resuelve un problema (0–10)" value={urgencia} onChange={setUrgencia} accent={accent} accentSoft={accentSoft} />
@@ -963,7 +965,24 @@ const costoVariableMes =
                 </div>
               </CardContent>
             </Card>
+
+            <div className="md:col-span-3 rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
+                  <div className="font-medium">Sigue  <strong>Tu Proposito </strong> al punto 2 Tablero</div>
+                  <ul className="text-sm text-muted-foreground list-disc pl-5 mt-1 space-y-1">
+                    <li><strong>1. Estas en Formulario</strong>: llegaste al final sigue.</li>
+                    <li><strong>2. Tablero </strong> Te esperan tus primeros resultados.</li>
+                    <li><strong>3. Informe </strong>toma acción y aplica la IA.</li>
+                  </ul>
+                </div>
+
+            <TabsList className="mt-2 w-full grid grid-cols-3 md:w-auto">
+              <TabsTrigger value="form"><Settings className="h-4 w-4 mr-2" />Formulario</TabsTrigger>
+              <TabsTrigger value="board"><Rocket className="h-4 w-4 mr-2" />Tablero</TabsTrigger>
+              <TabsTrigger value="explain"><Sparkles className="h-4 w-4 mr-2" />Informe</TabsTrigger>
+          </TabsList>
           </TabsContent>
+
+         
 
           {/* BOARD */}
           <TabsContent value="board">
@@ -1040,6 +1059,8 @@ const costoVariableMes =
                   </div>
                 </div>
 
+
+            
                 <div className="space-y-4">
                   <div className="rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
                     <div className="text-sm text-muted-foreground">Punto de equilibrio</div>
@@ -1199,13 +1220,13 @@ const costoVariableMes =
                </section> 
               </CardContent>
             </Card>
-
+            
+           <TabsList className="mt-2 w-full grid grid-cols-3 md:w-auto">
+              <TabsTrigger value="form"><Settings className="h-4 w-4 mr-2" />Formulario</TabsTrigger>
+              <TabsTrigger value="board"><Rocket className="h-4 w-4 mr-2" />Tablero</TabsTrigger>
+              <TabsTrigger value="explain"><Sparkles className="h-4 w-4 mr-2" />Informe</TabsTrigger>
+          </TabsList>
           
-
-
-
-
-
           </TabsContent>
 
           {/* REPORT */}

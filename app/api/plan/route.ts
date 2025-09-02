@@ -1,75 +1,43 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export const runtime = "edge";
-export const preferredRegion = ["gru1"];
-
-import OpenAI from "openai";
-import { extractText, pickJson } from "@/lib/llm";
+export const runtime = 'edge';
+import OpenAI from 'openai';
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
+function json(obj:any, status=200){
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
 export async function POST(req: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return Response.json({ ok: false, error: "OPENAI_API_KEY missing" }, { status: 500 });
-  }
+  if (!process.env.OPENAI_API_KEY) return json({ ok:false, error:'OPENAI_API_KEY missing' }, 500);
 
-  let body: any = {};
-  try { body = await req.json(); } catch {}
-  const input = body?.input || {};
-  const hint  = body?.hint  || "";
+  const { input } = await req.json().catch(() => ({ input:{} }));
+  const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
 
-  // 1) Prompt en UN SOLO string (mejor compat con Responses API)
-  const system =
-    "Eres consultor de negocios. Devuelve SOLO JSON {title, summary, steps[]} siguiendo el schema. Tono directo y accionable.";
+  const sys = "Devuelve SOLO un JSON con: title, summary, steps (5 items cortos). Nada de texto fuera del JSON.";
+  const usr = `Negocio:\n${JSON.stringify(input)}\n\nResponde JSON válido.`;
 
-  const user =
-`Contexto:
-idea:${(input?.idea ?? "").toString()}
-ubicacion:${(input?.ubicacion ?? "").toString()}
-rubro:${(input?.rubro ?? "").toString()}
-${hint ? `pistas:${hint}\n` : ""}Requisitos: summary 90–110 palabras. steps exactamente 5 bullets, concisos. Español neutro.`;
-
-  const prompt =
-`# Rol
-${system}
-
-# Datos
-${user}
-
-# Formato
-Devuelve SOLO JSON válido, ajustado al schema. Nada de comentarios.`;
-
-  // 2) JSON Schema: AHORA va directo en text.format (no en json_schema)
-  const format: any = {
-    type: "json_schema",
-    name: "OnePagePlan",
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      required: ["title", "summary", "steps"],
-      properties: {
-        title:   { type: "string" },
-        summary: { type: "string" },                                     // ~100 palabras
-        steps:   { type: "array", items: { type: "string" }, minItems: 5, maxItems: 5 } // 5 pasos exactos
-      }
-    },
-    strict: true
-  };
-
+  let raw = '';
   try {
     const r = await client.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5-mini",
-      input: prompt,                            // string único
-      text: { format },                         // <-- cambio clave
-      max_output_tokens: 1200
+      model,
+      input: [
+        { role: 'system', content: sys },
+        { role: 'user',   content: usr },
+      ],
+      text: { format: { type: 'json_object' } },
+      max_output_tokens: 600,
     });
 
-    const raw = extractText(r).trim();
-    const jsonStr = pickJson(raw) || raw;      // si vino solo JSON, sirve igual
-    const plan = JSON.parse(jsonStr);          // ahora debe ser válido
+    raw = (r.output_text ?? '').trim();
+    if (!raw) return json({ ok:false, error:'empty_output_text' }, 502);
 
-    return Response.json({ ok: true, plan, meta: { modelUsed: process.env.OPENAI_MODEL || "gpt-5-mini" } });
-  } catch (e: any) {
-    return Response.json({ ok: false, error: "plan_failed", details: String(e?.message || e) });
+    const plan = JSON.parse(raw);
+    return json({ ok:true, plan, meta:{ model } });
+  } catch (e:any) {
+    return json({ ok:false, error:'OpenAI request failed', details:String(e?.message||e), raw }, 500);
   }
 }
 
