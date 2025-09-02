@@ -96,6 +96,9 @@ function uiHint(title: string, fallback: string) {
  */
 
 // -------------------- Helpers GLOBALES useState--------------------
+
+
+
 function formatCLPLike(s: string) {
   if (s == null) return "";
   s = String(s).replace(/\s+/g, "");
@@ -137,6 +140,22 @@ export default function AreteDemo() {
   const accentSoft = toHSLA(accent, 0.07);
 
   // -------------------- Formulario --------------------
+  
+
+// ——— estado local (ajústalo a tu estado existente si ya lo tienes)
+  
+  const [marketingMensual, setMarketingMensual] = useState(''); // CLP/mes
+  const [cac, setCac] = useState("");
+
+  const mktNum = parseNumberCL(marketingMensual);
+  const cacNum = parseNumberCL(cac);
+
+// Clientes estimados con marketing y CAC
+  const clientesPorMktYCac =
+   Number.isFinite(mktNum) && Number.isFinite(cacNum) && cacNum > 0
+    ? Math.floor(mktNum / cacNum)
+    : NaN; 
+
   const [idea, setIdea] = useState("");
   const [ventajaTexto, setVentajaTexto] = useState("");
   const [rubro, setRubro] = useState("");
@@ -148,13 +167,12 @@ export default function AreteDemo() {
   const [ingresosMeta, setIngresosMeta] = useState(""); // promedio 12m
   const [ticket, setTicket] = useState("");
   const [costoUnit, setCostoUnit] = useState("");
-  const [cac, setCac] = useState("");
   const [frecuenciaAnual, setFrecuenciaAnual] = useState(6); // veces/año
 
   // --- NUEVOS estados (deben ir arriba, antes de usarlos) ---
   const [traficoMes, setTraficoMes] = useState('');        // visitas/leads por mes
   const [convPct, setConvPct] = useState('');              // % conversión
-  const [marketingMensual, setMarketingMensual] = useState(''); // CLP/mes
+  
   const [costoPct, setCostoPct] = useState('');            // % del precio
   // NUEVOS
   const [ventaAnual, setVentaAnual] = useState('');        // 10) Venta primer año (12m)
@@ -212,7 +230,6 @@ export default function AreteDemo() {
   const [projectName, setProjectName] = useState('');
   const [founderName, setFounderName] = useState('');
   const [email, setEmail] = useState('');
-  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const emailOK = emailRe.test(email);
 
   const isValidEmail = (s: string) => /\S+@\S+\.\S+/.test(s);
@@ -232,6 +249,131 @@ export default function AreteDemo() {
     const ventaMensualCalc = ventaAnualN > 0 ? ventaAnualN / 12 : parseNumberCL(ingresosMeta);
 
   // -------------------- Cálculo --------------------
+  // === Clientes mensuales efectivos (manual > calculado) ===
+   const clientesMensCalc = (() => {
+     const vAnual = parseNumberCL(ventaAnual);
+     const t = parseNumberCL(ticket);
+     const cliCalc = t > 0
+       ? (vAnual > 0 ? (vAnual / 12) : 0) / t
+       : 0;
+     const cliManual = parseNumberCL(clientesManual);
+     return cliManual > 0 ? cliManual : cliCalc;
+   })();
+
+    // === Conversión como proporción (2 o 2% -> 0.02) ===
+   const convRatio = (() => {
+     const raw = parseNumberCL(convPct);            // puede venir 2 o 2,5
+     if (!isFinite(raw) || raw <= 0) return NaN;
+     return raw > 1 ? raw / 100 : raw;              // 2 -> 0.02
+   })();
+
+     // === Tráfico mensual sugerido ===
+   const traficoAuto = (isFinite(clientesMensCalc) && isFinite(convRatio) && convRatio > 0)
+     ? Math.ceil(clientesMensCalc / convRatio)
+     : NaN;
+
+      // Modo de cálculo 010923:
+     const [mode, setMode] = React.useState<'budget'|'cac'>('budget'); // 'budget' = tengo presupuesto; 'cac' = conozco CAC
+
+    // Entradas de inversión (ya las tenías)
+    // === Clientes objetivo (N) a partir de tu lógica existente ===
+    // ya tienes clientesMensCalc (manual o (ventaAnual/12)/ticket)
+    const N = clientesMensCalc;
+
+    // === Tráfico requerido (Q) ===
+    const Q = (Number.isFinite(N) && Number.isFinite(convRatio) && convRatio > 0)
+     ? Math.ceil(N / convRatio)
+     : NaN;
+
+    // === Presupuesto y CAC numéricos ===
+    const M = parseNumberCL(marketingMensual);
+    const CAC_target = parseNumberCL(cac);
+
+    // === Modo A (tengo presupuesto): implícitos desde M ===
+    const CPL_implicito = (Number.isFinite(M) && Number.isFinite(Q) && Q > 0) ? M / Q : NaN;
+    const CAC_implicito = (Number.isFinite(M) && Number.isFinite(N) && N > 0) ? M / N : NaN;
+
+    // === Modo B (conozco CAC): requeridos desde CAC_target ===
+    const M_requerido = (Number.isFinite(N) && Number.isFinite(CAC_target) && CAC_target > 0) ? N * CAC_target : NaN;
+    const CPL_objetivo = (Number.isFinite(CAC_target) && Number.isFinite(convRatio) && convRatio > 0) ? CAC_target * convRatio : NaN;
+
+    // Gap si el usuario también ingresó M
+    const gapM = (Number.isFinite(M) && Number.isFinite(M_requerido)) ? (M - M_requerido) : NaN;
+
+    // ⚠️ Si en tu “input” al backend quieres enviar Q (tráfico) calculado por meta, úsalo aquí:
+    const traficoMeta = Q;
+     // === Ventas / Costos de la sección de formulario ===
+   
+    const ticketNum = parseNumberCL(ticket);              // $ por cliente
+    const costoUnitNum = parseNumberCL(costoUnit);        // $ costo variable unitario
+    const gastosFijosMes = parseNumberCL(gastosFijos);    // $ fijos mensuales
+    const costoPctNum     = parseNumberCL(costoPct);        // % del precio (opcional)
+    const ingresosMetaNum = parseNumberCL(ingresosMeta);    // $/mes objetivo (opcional)
+    const ventaAnualNum   = parseNumberCL(ventaAnual);      // $/año objetivo (opcional)
+
+    // === Ventas y Costos de la sección de formulario ===
+
+// Ventas mensuales (prioridad: ventaAnual/12 > ingresosMeta > clientes*ticket)
+const ventasMes =
+  (Number.isFinite(ventaAnualNum)   && ventaAnualNum   > 0) ? (ventaAnualNum / 12) :
+  (Number.isFinite(ingresosMetaNum) && ingresosMetaNum > 0) ? ingresosMetaNum :
+  (Number.isFinite(clientesMensCalc) && Number.isFinite(ticketNum) && ticketNum > 0)
+    ? (clientesMensCalc * ticketNum)
+    : NaN;
+
+// Unidades mensuales
+const unidadesMes = (Number.isFinite(ventasMes) && Number.isFinite(ticketNum) && ticketNum > 0)
+  ? (ventasMes / ticketNum)
+  : (Number.isFinite(clientesMensCalc) ? clientesMensCalc : NaN);
+
+// Costo variable mensual (usa % si existe; si no, usa costo unitario)
+const costoVariableMes =
+  (Number.isFinite(ventasMes) && Number.isFinite(costoPctNum) && costoPctNum > 0)
+    ? (ventasMes * (costoPctNum / 100))
+    : ((Number.isFinite(unidadesMes) && Number.isFinite(costoUnitNum) && costoUnitNum >= 0)
+        ? (unidadesMes * costoUnitNum)
+        : NaN);
+
+
+  // Marketing a usar en finanzas (usa el que el usuario ingresó; si no, el requerido del modo CAC)
+    const M_util = Number.isFinite(M) ? M : (Number.isFinite(M_requerido) ? M_requerido : NaN);
+
+  // Margen de contribución **post marketing**
+    const margenContribucionMes = 
+     (Number.isFinite(ventasMes) ? ventasMes : 0)
+       - (Number.isFinite(costoVariableMes) ? costoVariableMes : 0)
+       - (Number.isFinite(M_util) ? M_util : 0);
+
+       const margenContribucionPct = (Number.isFinite(ventasMes) && ventasMes > 0)
+             ? margenContribucionMes / ventasMes
+             : NaN;
+
+      const fmtMaybeCL = (n:number) => Number.isFinite(n) ? fmtCL(n) : "—";
+
+       // === Estado de resultado anual (12 meses) ===
+       const ventasAnual = Number.isFinite(ventasMes) ? ventasMes * 12 : NaN;
+       const costoVariableAnual = Number.isFinite(costoVariableMes) ? costoVariableMes * 12 : NaN;
+       const gastosFijosAnual = Number.isFinite(gastosFijosMes) ? gastosFijosMes * 12 : NaN;
+       const marketingAnual = Number.isFinite(M_util) ? M_util * 12 : NaN;
+
+       const resultadoAnual = [ventasAnual, costoVariableAnual, gastosFijosAnual, marketingAnual].every(Number.isFinite)
+         ? ventasAnual - costoVariableAnual - gastosFijosAnual - marketingAnual
+         : NaN;
+     
+        
+      
+       
+
+
+
+// Costo variable mensual (acepta unitario o %)
+// Si viene costo % válido, usamos: ventasMes * %
+// Sino, si viene unitario válido, usamos: unidadesMes * costoUnit
+
+
+
+   // -------------------- FIN Cálculo --------------------
+
   const baseOut = useMemo(() => {
     const input = {
       idea, ventajaTexto, rubro, ubicacion,
@@ -246,14 +388,15 @@ export default function AreteDemo() {
       supuestos,
       clientesManual: parseNumberCL(clientesManual || 0),
       mesesPE,
-      traficoMes:        parseNumberCL(traficoMes),
+      traficoMes:        (Number.isFinite(traficoAuto) ? traficoAuto : parseNumberCL(traficoMes)),
       convPct:           parseNumberCL(convPct),           // en %
       marketingMensual:  parseNumberCL(marketingMensual),  // CLP
       costoPct:          parseNumberCL(costoPct),          // en %
       inversionInicial: parseNumberCL(inversionInicial),
     } as const;
     return computeScores(input);
-  }, [idea, ventajaTexto, rubro, ubicacion, capitalTrabajo, gastosFijos, ingresosMeta, ticket, costoUnit, cac, frecuenciaAnual, urgencia, accesibilidad, competencia, experiencia, pasion, planesAlternativos, toleranciaRiesgo, testeoPrevio, redApoyo, supuestos, clientesManual, mesesPE]);
+  }, [idea, ventajaTexto, rubro, ubicacion, capitalTrabajo, gastosFijos, ticket, costoUnit, frecuenciaAnual, urgencia, accesibilidad, competencia, experiencia, pasion, planesAlternativos, toleranciaRiesgo, testeoPrevio, redApoyo, supuestos, 
+    clientesManual, mesesPE, ventaAnual, convPct, marketingMensual, costoPct, traficoMes, inversionInicial, cac]);
   // ---- Informe SIN IA + IA ----
    const nonAIReport = useMemo(
      () => buildNonAIReport(baseOut.report.input, baseOut.report.meta),
@@ -463,7 +606,7 @@ export default function AreteDemo() {
                 </div>
             
                      <p className="md:col-span-3 space-y-2">
-                         1. Estas en formulario una vez completo 2. Ve a Tablero revisa tu puntaje y recomendaciones 3. Mira tu Informe y toma acción
+                        <strong>1.</strong> Estas en  <strong>Formulario</strong> una vez completo <strong>2.</strong> Ve a <strong>Tablero</strong> revisa tu puntaje y recomendaciones <strong>3.</strong> Mira tu <strong>Informe</strong> y toma acción
                      </p>
                <CardHeader><CardTitle>Completa los cuadros esto te orientara con lo necesario para tu idea</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -635,40 +778,21 @@ export default function AreteDemo() {
                 {/* CANALES & MARKETING (nuevo) */}
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3"
                  style={{ borderColor: accent, background: accentSoft }}>
-                <Label>Tráfico mensual (visitas / leads): Personas únicas que llegan a tu web, tienda o canal y consultan en un mes</Label>
-                <Input type="text" inputMode="numeric"
-                  value={traficoMes}
-                  onChange={e => setTraficoMes(formatCLPLike(e.target.value))}
-                  className="border-2" style={{ borderColor: accent }} />
-                  
-                <Label className="mt-2">Gasto de marketing mensual – CLP</Label>
-                <Input type="text" inputMode="numeric"
-                  value={marketingMensual}
-                  onChange={e => setMarketingMensual(formatCLPLike(e.target.value))}
-                  className="border-2" style={{ borderColor: accent }} />
-
-                {/* Derivados visibles (solo referencia, no editables) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-sm">
-                 <div className="rounded-md border bg-white p-2">
-                   <div className="text-muted-foreground">Clientes estimados por marketing</div>
-                   <div className="font-semibold">
-                     {fmtNum((parseNumberCL(traficoMes) * (parseNumberCL(convPct)/100)) || 0)}
-                   </div>
-                 </div>
-                 <div className="rounded-md border bg-white p-2">
-                   <div className="text-muted-foreground">CAC estimado</div>
-                   <div className="font-semibold">
-                     {(() => {
-                       const traf = parseNumberCL(traficoMes);
-                       const conv = (parseNumberCL(convPct) / 100);
-                       const cli  = traf * conv;
-                       const mkt  = parseNumberCL(marketingMensual);
-                       return cli > 0 ? `$${fmtCL(Math.round(mkt/cli))}` : '—';
-                     })()}
-                   </div>
-                   <div className="text-xs text-muted-foreground">Se usa si no ingresas un CAC manual.</div>
-                 </div>
-                 <div className="rounded-md border bg-white p-2">
+                <Label>Tráfico mensual (visitas / leads)</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  readOnly
+                  className="border-2 bg-gray-50 text-gray-700"
+                  style={{ borderColor: accent }}
+                  value={Number.isFinite(traficoAuto) ? new Intl.NumberFormat("es-CL").format(traficoAuto) : ""}
+                  placeholder={Number.isFinite(clientesMensCalc) ? "recuerda llenar conversión" : "ingresa Nº de clientes"}
+                  aria-live="polite"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                    Se calcula automáticamente: <b>Clientes mensuales ÷ Conversión</b>.
+                </p>
+                   <div className="rounded-md border bg-white p-2">
                    <div className="text-muted-foreground">LTV (aprox)</div>
                    <div className="font-semibold">
                      {(() => {
@@ -680,8 +804,122 @@ export default function AreteDemo() {
                      })()}
                     </div>
                   </div>
-                 </div>
-                </div>
+
+               {/* ===== MODO DE INVERSIÓN ===== */}
+               <div className="mt-3">
+                 <Label className="text-sm font-medium">Modo de inversión aprieta 1 ó 2 segun la informacion que tengas</Label>
+                 <div className="mt-2 flex gap-2">
+                   <button
+                     type="button"
+                     onClick={() => setMode('budget')}
+                     className={`px-3 py-1 rounded-md border text-sm ${mode==='budget' ? 'bg-blue-600 text-white border-red-600' : 'bg-white'}`}
+                   >
+                    <strong>1.</strong>Tengo presupuesto mensual de marketing
+                  </button>
+                  <button
+                     type="button"
+                     onClick={() => setMode('cac')}
+                     className={`px-3 py-1 rounded-md border text-sm ${mode==='cac' ? 'bg-blue-600 text-white border-red-600' : 'bg-white'}`}
+                   >
+                     <strong>2.</strong> (C.A.C) Conozco mi Costo de Adquisición por Cliente  <strong>Individual</strong> para marketing 
+                  </button>
+               </div>
+               <p className="mt-1 text-xs text-muted-foreground">
+               Primero definimos la meta (clientes) desde tu venta objetivo y ticket. Luego este modo calcula inversión o eficiencias.
+              </p>
+            </div>
+
+              {/* ===== MODO A: TENGO PRESUPUESTO ===== */}
+             {mode === 'budget' && (
+               <div className="mt-4 space-y-3">
+                 {/* Marketing mensual */}
+               <div>
+                  <Label className="mb-1 block text-sm font-medium">Presuspuesto destinado a Marketing mensualmente ($)</Label>
+                  <Input
+                   type="text"
+                   inputMode="numeric"
+                   value={marketingMensual}
+                   onChange={(e) => setMarketingMensual(formatCLPLike(e.target.value))}
+                   className="border-2"
+                 />
+                <p className="mt-1 text-xs text-gray-500">Presupuesto estimado mensual en $.</p>
+              </div>
+
+                {/* Métricas implícitas */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-md border bg-white p-2">
+                 <div className="text-xs text-muted-foreground">CPL implícito (CLP por visita/lead)</div>
+                 <div className="font-semibold">{fmtCL(CPL_implicito)}</div>
+                 <p className="mt-1 text-xs text-muted-foreground">
+                    Calculado como <b>M ÷ Tráfico requerido</b>.
+                   {!Number.isFinite(Q) ? " Completa conversión y/o ticket/venta." : ""}
+                 </p>
+              </div>
+              <div className="rounded-md border bg-white p-2">
+               <div className="text-xs text-muted-foreground">CAC implícito (CLP por cliente)</div>
+               <div className="font-semibold">{fmtCL(CAC_implicito)}</div>
+               <p className="mt-1 text-xs text-muted-foreground">
+                 Calculado como <b>M ÷ Clientes objetivo</b>.
+                 {!Number.isFinite(N) ? " Falta venta o ticket." : ""}
+               </p>
+              </div>
+            </div>
+         </div>
+             )}
+
+             {/* ===== MODO B: CONOZCO MI CAC ===== */}
+            {mode === 'cac' && (
+            <div className="mt-4 space-y-3">
+             {/* CAC objetivo */}
+            <div>
+             <Label className="mb-1 block text-sm font-medium">(C.A.C) Costo de Adquisición por Cliente  <strong>Individual</strong> para marketing</Label>
+             <Input
+               type="text"
+               inputMode="numeric"
+               value={cac}
+               onChange={(e) => setCac(formatCLPLike(e.target.value))}
+               className="border-2"
+               placeholder="p. ej., 8.000"
+             />
+             <p className="mt-1 text-xs text-gray-500">
+               C.A.C. = Cuánto te cuesta, en promedio, conseguir un cliente respecto al gasto total que haces en campañas de marketing. o bien el costo de adquirir un nuevo cliente. Usamos esto para estimar presupuesto.
+             </p>
+           </div>
+
+           <div className="grid gap-3 sm:grid-cols-2">
+             <div className="rounded-md border bg-white p-2">
+               <div className="text-xs text-muted-foreground">Marketing requerido (M)</div>
+               <div className="font-semibold">{fmtCL(M_requerido)}</div>
+             <p className="mt-1 text-xs text-muted-foreground">
+               Calculado como <b>Clientes objetivo × CAC objetivo</b>.
+            </p>
+           </div>
+           <div className="rounded-md border bg-white p-2">
+            <div className="text-xs text-muted-foreground">CPL objetivo</div>
+            <div className="font-semibold">{fmtCL(CPL_objetivo)}</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+             <b>CPL = CAC × Conversión</b>. Si conversion = 2%, CPL objetivo = CAC × 0.02.
+           </p>
+          </div>
+        </div>
+
+          {/* Gap si el usuario además ingresó M actual */}
+        {marketingMensual && (
+          <div className={`rounded-md border p-2 ${Number.isFinite(gapM) ? (gapM >= 0 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200") : "bg-white"}`}>
+           <div className="text-sm font-medium">
+             {Number.isFinite(gapM)
+               ? gapM >= 0
+                 ? <>Con tu presupuesto actual ({fmtCL(M)}) <b>sobran</b> {fmtCL(gapM)} respecto al requerido.</>
+                 : <>Con tu presupuesto actual ({fmtCL(M)}) <b>faltan</b> {fmtCL(Math.abs(gapM))} para alcanzar la meta.</>
+               : "Ingresa también tu presupuesto actual para comparar."}
+           </div>
+        </div>
+        )}
+      </div>
+   )}
+
+
+                </div> 
 
                       {/* CAC, Frecuencia, Riesgos */}
                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
@@ -689,20 +927,14 @@ export default function AreteDemo() {
                   <Input type="number" value={frecuenciaAnual} onChange={e => setFrecuenciaAnual(parseFloat(e.target.value) || 0)} className="border-2" style={{ borderColor: accent }} />
                   <p className="text-xs text-muted-foreground">Frecuencia = cuántas veces en un año cliente repite compras/servicio (para calcular LTV).</p>
                 </div>
-                
-                
-                <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>CAC (costo de adquisición por cliente, CLP)</Label>
-                  <Input type="text" inputMode="numeric" value={cac} onChange={e => setCac(formatCLPLike(e.target.value))} className="border-2" style={{ borderColor: accent }} />
-                  <p className="text-xs text-muted-foreground">CAC = cuánto te cuesta, en promedio, conseguir un cliente en campañas de marketing.</p>
-                </div>
 
-                <div className="md:col-span-1 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Indica tu estimación de llegada a punto de equilibrio (meses)</Label>
+                <div className="md:col-span-2 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+                  <Label>Indica tu estimación o deseo de estar en punto de equilibrio (meses)</Label>
                   <select className="w-full border-2 rounded-md px-3 py-2" value={mesesPE} onChange={e => setMesesPE(parseInt(e.target.value))} style={{ borderColor: accent }}>
                     {[3,6,9,12].map(m => <option key={m} value={m}>{m} meses</option>)}
                   </select>
-                  <p className="text-xs text-muted-foreground">Se usa para la curva "{mesesPE}m P.E.". La ruta 12m usa ~8% de avance mensual.</p>
+                  <p className="text-xs text-muted-foreground">Esto se mostrara como una curva de "{mesesPE}m P.E.". en un  grafico  diseñado en el Tablero contra 
+                    una curva de 12 meses que es un estimado de llegada a punto de equli¡brio estos 12m equivalen a una avance del 8% de avance mensual en ventas.</p>
                 </div>
 
                 <div className="md:col-span-3 rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
@@ -755,8 +987,7 @@ export default function AreteDemo() {
                     <span className="rounded-md px-2 py-0.5 bg-amber-500 text-white">ÁMBAR 40–69</span>
                     <span className="rounded-md px-2 py-0.5 bg-green-600 text-white">VERDE ≥ 70</span>
                   </div>
-                </div>
-
+                </div>               
                 <div className="lg:col-span-2">
                   <div className="h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -850,6 +1081,93 @@ export default function AreteDemo() {
                       })()}
                     </div>
                   </div>
+                            {/* BOARD de EERR */}
+
+                  <Card className="sm:col-span-2">
+                   <CardHeader>
+                      <CardTitle>Estado de resultado (12 meses)</CardTitle>
+                   </CardHeader>
+                     <CardContent>
+                       <div className="space-y-1">
+                         <Row k="Ventas primer año" v={fmtMaybeCL(ventasAnual)} strong />
+                         <Row k="Costo variable anual" v={fmtMaybeCL(costoVariableAnual)} neg />
+                         <Row k="Gastos fijos anual" v={fmtMaybeCL(gastosFijosAnual)} neg />
+                         <Row k="Gastos en Marketing" v={fmtMaybeCL(marketingAnual)} neg />
+                       <div className="mt-2 border-t pt-2">
+                         <Row k="Resultado anual" v={fmtMaybeCL(resultadoAnual)} strong large />
+                       </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                           Nota: Resultado anual <strong>Estimado</strong> antes de impuestos y devolución de inversiones.
+                        </p>
+                       </div>
+                     </CardContent>
+                   </Card>
+
+
+                           {/* BOARD de MC */}
+                   <Card>
+                     <CardHeader>
+                       <CardTitle>Margen de contribución (post marketing)</CardTitle>
+                     </CardHeader>
+                     <CardContent>
+                      <div className="text-2xl font-bold">{fmtCL(margenContribucionMes)}</div>
+                      <div className="text-sm text-muted-foreground">
+                       {Number.isFinite(margenContribucionPct) ? (margenContribucionPct*100).toFixed(1) + "%" : "—"} sobre ventas
+                     </div>
+                     <div className="mt-2 text-xs text-muted-foreground">
+                       Considera: Ventas − Costos variables − <b>Marketing</b>.
+                     </div>
+                   </CardContent>
+                 </Card>
+                           {/* BOARD  de Marketing*/}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Marketing · métricas</CardTitle>
+                   </CardHeader>
+                   <CardContent className="space-y-2">
+                     <div className="flex items-center justify-between">
+                       <span className="text-sm text-muted-foreground">Clientes objetivo (mes)</span>
+                       <span className="font-medium">{fmtNum(N)}</span>
+                     </div>
+                     <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Tráfico requerido</span>
+                        <span className="font-medium">{fmtNum(Q)}</span>
+                     </div>
+
+                     {mode === 'budget' ? (
+                       <>
+                         <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Costo unitario por trafico de Cliente (CPL)</span>
+                            <span className="font-medium">{fmtCL(CPL_implicito)}</span>
+                         </div>
+                         <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Costo por Cliente que compra(CAC)</span>
+                            <span className="font-medium">{fmtCL(CAC_implicito)}</span>
+                         </div>
+                       </>
+                     ) : (
+                       <>
+                         <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">M requerido</span>
+                            <span className="font-medium">{fmtCL(M_requerido)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">CPL objetivo</span>
+                            <span className="font-medium">{fmtCL(CPL_objetivo)}</span>
+                        </div>
+                        {marketingMensual && (
+                          <div className={`rounded-md border text-xs px-2 py-1 ${Number.isFinite(gapM) ? (gapM >= 0 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200") : "bg-white"}`}>
+                            {Number.isFinite(gapM)
+                             ? gapM >= 0
+                               ? <>Con tu M actual ({fmtCL(M)}) sobran {fmtCL(gapM)}.</>
+                               : <>Con tu M actual ({fmtCL(M)}) faltan {fmtCL(Math.abs(gapM))}.</>
+                             : "Ingresa Marketing para comparar con el requerido."}
+                         </div>
+                        )}
+                      </>
+                     )}
+                   </CardContent>
+                </Card>
 
                   <div className="rounded-xl border p-4">
                     <div className="text-sm text-muted-foreground">Veredicto</div>
@@ -881,6 +1199,13 @@ export default function AreteDemo() {
                </section> 
               </CardContent>
             </Card>
+
+          
+
+
+
+
+
           </TabsContent>
 
           {/* REPORT */}
@@ -1479,6 +1804,19 @@ function Item({t, children}:{t:string; children:React.ReactNode}){
     <div className="mb-3">
       <div className="text-sm font-semibold opacity-80">{t}</div>
       <div className="text-sm">{children}</div>
+    </div>
+  );
+}
+
+function Row({ k, v, strong=false, neg=false, large=false }:{
+  k:string, v:React.ReactNode, strong?:boolean, neg?:boolean, large?:boolean
+}){
+  return (
+    <div className="flex items-center justify-between">
+      <span className={`text-sm ${strong ? "font-medium" : "text-muted-foreground"}`}>{k}</span>
+      <span className={`${large ? "text-xl" : "text-sm"} ${neg ? "text-red-600" : "text-foreground"} ${strong ? "font-semibold" : ""}`}>
+        {v}
+      </span>
     </div>
   );
 }

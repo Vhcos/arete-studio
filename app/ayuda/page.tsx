@@ -77,6 +77,15 @@ export default function AyudaPage() {
                 Glosario
               </a>
             </li>
+            <li>
+             <a
+               className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+               href="#tablero-detalle"
+             >
+               Tablero: detalle de los cuadros
+              </a>
+            </li>
+
           </ul>
         </nav>
       </div>
@@ -99,7 +108,7 @@ export default function AyudaPage() {
                 <strong>competencia local (con rangos de precios)</strong>, <strong>FODA + mercado</strong> y un{" "}
                 <strong>veredicto</strong> <em>VERDE / ÁMBAR / ROJO</em>.
               </li>
-              <li>Genera un <strong>plan rápido</strong> de 5 pasos para avanzar.</li>
+              <li> Te genera un <strong>plan rápido</strong> de 5 pasos para avanzar.</li>
               <li>Permite <strong>enviarte el informe por email</strong> o <strong>descargar los datos</strong>.</li>
             </ul>
             <p className="mt-2">
@@ -314,6 +323,79 @@ export default function AyudaPage() {
             </dl>
           </Section>
         </Card>
+        {/* 5) Tablero: detalle de cada cuadro */}
+        <Card>
+           <Section id="tablero-detalle" title="5) Tablero: detalle de cada cuadro">
+           <h3><strong>1. Punto de Equilibrio (P.E)</strong></h3>
+            <p>
+               Es el nivel de ventas mensuales necesario para cubrir <strong>gastos fijos</strong> con tu
+               <strong> margen de contribución</strong>. Si vendes por sobre ese punto, comienzas a generar utilidad.
+           </p>
+           <ul>
+             <li>
+             <strong>Qué ves:</strong> el monto $ estimado para “empatar” + un estado (por encima / por debajo) según tus
+             ingresos.
+            </li>
+            <li>
+              <strong>Cálculo (idea):</strong> margen de contribución % = (Precio − Costo unitario) / Precio. <br />
+              Ventas para P.E. ≈ Gastos fijos / (Margen de contribución %).
+           </li>
+           <li>
+              <strong>Interpretación:</strong> si tus <em>ingresos meta</em> &gt; PE → vas encima del punto; si no, estás por debajo.
+           </li>
+           <li>
+              <strong>Cómo mejorarlo:</strong> subir precio/ticket, bajar costo unitario, bajar gastos fijos, aumentar frecuencia de compra.
+           </li>
+           </ul>
+
+           <h3><strong>2. Veredicto</strong></h3>
+           <p>
+              Resumen tipo <strong>semáforo</strong> de la IA: <em>VERDE</em> (avanzar), <em>ÁMBAR</em> (ajustar), <em>ROJO</em> (pausar), con la razón principal.
+           </p>
+           <ul>
+             <li><strong>Qué ves:</strong> color + texto breve con la justificación.</li>
+             <li><strong>De qué depende:</strong> consistencia de tus números (ticket, costo unitario, gastos fijos, C.A.C.), claridad de la propuesta y señales/testeos.</li>
+             <li><strong>Qué hacer:</strong> en ÁMBAR/ROJO, corrige los supuestos indicados y vuelve a evaluar.</li>
+          </ul>
+
+          <h3><strong>3. Top riesgos</strong></h3>
+          <p>
+               Lista priorizada de 3–5 riesgos clave que pueden afectar viabilidad (demanda, costos, competencia, canal, capital, ejecución).
+          </p>
+          <ul>
+              <li><strong>Qué ves:</strong> riesgos ordenados por impacto/probabilidad.</li>
+              <li><strong>Cómo usarlo:</strong> convierte cada riesgo en un experimento (medible) para reducir incertidumbre.</li>
+          </ul>
+
+           <h3><strong>4. Experimentos sugeridos </strong></h3>
+           <p>
+                Acciones rápidas para validar supuestos críticos (precio, canal, conversión, interés real). Cada experimento debería tener
+               <strong> hipótesis</strong>, <strong>pasos</strong>, <strong>métrica</strong> y <strong>criterio de éxito</strong>.
+           </p>
+           <ul>
+              <li><strong>Qué ves:</strong> 3–5 pruebas priorizadas (bajo costo/rápidas).</li>
+              <li><strong>Cómo usarlo:</strong> agenda la prueba, mide la métrica objetivo y decide: <em>seguir / ajustar / descartar</em>.</li>
+          </ul>
+
+          <h3><strong>5. Curva hacia el punto de equilibrio</strong></h3>
+          <p>
+              Gráfico que muestra tus <strong>ingresos proyectados por mes</strong> versus la <strong>línea del punto de equilibrio</strong>.
+              Permite ver en qué mes lo alcanzarías (si lo alcanzas).
+         </p>
+         <ul>
+              <li><strong>Qué ves:</strong> una curva de ventas y una línea de referencia (PE). El cruce indica el mes de equilibrio.</li>
+              <li><strong>Interpretación:</strong> si la curva va por debajo de la línea de PE, necesitas mejorar precio, costos, conversión o volumen.</li>
+              <li><strong>Cómo mover la curva:</strong> sube ticket/promos de mayor valor, reduce CU, baja gastos fijos, mejora conversión o frecuencia.</li>
+         </ul>
+
+          <h4><strong>6. Errores comunes</strong></h4>
+          <ul>
+              <li>Usar <em>ticket</em> muy optimista o <em>costo unitario</em> subestimado.</li>
+              <li>No incluir todos los <em>gastos fijos</em> (arriendo, sueldos, servicios, software, comisiones).</li>
+              <li>Proyectar ventas sin considerar <em>CAC</em> real o capacidad de ejecución.</li>
+          </ul>
+         </Section>
+       </Card>
 
         {/* Botón Volver (debajo del glosario) */}
         <div className="flex justify-end">
