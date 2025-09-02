@@ -1,6 +1,33 @@
 // lib/nonAI-report.ts
 import { StandardReport } from '../types/report';
 
+// ---------- NUEVO: narrativa inversor-friendly reutilizable ----------
+export function buildInvestorNarrative(input: any, meta: any): string {
+  const price  = num(input?.ticket);
+  const costU  = Math.min(num(input?.costoUnit), price);
+  const mcUnit = Math.max(0, price - costU);
+
+  const vMens  = num(input?.ingresosMeta);
+  const pctCV  = num(input?.costoPct);
+  const uMes   = price > 0 ? vMens / price : 0;                 // clientes/mes aprox.
+  const cvMes  = pctCV > 0 ? vMens * (pctCV/100) : uMes * costU; // costo variable mensual
+  const gfMes  = num(input?.gastosFijos);
+  const mktMes = num(input?.marketingMensual);
+  const resAn  = (vMens - cvMes - gfMes - mktMes) * 12;
+
+  const fCL = (n:number)=> new Intl.NumberFormat('es-CL',{ maximumFractionDigits:0 })
+                    .format(Math.max(0, Math.round(n||0)));
+  const fN  = (n:number)=> new Intl.NumberFormat('es-CL',{ maximumFractionDigits:0 })
+                    .format(Math.max(0, Math.round(n||0)));
+
+  return [
+    `Estás incursionando en el rubro ${txt(input?.rubro || '—')} en ${txt(input?.ubicacion || '—')}.`,
+    `Estimas un ticket promedio de $${fCL(price)} y un margen de contribución unitario estimado de $${fCL(mcUnit)}.`,
+    `Con tus supuestos actuales, proyectamos una atención de ${fN(uMes)} clientes/mes (~${fN(uMes*12)} al año) y ventas anuales de $${fCL(vMens*12)}.`,
+    `El resultado anual estimado (antes de impuestos) es $${fCL(resAn)}.`,
+    `Foco para inversores: sostener LTV/CAC ≥ 3 y disciplina de costos en los primeros 90 días.`
+  ].join(' ');
+}
 export function buildNonAIReport(input: any, meta: any): StandardReport {
   const { rubro, ubicacion, ingresosMeta, ticket, costoUnit, cac, frecuenciaAnual,
           gastosFijos, capitalTrabajo } = input ?? {};
@@ -15,16 +42,14 @@ export function buildNonAIReport(input: any, meta: any): StandardReport {
   const cap   = num(capitalTrabajo);
   const runway = gf > 0 ? cap / gf : Infinity;
 
-  const industryBrief =
-    `Rubro ${txt(rubro)} en ${txt(ubicacion)}; ticket ~$${fmt(price)} y margen unitario ~$${fmt(mc)}. ` +
-    `Demanda cercana estimada ~${Math.round(sam12)} clientes/año.`;
+  const industryBrief = "";
 
   const competitionLocal =
     `Competencia en ${txt(ubicacion)} con ofertas ~$${fmt(Math.round(price*0.6))}–$${fmt(Math.round(price*1.4))}. ` +
     `Diferénciate por MC ~$${fmt(mc)}, servicio o velocidad.`;
 
   const swotAndMarket =
-    `F: MC ~$${fmt(mc)}; O: SAM12 ~${Math.round(sam12)}; D: runway ${isFinite(runway)? runway.toFixed(1):'—'}m; A: CAC alto. ` +
+    `F: MC ~$${fmt(mc)}; O: Venta anual ~${Math.round(sam12)}; D: runway ${isFinite(runway)? runway.toFixed(1):'—'}m; A: CAC alto. ` +
     `Mercado anual estimado ~$${fmt(num(ingresosMeta)*12)}.`;
 
   const finalVerdict =

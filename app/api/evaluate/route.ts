@@ -12,6 +12,7 @@ function json(obj: any, status = 200) {
   });
 }
 
+// Extrae el primer bloque JSON válido por seguridad
 function pickJson(s: string) {
   const i = s.indexOf("{");
   const j = s.lastIndexOf("}");
@@ -19,6 +20,23 @@ function pickJson(s: string) {
     try { return JSON.parse(s.slice(i, j + 1)); } catch {}
   }
   return null;
+}
+
+// ---------- helpers ----------
+function str(x: any) { return (x ?? "").toString(); }
+function clamp01(n: any) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(1, v));
+}
+function uniqBy<T>(arr: T[], key: (t: T) => string): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const it of arr) {
+    const k = key(it);
+    if (!seen.has(k)) { seen.add(k); out.push(it); }
+  }
+  return out;
 }
 
 export async function POST(req: Request) {
@@ -33,25 +51,34 @@ export async function POST(req: Request) {
 
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-  const system =
-    "Eres analista de nuevos negocios. Devuelve SOLO un JSON válido con las claves pedidas. No incluyas texto extra.";
+  // PROMPT (multilínea con backticks para evitar errores de sintaxis)
+  const system = `
+Eres analista de nuevos negocios. Devuelve SOLO un JSON válido con las claves pedidas. No incluyas texto extra ni comentarios.
+JSON requerido:
+{
+  "industryBrief": string,        // resumen de industria local
+  "competitionLocal": string,     // panorama competitivo local (texto)
+  "swotAndMarket": string,        // FODA + tamaño/mercado (breve)
+  "finalVerdict": string,         // VERDE/ÁMBAR/ROJO + frase
+  "competencia": [                // lista estructurada (si no hay certeza, usar '—' y confianza:0)
+    { "empresa": "string", "ciudad": "string", "segmento": "string",
+      "propuesta": "string", "confianza": 0.0 }
+  ]
+}
+Reglas:
+- "confianza" ∈ [0,1]. Si no estás seguro de nombres reales, usa empresa:"—" y confianza:0.
+- No inventes URLs. Responde en español neutro y con concisión.
+`;
+
   const user = [
-    `Idea: ${input.idea ?? ""}`,
-    `Ubicación: ${input.ubicacion ?? ""}`,
-    `Rubro: ${input.rubro ?? ""}`,
+    `Idea: ${str(input.idea)}`,
+    `Ubicación: ${str(input.ubicacion)}`,
+    `Rubro: ${str(input.rubro)}`,
     input.ingresosMeta ? `Meta de ingresos CLP/mes: ${input.ingresosMeta}` : "",
     scores?.byKey ? `Puntajes: ${JSON.stringify(scores.byKey)}` : "",
     "",
-    "Construye el siguiente objeto JSON:",
-    `{
-      "industryBrief": string,          // resumen de industria local
-      "competitionLocal": string,       // panorama competitivo local
-      "swotAndMarket": string,          // FODA + tamaño/mercado (si puedes)
-      "finalVerdict": string            // VERDE/ÁMBAR/ROJO + frase
-    }`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+    "Genera el JSON EXACTO con las claves indicadas arriba.",
+  ].filter(Boolean).join("\n");
 
   let raw = "";
   try {
@@ -65,7 +92,6 @@ export async function POST(req: Request) {
       ],
       max_tokens: 900,
     });
-
     raw = r.choices?.[0]?.message?.content?.trim() ?? "";
   } catch (e: any) {
     return json(
@@ -79,8 +105,22 @@ export async function POST(req: Request) {
   const ai = pickJson(raw);
   if (!ai) return json({ ok: false, error: "bad_json", raw }, 502);
 
-  // Normaliza a tu StandardReport
-  const standardReport = {
+  // --- NORMALIZAR COMPETENCIA IA (NUEVO) ---
+  const competenciaIA = (() => {
+    const arr = Array.isArray(ai.competencia) ? ai.competencia : [];
+    const norm = arr.map((c: any) => ({
+      empresa: str(c?.empresa || "—"),
+      ciudad: str(c?.ciudad || input?.ubicacion || "—"),
+      segmento: str(c?.segmento || input?.rubro || "—"),
+      propuesta: str(c?.propuesta || "—"),
+      confianza: clamp01(c?.confianza ?? 0),
+    }));
+    // quitar duplicados por empresa + ciudad
+    return uniqBy(norm, (x: any) => `${x.empresa}|${x.ciudad}`).slice(0, 6);
+  })();
+
+  // --- Normaliza a tu StandardReport (igual que antes) ---
+  const standardReport: any = {
     source: "AI",
     createdAt: new Date().toISOString(),
     sections: {
@@ -95,7 +135,19 @@ export async function POST(req: Request) {
       reasons: ai.finalVerdict ? [] : ["Veredicto poco claro."],
       constraintsOK: !!ai.finalVerdict,
     },
+    // ⬇️ NUEVO: guardamos lista estructurada para la UI/PDF
+    meta: { model, competenciaIA },
+    input,
   };
+
+  // Si hay nombres con alta confianza, los anteponemos al párrafo
+  const firmes = competenciaIA.filter((c: any) => c.confianza >= 0.6).map((c: any) => c.empresa);
+  if (firmes.length) {
+    const lista = firmes.join(", ");
+    standardReport.sections.competitionLocal =
+      `Competidores detectados (por verificar): ${lista}. ` +
+      (standardReport.sections.competitionLocal || "");
+  }
 
   const verdictTitle =
     /VERDE/i.test(standardReport.sections.finalVerdict)
@@ -115,7 +167,7 @@ export async function POST(req: Request) {
     },
     risks: [],
     experiments: [],
-    meta: { model: model },
+    meta: { model },
     narrative:
       [
         standardReport.sections.industryBrief,

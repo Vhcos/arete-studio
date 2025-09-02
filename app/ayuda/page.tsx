@@ -298,11 +298,13 @@ export default function AyudaPage() {
               </div>
               <div>
                 <dt className="font-medium">Frecuencia anual</dt>
-                <dd>Veces que te compra un cliente promedio en el año.</dd>
+                <dd>Veces que te compra un cliente promedio en el año lo que multiplicado por el ticket promedio
+                  obtendras el LTV.</dd>
               </div>
               <div>
                 <dt className="font-medium">LTV y LTV/CAC</dt>
-                <dd>Valor de vida del cliente y su relación con CAC; objetivo típico ≥ 3.</dd>
+                <dd>LTV. Corresponde al ticket por la frecuencia anual  de compra lo que te da el ingreso anual por cliente.
+                  la Relación LTV/CAC: El ingreso anual por cliente dividido por CAC deberíamos tener un objetivo ≥ 3.</dd>
               </div>
               <div>
                 <dt className="font-medium">FODA</dt>
@@ -344,7 +346,7 @@ export default function AyudaPage() {
               <strong>Interpretación:</strong> si tus <em>ingresos meta</em> &gt; PE → vas encima del punto; si no, estás por debajo.
            </li>
            <li>
-              <strong>Cómo mejorarlo:</strong> subir precio/ticket, bajar costo unitario, bajar gastos fijos, aumentar frecuencia de compra.
+              <strong>Cómo mejorarlo:</strong> subir precio, bajar costo unitario, bajar gastos fijos, aumentar frecuencia de compra.
            </li>
            </ul>
 

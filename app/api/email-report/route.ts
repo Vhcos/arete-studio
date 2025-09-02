@@ -1,6 +1,7 @@
 // app/api/email-report/route.ts
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { buildInvestorNarrative } from "@/app/lib/nonAI-report";
 
 const resendKey = process.env.RESEND_API_KEY || '';
 const FROM = process.env.EMAIL_FROM || '';
@@ -47,7 +48,7 @@ ${esc(report?.sections?.finalVerdict || '')}
 
 Score: ${esc(report?.ranking?.score)} / 100
     </pre>` : '';
-
+s
   const planBlock = aiPlan ? `
     <h3 style="margin:18px 0 8px">Plan (IA)</h3>
     ${aiPlan.plan100 ? `<p style="font:14px system-ui">${esc(aiPlan.plan100)}</p>` : ''}

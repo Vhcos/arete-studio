@@ -30,6 +30,7 @@ import type { CSSProperties } from "react";
 // ✅ ahora (funciona con tu estructura):
 import type { StandardReport } from './types/report';
 import { buildNonAIReport } from './lib/nonAI-report';
+import { buildInvestorNarrative } from "@/app/lib/nonAI-report"; // recomendado con alias "@"
 import type { AiPlan, CompetitiveRow, RegulationRow } from './types/plan';
 import type { ChartPoint } from './types/report';
 import Link from "next/link";
@@ -1220,7 +1221,6 @@ const costoVariableMes =
                </section> 
               </CardContent>
             </Card>
-            
            <TabsList className="mt-2 w-full grid grid-cols-3 md:w-auto">
               <TabsTrigger value="form"><Settings className="h-4 w-4 mr-2" />Formulario</TabsTrigger>
               <TabsTrigger value="board"><Rocket className="h-4 w-4 mr-2" />Tablero</TabsTrigger>
@@ -1253,7 +1253,10 @@ const costoVariableMes =
                
                <div id="informe" className="space-y-6">
                  <div>
-                   <h2 className="text-lg font-bold">Informe (SIN IA)</h2>
+                   <h2 className="text-lg font-bold">Resumen ejecutivo</h2>
+                     <div className="rounded-xl border p-4 bg-white/60 text-sm leading-6">
+                        {buildInvestorNarrative(baseOut.report.input, outputs?.report?.meta || {})}
+                     </div>
                    <ReportView report={nonAIReport} />
                  </div>
 
