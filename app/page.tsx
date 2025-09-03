@@ -849,15 +849,16 @@ const costoVariableMes =
                 {/* Métricas implícitas */}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-md border bg-white p-2">
-                 <div className="text-xs text-muted-foreground">CPL implícito (CLP por visita/lead)</div>
+                 <div className="text-xs text-muted-foreground"><b>CPL</b>(Costo por visita):Gasto total en Marketing dividido por el numero total de visitas <b>(NO CLIENTES)</b> </div>
                  <div className="font-semibold">{fmtCL(CPL_implicito)}</div>
                  <p className="mt-1 text-xs text-muted-foreground">
-                    Calculado como <b>M ÷ Tráfico requerido</b>.
+                   <b>Mide Rentabilidad</b>. Permite saber si las campañas son rentables o no.
+                   
                    {!Number.isFinite(Q) ? " Completa conversión y/o ticket/venta." : ""}
                  </p>
               </div>
               <div className="rounded-md border bg-white p-2">
-               <div className="text-xs text-muted-foreground">CAC implícito (CLP por cliente)</div>
+               <div className="text-xs text-muted-foreground">C.A.C. = Cuánto te cuesta, en promedio, conseguir un <strong>CLIENTE</strong> respecto al gasto total que haces en campañas de marketing</div>
                <div className="font-semibold">{fmtCL(CAC_implicito)}</div>
                <p className="mt-1 text-xs text-muted-foreground">
                  Calculado como <b>M ÷ Clientes objetivo</b>.
@@ -889,17 +890,17 @@ const costoVariableMes =
 
            <div className="grid gap-3 sm:grid-cols-2">
              <div className="rounded-md border bg-white p-2">
-               <div className="text-xs text-muted-foreground">Marketing requerido (M)</div>
+               <div className="text-xs text-muted-foreground">Presupuesto de Marketing </div>
                <div className="font-semibold">{fmtCL(M_requerido)}</div>
              <p className="mt-1 text-xs text-muted-foreground">
                Calculado como <b>Clientes objetivo × CAC objetivo</b>.
             </p>
            </div>
            <div className="rounded-md border bg-white p-2">
-            <div className="text-xs text-muted-foreground">CPL objetivo</div>
+            <div className="text-xs text-muted-foreground"><b>CPL</b>(Costo por visita):Gasto total en Marketing dividido por el numero total de visitas <b>(NO CLIENTES)</b> </div>
             <div className="font-semibold">{fmtCL(CPL_objetivo)}</div>
             <p className="mt-1 text-xs text-muted-foreground">
-             <b>CPL = CAC × Conversión</b>. Si conversion = 2%, CPL objetivo = CAC × 0.02.
+             <b>Mide Rentabilidad</b>. Permite saber si las campañas son rentables o no.
            </p>
           </div>
         </div>
@@ -1170,7 +1171,7 @@ const costoVariableMes =
                      ) : (
                        <>
                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">M requerido</span>
+                            <span className="text-sm text-muted-foreground">Presupuesto de Marketing</span>
                             <span className="font-medium">{fmtCL(M_requerido)}</span>
                         </div>
                         <div className="flex items-center justify-between">
