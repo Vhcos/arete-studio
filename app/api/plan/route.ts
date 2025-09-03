@@ -150,22 +150,22 @@ Eres consultor de negocios. Devuelve SOLO un JSON válido (sin texto extra).
 Esquema requerido:
 {
   "title": string,
-  "plan100": string,        // 90 días, voz imperativa, Semana 1–2 / Semana 3–4 / Mes 2 / Mes 3; termina con "KPIs: ..."; ≤120 palabras
-  "steps": string[],        // 4–6 pasos accionables
-  "competencia": [
-    { "empresa":"string","ciudad":"string","segmento":"string",
-      "propuesta":"string","precio":"string","canal":"string",
-      "switching_cost":"Bajo|Medio|Alto","moat":"string" }
+  "plan100": string,        // tono motivador y profesional; 90 días; usa ESTE FORMATO:
+                            // "Semana 1–2: … Semana 3–4: … Mes 2: … Mes 3: … KPIs: …"
+                            // ≤120 palabras.
+  "steps": string[],        // 4–6 pasos accionables (verbos en imperativo)
+  "competencia": [          // 5–6 filas; si no hay marcas, usa tipologías (Apps IA, Consultores, Agencias, DIY, Incubadoras)
+    { "empresa":"string","ciudad":"string","segmento":"string","propuesta":"string","precio":"string","canal":"string","switching_cost":"Bajo|Medio|Alto","moat":"string" }
   ],
-  "regulacion": [
-    { "area":"string","que_aplica":"string","requisito":"string",
-      "plazo":"string","riesgo":"Bajo|Medio|Alto","accion":"string" }
+  "regulacion": [           // 5–6 filas (Chile/LatAm genérico)
+    { "area":"string","que_aplica":"string","requisito":"string","plazo":"string","riesgo":"Bajo|Medio|Alto","accion":"string" }
   ]
 }
-Prohibido: describir el producto o usar frases como "la aplicación permitirá", "se ofrecerá", "nuestro producto".
-Obligatorio en plan100: hitos (Semana 1–2, Mes 2, Mes 3) y una línea que empiece por "KPIs:".
-En competencia, si no hay marcas confiables, usa tipologías (Apps IA, Consultores, Agencias, DIY, etc.).
+ Abre 'plan100' con una microfrase motivadora (máx. 8 palabras), luego los hitos y 'KPIs:' al final.
+ Estilo: claro, positivo y concreto; sin jerga. Usa los números del contexto para metas.
+ Evita describir el producto (no uses “la aplicación permitirá”, “se ofrecerá”, “nuestro producto”).
 `;
+
 
   const ctx = [
     `Idea: ${input.idea ?? ""}`,
@@ -176,9 +176,13 @@ En competencia, si no hay marcas confiables, usa tipologías (Apps IA, Consultor
     input.costoUnit ? `Costo unitario (CLP): ${input.costoUnit}` : "",
     input.gastosFijos ? `Gastos fijos (CLP/mes): ${input.gastosFijos}` : "",
     input.marketingMensual ? `Marketing (CLP/mes): ${input.marketingMensual}` : "",
+    input.conversion ? `Conversión visitas→cliente: ${input.conversion}%` : "",
+    input.cac ? `CAC objetivo (CLP): ${input.cac}` : "",
+    input.trafico ? `Tráfico objetivo/mes: ${input.trafico}` : "",
     "",
    // contexto numérico para que el modelo lo use en KPIs
     `Cálculos: uMes=${uMes}, mcU=${mcU}, cvMes≈${cvMes}, resAn≈${resAn}.`,
+    `Usa los siguientes cálculos si ayudan:  CAC≈${CAC_objetivo}.`,
     "Devuelve el JSON EXACTO con el esquema anterior.",
   ].filter(Boolean).join("\n");
 
