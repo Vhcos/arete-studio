@@ -853,7 +853,7 @@ const costoVariableMes =
                  <div className="font-semibold">{fmtCL(CPL_implicito)}</div>
                  <p className="mt-1 text-xs text-muted-foreground">
                    <b>Mide Rentabilidad</b>. Permite saber si las campañas son rentables o no.
-                   
+
                    {!Number.isFinite(Q) ? " Completa conversión y/o ticket/venta." : ""}
                  </p>
               </div>
@@ -1272,7 +1272,9 @@ const costoVariableMes =
                     {aiPlan && (
                      <>
                        <div className="mt-6 space-y-4">
-                         <h3 className="text-lg font-bold mt-6">Plan (100 palabras)</h3>
+                         <h3 className="mt-6 text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-indigo-600">
+                              Plan de Acción — ¡Sigue con tu propósito!
+                         </h3>
                          <div className="rounded-md border bg-white p-4 text-sm leading-relaxed avoid-break">
                            {aiPlan.plan100}
                          </div>

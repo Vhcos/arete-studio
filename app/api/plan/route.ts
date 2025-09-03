@@ -128,13 +128,29 @@ export async function POST(req: Request) {
   const { input = {} } = (await req.json().catch(() => ({ input: {} }))) as any;
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
+   // ---- cálculos de contexto para metas numéricas
+  const price = num(input.ticket);
+  const costU = Math.min(num(input.costoUnit), price);
+  const mcU   = Math.max(0, price - costU);
+  const vMens = num(input.ingresosMeta);
+  const uMes  = price > 0 ? Math.round(vMens / price) : 0; // unidades/mes objetivo
+  const gf    = num(input.gastosFijos);
+  const mkt   = num(input.marketingMensual);
+  const pct   = num(input.costoPct);
+  const cvMes = pct > 0 ? Math.round(vMens * (pct/100)) : uMes * costU;
+  const resAn = (vMens - cvMes - gf - mkt) * 12;
+  const CAC_objetivo = uMes > 0 ? Math.floor((mkt > 0 ? mkt : cvMes) / uMes) : 0;
+  const M_requerido = uMes > 0 ? uMes * CAC_objetivo : 0;
+  const Q = CAC_objetivo > 0 && price > 0 ? Math.min(1, mcU / CAC_objetivo) : 0;
+
+
   // Prompt: fuerza plan operativo 90 días (imperativo), y arrays
   const system = `
 Eres consultor de negocios. Devuelve SOLO un JSON válido (sin texto extra).
 Esquema requerido:
 {
   "title": string,
-  "plan100": string,        // 90 días, voz imperativa, semanas/meses, cerrar con "KPIs: ...", ≤120 palabras
+  "plan100": string,        // 90 días, voz imperativa, Semana 1–2 / Semana 3–4 / Mes 2 / Mes 3; termina con "KPIs: ..."; ≤120 palabras
   "steps": string[],        // 4–6 pasos accionables
   "competencia": [
     { "empresa":"string","ciudad":"string","segmento":"string",
@@ -161,6 +177,8 @@ En competencia, si no hay marcas confiables, usa tipologías (Apps IA, Consultor
     input.gastosFijos ? `Gastos fijos (CLP/mes): ${input.gastosFijos}` : "",
     input.marketingMensual ? `Marketing (CLP/mes): ${input.marketingMensual}` : "",
     "",
+   // contexto numérico para que el modelo lo use en KPIs
+    `Cálculos: uMes=${uMes}, mcU=${mcU}, cvMes≈${cvMes}, resAn≈${resAn}.`,
     "Devuelve el JSON EXACTO con el esquema anterior.",
   ].filter(Boolean).join("\n");
 
