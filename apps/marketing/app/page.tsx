@@ -7,7 +7,7 @@ export default function Home() {
       </h1>
 
       <p className="mt-4 text-xl text-gray-600">
-        Inputs simples + IA → informe “inversor-friendly” con plan de acción, mapa competitivo y checklist regulatorio.
+        Inputs simples + Inteligencia Artificial → informe “inversor-friendly” con plan de acción, mapa competitivo y checklist regulatorio.
       </p>
 
       <div className="mt-10 flex gap-4">
