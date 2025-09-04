@@ -1,5 +1,5 @@
 // apps/marketing/app/page.tsx
-export default function Home() {
+export default function Page() {
   return (
     <main className="max-w-6xl mx-auto px-6 py-24">
       <h1 className="text-5xl font-extrabold tracking-tight">
@@ -26,3 +26,5 @@ export default function Home() {
     </main>
   );
 }
+
+

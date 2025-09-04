@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
 import {
   Radar,
