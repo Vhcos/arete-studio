@@ -48,7 +48,6 @@ ${esc(report?.sections?.finalVerdict || '')}
 
 Score: ${esc(report?.ranking?.score)} / 100
     </pre>` : '';
-s
   const planBlock = aiPlan ? `
     <h3 style="margin:18px 0 8px">Plan (IA)</h3>
     ${aiPlan.plan100 ? `<p style="font:14px system-ui">${esc(aiPlan.plan100)}</p>` : ''}

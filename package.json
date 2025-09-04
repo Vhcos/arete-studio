@@ -8,16 +8,19 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
     "smoke": "node scripts/smoke.mjs",
-    "prisma:generate": "prisma generate",
     "db:push": "prisma db push",
     "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
+    "prisma:generate": "prisma generate",
     "@prisma/client": "^6.15.0",
+    "prisma": "^6.15.0",
+    "...": "...",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
@@ -29,7 +32,6 @@
     "next-auth": "^4.24.11",
     "nodemailer": "^6.10.1",
     "openai": "^5.16.0",
-    "prisma": "^6.15.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "recharts": "^3.1.2",
