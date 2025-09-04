@@ -61,6 +61,7 @@ export function isEmailValid(s: string) {
 }
 
 
+
 // === Renombres SOLO para UI (no toques las claves internas del cálculo) ===
 const DISPLAY_RENAME: Record<string, string> = {
   'MC unitario': 'Margen de contribución',
