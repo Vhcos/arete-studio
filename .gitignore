@@ -1,4 +1,28 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# deps
+node_modules/
+apps/**/node_modules/
+
+# builds
+.next/
+apps/**/.next/
+dist/
+out/
+build/
+.vercel/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env locales
+.env.local
+.env.*.local
+# See 
+https://help.github.com/articles/ignoring-files/ for 
+more 
+about ignoring files.
 
 # dependencies
 /node_modules
