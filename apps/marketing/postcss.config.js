@@ -1,4 +1,4 @@
-/** apps/marketing/postcss.config.js */
+// apps/marketing/postcss.config.js
 module.exports = {
   plugins: {
     '@tailwindcss/postcss': {},
