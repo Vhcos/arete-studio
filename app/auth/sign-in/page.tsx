@@ -1,68 +1,105 @@
-// app/auth/sign-in/page.tsx
 "use client";
 
-import { useState } from "react";
+import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import {
+  Button,
+  Input,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@arete-studio/ui";
+
+function mapError(code?: string) {
+  // Errores comunes de NextAuth EmailProvider
+  switch (code) {
+    case "EmailSignin":
+      return "No pudimos enviar el correo. Verifica el email e intenta nuevamente.";
+    case "Configuration":
+      return "Falta configurar el proveedor de email (Resend).";
+    case "AccessDenied":
+      return "Acceso denegado.";
+    default:
+      return code || null;
+  }
+}
 
 export default function SignInPage() {
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const params = useSearchParams();
+  const initialEmail = params.get("email") ?? "";
+
+  const [email, setEmail] = React.useState(initialEmail);
+  const [loading, setLoading] = React.useState(false);
+  const [sent, setSent] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Si cambia el query param (p.ej. desde marketing), actualiza el campo
+    setEmail(initialEmail);
+  }, [initialEmail]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setErr(null);
+    setError(null);
 
-    // NextAuth maneja CSRF y redirecciones
     const res = await signIn("email", {
       email,
-      redirect: false,         // mostramos confirmación en esta misma página
-      callbackUrl: "/",        // o "/wizard"
+      redirect: false,         // mostramos confirmación aquí mismo
+      callbackUrl: "/wizard/idea",
     });
 
     setLoading(false);
 
     if (res?.error) {
-      setErr(res.error);
+      setError(mapError(res.error));
       return;
     }
     setSent(true);
   }
 
   return (
-    <main className="max-w-md mx-auto p-6">
-      <h1 className="text-2xl font-semibold mb-4">Accede con tu email</h1>
+    <main className="mx-auto max-w-md px-6 py-10">
+      <Card>
+        <CardHeader>
+          <CardTitle>Accede con tu email</CardTitle>
+          <CardDescription>
+            Te enviaremos un enlace de acceso. No necesitas contraseña.
+          </CardDescription>
+        </CardHeader>
 
-      {sent ? (
-        <div className="rounded-md border p-4 text-green-700">
-          Te enviamos un enlace de acceso. Revisa tu correo.
-          <div className="text-sm text-gray-500 mt-2">
-            (En modo desarrollo, el enlace aparece en la consola del servidor)
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={onSubmit} className="space-y-4">
-          <input
-            type="email"
-            name="email"
-            placeholder="tucorreo@dominio.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full border rounded px-3 py-2"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-black text-white rounded px-4 py-2"
-          >
-            {loading ? "Enviando…" : "Enviar enlace"}
-          </button>
-          {err && <p className="text-red-600 text-sm">{err}</p>}
-        </form>
-      )}
+        <CardContent>
+          {sent ? (
+            <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+              <p>✅ Enviamos un enlace a <b>{email}</b>. Revisa tu buzón y spam.</p>
+              <p className="mt-2 text-xs text-zinc-500">
+                En <i>development</i> el enlace también aparece en la consola del servidor.
+                Si tu dominio de Resend está en modo sandbox, solo correos verificados recibirán el email.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={onSubmit} className="space-y-3">
+              <label className="text-sm font-medium">Correo electrónico</label>
+              <Input
+                name="email"
+                type="email"
+                placeholder="tucorreo@dominio.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+              />
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "Enviando…" : "Enviar enlace"}
+              </Button>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+            </form>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }

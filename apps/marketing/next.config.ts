@@ -3,7 +3,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // nada especial; Next detecta PostCSS automáticamente
+  transpilePackages: ["@arete-studio/ui"],
+  experimental: {
+    optimizePackageImports: ["@arete-studio/ui"]
+  }
 };
 
 export default nextConfig;
+
+
