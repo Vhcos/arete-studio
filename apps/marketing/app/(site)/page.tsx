@@ -1,11 +1,9 @@
 // apps/marketing/app/page.tsx
-import { Button, Input, Card, CardHeader, CardTitle, CardContent } from "@arete-studio/ui";
-import CTARegister from "../components/CTARegister";
 
-
-import Hero from "../components/sections/Hero";
-import ProductGrid from "../components/sections/ProductGrid";
-import Pricing from "../components/sections/Pricing";
+import CTARegister from "../../components/CTARegister";
+import Hero from "../../components/sections/Hero";
+import ProductGrid from "../../components/sections/ProductGrid";
+import Pricing from "../../components/sections/Pricing";
 
 export default function Page() {
   return (
