@@ -1,4 +1,7 @@
-export const dynamic = "force-static"; // asegura SSG sin intentos de datos dinámicos
+// apps/marketing/app/not-found.tsx
+import Link from "next/link";
+
+export const dynamic = "force-static";
 
 export default function NotFound() {
   return (
@@ -7,9 +10,14 @@ export default function NotFound() {
       <p className="mt-2 text-zinc-600 dark:text-zinc-400">
         La página que buscas no existe.
       </p>
-      <a href="/" className="mt-6 inline-flex items-center rounded-xl px-5 py-3 ring-1 ring-slate-300 hover:bg-slate-50">
+
+      {/* Interno → usa Link */}
+      <Link
+        href="/"
+        className="mt-6 inline-flex items-center rounded-xl px-5 py-3 ring-1 ring-slate-300 hover:bg-slate-50"
+      >
         Volver al inicio
-      </a>
+      </Link>
     </main>
   );
 }

@@ -1,14 +1,10 @@
-"use client";
-
+// apps/marketing/components/Nav.tsx
 import Link from "next/link";
-import { Button } from "@arete-studio/ui";
 
 const DEFAULT_APP_BASE = "https://app.aret3.cl";
 
 export default function Nav() {
-  // lee la env en runtime y con fallback (evita undefined en build/prerender)
-  const appBase =
-    (process.env.NEXT_PUBLIC_APP_BASE_URL || DEFAULT_APP_BASE).replace(/\/+$/, "");
+  const appBase = (process.env.NEXT_PUBLIC_APP_BASE_URL || DEFAULT_APP_BASE).replace(/\/+$/, "");
   const loginHref = `${appBase}/auth/sign-in`;
 
   return (
@@ -19,19 +15,25 @@ export default function Nav() {
         </Link>
 
         <nav className="hidden gap-6 md:flex">
+          {/* anclas internas → <a> */}
           <a href="#producto" className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">Producto</a>
           <a href="#precios" className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">Precios</a>
+          {/* rutas internas → Link */}
           <Link href="/recursos/centro-de-ayuda" className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">Centro de ayuda</Link>
           <Link href="/recursos/asesorias" className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">Asesorías</Link>
         </nav>
 
         <div className="flex items-center gap-2">
-          {/* IMPORTANTE: para URL externa usa <a>, no <Link> */}
-          <a href={loginHref} className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">
+          {/* externa → <a> */}
+          <a href={loginHref} className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white" rel="noopener">
             Acceso
           </a>
-          <a href="#cta">
-            <Button size="sm">Pruébalo gratis</Button>
+          {/* CTA como link con estilos de botón (no Button) */}
+          <a
+            href="#cta"
+            className="inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium ring-1 ring-slate-300 hover:bg-slate-50"
+          >
+            Pruébalo gratis
           </a>
         </div>
       </div>
