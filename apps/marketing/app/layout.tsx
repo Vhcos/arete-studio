@@ -1,7 +1,10 @@
 // apps/marketing/app/layout.tsx
 import "./globals.css";
 
-export const dynamic = "force-dynamic"; // ⬅️ clave: evita SSG del 404
+// FORZAR DINÁMICO EN TODO EL ÁRBOL DE MARKETING
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
