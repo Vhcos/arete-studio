@@ -11,7 +11,7 @@ export default function NotFound() {
         La página que buscas no existe.
       </p>
 
-      {/* Interno → usa Link */}
+      {/* Interno → Link (evita el lint) */}
       <Link
         href="/"
         className="mt-6 inline-flex items-center rounded-xl px-5 py-3 ring-1 ring-slate-300 hover:bg-slate-50"

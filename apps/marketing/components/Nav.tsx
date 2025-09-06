@@ -15,10 +15,8 @@ export default function Nav() {
         </Link>
 
         <nav className="hidden gap-6 md:flex">
-          {/* anclas internas → <a> */}
           <a href="#producto" className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">Producto</a>
           <a href="#precios" className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">Precios</a>
-          {/* rutas internas → Link */}
           <Link href="/recursos/centro-de-ayuda" className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">Centro de ayuda</Link>
           <Link href="/recursos/asesorias" className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white">Asesorías</Link>
         </nav>
@@ -28,7 +26,7 @@ export default function Nav() {
           <a href={loginHref} className="text-sm text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white" rel="noopener">
             Acceso
           </a>
-          {/* CTA como link con estilos de botón (no Button) */}
+          {/* CTA como link con estilos de botón */}
           <a
             href="#cta"
             className="inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium ring-1 ring-slate-300 hover:bg-slate-50"

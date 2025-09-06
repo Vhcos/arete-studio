@@ -2,11 +2,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Nav from "../components/Nav";
-import Footer from "../components/Footer";
 
 export const metadata: Metadata = {
   title: "Areté — Valida tu idea en minutos",
-  description: "Wizard de 5 pasos e informe listo para compartir.",
+  description:
+    "Inputs simples + IA + informe friendly para inversores, con plan de acción, mapa competitivo y checklist regulatorio.",
+  metadataBase: new URL("https://www.aret3.cl"),
+  alternates: { canonical: "/" }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -15,7 +17,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <Nav />
         {children}
-        <Footer />
       </body>
     </html>
   );
