@@ -1,6 +1,7 @@
 // apps/marketing/app/layout.tsx
-// layout raíz: cero metadata aquí
 import "./globals.css";
+
+export const dynamic = "force-dynamic"; // ⬅️ clave: evita SSG del 404
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
