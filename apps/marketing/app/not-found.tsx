@@ -1,7 +1,5 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 // apps/marketing/app/not-found.tsx
-import Link from "next/link";
-
-export const dynamic = "force-static";
 
 export default function NotFound() {
   return (
@@ -11,13 +9,13 @@ export default function NotFound() {
         La página que buscas no existe.
       </p>
 
-      {/* Interno → Link (evita el lint) */}
-      <Link
+      {/* Usamos <a> simple para evitar que next/link meta un elemento complejo en prerender */}
+      <a
         href="/"
         className="mt-6 inline-flex items-center rounded-xl px-5 py-3 ring-1 ring-slate-300 hover:bg-slate-50"
       >
         Volver al inicio
-      </Link>
+      </a>
     </main>
   );
 }
