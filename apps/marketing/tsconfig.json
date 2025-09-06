@@ -1,4 +1,15 @@
+
 {
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
@@ -11,7 +22,9 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "baseUrl": ".",
-    "paths": {},
+    "paths": {
+      "@arete-studio/ui": ["../../packages/ui/src/index.ts"]
+    },
     "allowJs": false,
     "incremental": true,
     "noEmit": true,
@@ -24,14 +37,7 @@
         "name": "next"
       }
     ]
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "next-env.d.ts",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  }
 }
+
+
