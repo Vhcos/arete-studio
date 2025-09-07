@@ -5,6 +5,14 @@ const APP_ORIGIN = process.env.APP_ORIGIN || "https://app.aret3.cl";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // 👇 fuerza la ruta del tsconfig de ESTE sub-app
+  typescript: {
+    tsconfigPath: "./tsconfig.json",
+    // si quieres ignorar errores TS en build, habilita esto:
+    // ignoreBuildErrors: false,
+  },
+
   async rewrites() {
     return {
       beforeFiles: [
@@ -23,7 +31,7 @@ const nextConfig: NextConfig = {
         { source: "/login", destination: `${APP_ORIGIN}/auth/sign-in` },
         { source: "/signup", destination: `${APP_ORIGIN}/auth/sign-up` },
 
-        // Alias temporal dashboard -> wizard (porque /dashboard no existe en el app)
+        // alias temporal para dashboard
         { source: "/dashboard", destination: `${APP_ORIGIN}/wizard/idea` },
         { source: "/dashboard/:path*", destination: `${APP_ORIGIN}/wizard/:path*` },
 
@@ -31,8 +39,9 @@ const nextConfig: NextConfig = {
       ],
     };
   },
+
+  // opcional mientras no tengas landing:
   async redirects() {
-    // 👇 Evita la pantalla en blanco en "/"
     return [{ source: "/", destination: "/app", permanent: false }];
   },
 };
