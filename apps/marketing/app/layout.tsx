@@ -1,7 +1,6 @@
-// apps/marketing/app/layout.tsx
 import "./globals.css";
 
-// FORZAR DINÁMICO EN TODO EL ÁRBOL DE MARKETING
+// Hereda a todo el árbol (incluido 404)
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
