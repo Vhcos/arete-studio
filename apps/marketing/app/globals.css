@@ -1,7 +1,0 @@
-/* apps/marketing/app/globals.css */
-@import "tailwindcss";
-
-/* base muy simple, sin plugins personalizados todavía */
-* { box-sizing: border-box; }
-html, body { height: 100%; }
-body { @apply min-h-screen bg-white text-slate-900 antialiased; }
