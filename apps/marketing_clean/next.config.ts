@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
         { source: "/login", destination: `${APP_ORIGIN}/auth/sign-in` },
         { source: "/signup", destination: `${APP_ORIGIN}/auth/sign-up` },
 
+         // 👇 NUEVO: reenvía las rutas NextAuth del app
+        { source: "/api/auth/:path*", destination: `${APP_ORIGIN}/api/auth/:path*` },
+
         // alias temporal
         { source: "/dashboard", destination: `${APP_ORIGIN}/wizard/idea` },
         { source: "/dashboard/:path*", destination: `${APP_ORIGIN}/wizard/:path*` },
