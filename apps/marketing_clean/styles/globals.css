@@ -1,0 +1,12 @@
+/* apps/marketing_clean/styles/globals.css */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* Si usas Tailwind en el repo raíz, puedes dejar estas directivas:
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+*/
