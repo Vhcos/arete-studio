@@ -6,12 +6,8 @@ const APP_ORIGIN = process.env.APP_ORIGIN || "https://app.aret3.cl";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
-  // 👇 fuerza la ruta del tsconfig de ESTE sub-app
-  typescript: {
-    tsconfigPath: "./tsconfig.json",
-    // si quieres ignorar errores TS en build, habilita esto:
-    // ignoreBuildErrors: false,
-  },
+  // 👇 fuerza el tsconfig del sub-app
+  typescript: { tsconfigPath: "./tsconfig.json" },
 
   async rewrites() {
     return {
@@ -21,7 +17,7 @@ const nextConfig: NextConfig = {
         { source: "/fonts/:path*", destination: `${APP_ORIGIN}/fonts/:path*` },
         { source: "/favicon.ico", destination: `${APP_ORIGIN}/favicon.ico` },
         { source: "/robots.txt", destination: `${APP_ORIGIN}/robots.txt` },
-        { source: "/sitemap.xml", destination: `${APP_ORIGIN}/sitemap.xml` },
+        { source: "/sitemap.xml", destination: `${APP_ORIGIN}/sitemap.xml` }
       ],
       afterFiles: [
         { source: "/app", destination: `${APP_ORIGIN}/` },
@@ -31,19 +27,18 @@ const nextConfig: NextConfig = {
         { source: "/login", destination: `${APP_ORIGIN}/auth/sign-in` },
         { source: "/signup", destination: `${APP_ORIGIN}/auth/sign-up` },
 
-        // alias temporal para dashboard
+        // alias temporal
         { source: "/dashboard", destination: `${APP_ORIGIN}/wizard/idea` },
         { source: "/dashboard/:path*", destination: `${APP_ORIGIN}/wizard/:path*` },
 
-        { source: "/wizard/:path*", destination: `${APP_ORIGIN}/wizard/:path*` },
-      ],
+        { source: "/wizard/:path*", destination: `${APP_ORIGIN}/wizard/:path*` }
+      ]
     };
   },
 
-  // opcional mientras no tengas landing:
   async redirects() {
     return [{ source: "/", destination: "/app", permanent: false }];
-  },
+  }
 };
 
 export default nextConfig;

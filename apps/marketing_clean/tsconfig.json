@@ -1,7 +1,6 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "es2022",
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -16,6 +15,6 @@
     "incremental": true,
     "plugins": [{ "name": "next" }]
   },
-  "include": ["next-env.d.ts", "pages/**/*.ts", "pages/**/*.tsx", "styles/**/*.css"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
 }
