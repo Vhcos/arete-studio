@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# No indexar rutas del app ni APIs
+Disallow: /auth/
+Disallow: /api/
+Disallow: /dashboard/
+
+Sitemap: https://www.aret3.cl/sitemap.xml
