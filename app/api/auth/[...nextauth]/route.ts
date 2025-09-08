@@ -39,6 +39,17 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+// Si usas "pages" personalizadas, déjalas como ya las tienes
+  callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Si el redirect apunta a endpoints internos, manda al destino por defecto
+      const u = new URL(url, baseUrl);
+
+      // Mientras no exista /wizard/idea, SIEMPRE manda a /app
+      // (ajusta aquí cuando tengas el wizard listo)
+      return `${baseUrl}/app`;
+    },
+  },
 
   // ✅ Solo eventos soportados por tu versión
   events: {
@@ -50,6 +61,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+
+
 
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
