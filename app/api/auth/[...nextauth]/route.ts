@@ -41,15 +41,19 @@ export const authOptions: NextAuthOptions = {
   ],
 // Si usas "pages" personalizadas, déjalas como ya las tienes
   callbacks: {
-    async redirect({ url, baseUrl }) {
-      // Si el redirect apunta a endpoints internos, manda al destino por defecto
+  async redirect({ url, baseUrl }) {
+    // Si viene callbackUrl válida (relativa), úsala
+    try {
       const u = new URL(url, baseUrl);
-
-      // Mientras no exista /wizard/idea, SIEMPRE manda a /app
-      // (ajusta aquí cuando tengas el wizard listo)
-      return `${baseUrl}/app`;
-    },
+      const cb = u.searchParams.get("callbackUrl");
+      if (cb && cb.startsWith("/")) return baseUrl + cb;
+      // O si NextAuth nos entrega un path relativo, también sirve
+      if (url.startsWith("/")) return baseUrl + url;
+    } catch {}
+    // Por defecto: home
+    return baseUrl;
   },
+},
 
   // ✅ Solo eventos soportados por tu versión
   events: {
