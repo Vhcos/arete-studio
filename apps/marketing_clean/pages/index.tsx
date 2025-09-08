@@ -1,5 +1,6 @@
 // apps/marketing_clean/pages/index.tsx
 import type { NextPage } from "next";
+import Head from "next/head";
 import Nav from "../components/Nav";
 import Hero from "../components/sections/Hero";
 import Footer from "../components/Footer";
@@ -10,9 +11,21 @@ const NewsletterForm = dynamic(() => import("../components/NewsletterForm"), { s
 
 const box: React.CSSProperties = { maxWidth: 1120, margin: "0 auto", padding: "20px" };
 
+
+
 const Home: NextPage = () => {
   return (
     <>
+      <Head>
+            <title>Areté · Evalúa tu idea de negocio con IA</title>
+            <meta
+              name="description"
+              content="Completa 5 pasos y recibe un informe claro para decidir. Rápido, simple y visual."
+            />
+           <link rel="canonical" href="https://www.aret3.cl/" />
+      </Head>
+
+
       <Nav />
       <main>
         <Hero />
