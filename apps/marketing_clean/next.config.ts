@@ -6,42 +6,28 @@ const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  typescript: { tsconfigPath: "./tsconfig.json" },
-
   async rewrites() {
-    const beforeFiles = isProd
-      ? [
-          // ⚠️ SOLO en producción (para no romper localhost:3002)
-          { source: "/_next/:path*", destination: `${APP_ORIGIN}/_next/:path*` },
-          { source: "/static/:path*", destination: `${APP_ORIGIN}/static/:path*` },
-          { source: "/fonts/:path*", destination: `${APP_ORIGIN}/fonts/:path*` },
-          { source: "/favicon.ico", destination: `${APP_ORIGIN}/favicon.ico` },
-          { source: "/robots.txt", destination: `${APP_ORIGIN}/robots.txt` },
-          { source: "/sitemap.xml", destination: `${APP_ORIGIN}/sitemap.xml` },
-        ]
-      : [];
-
-    const afterFiles = [
-      // App bajo /app
-      { source: "/app", destination: `${APP_ORIGIN}/` },
+    const rules = [
+      // Proxy del app bajo /app
       { source: "/app/:path*", destination: `${APP_ORIGIN}/:path*` },
 
-      // Auth del app
-      { source: "/auth/:path*", destination: `${APP_ORIGIN}/auth/:path*` },
+      // Atajos útiles
       { source: "/login", destination: `${APP_ORIGIN}/auth/sign-in` },
       { source: "/signup", destination: `${APP_ORIGIN}/auth/sign-up` },
+      { source: "/dashboard/:path*", destination: `${APP_ORIGIN}/dashboard/:path*` },
+      { source: "/auth/:path*", destination: `${APP_ORIGIN}/auth/:path*` },
 
-      // Leads (formulario de la landing)
-      { source: "/api/leads", destination: `${APP_ORIGIN}/api/leads` },
-
-      // Alias útiles
-      { source: "/dashboard", destination: `${APP_ORIGIN}/wizard/idea` },
-      { source: "/dashboard/:path*", destination: `${APP_ORIGIN}/wizard/:path*` },
+      // 👉 Proxy de APIs del app (para el formulario /api/leads)
+      { source: "/api/:path*", destination: `${APP_ORIGIN}/api/:path*` },
     ];
 
-    return { beforeFiles, afterFiles };
+    // Solo en producción proxyeamos assets del app.
+    // En dev, esto causaba la pantalla en blanco.
+    if (isProd) {
+      rules.push({ source: "/_next/:path*", destination: `${APP_ORIGIN}/_next/:path*` });
+    }
+    return rules;
   },
-  // NO pongas redirect "/" -> "/app" si quieres ver la landing en /
 };
 
 export default nextConfig;

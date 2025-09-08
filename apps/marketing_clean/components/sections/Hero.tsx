@@ -1,21 +1,22 @@
+// apps/marketing_clean/components/sections/Hero.tsx
 import Link from "next/link";
+
+const wrap: React.CSSProperties = { maxWidth: 1120, margin: "0 auto", padding: "32px 20px" };
+const btn: React.CSSProperties = { padding: "12px 18px", borderRadius: 12, border: "1px solid #111", display: "inline-block" };
 
 export default function Hero() {
   return (
-    <section className="py-16">
-      <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-        Areté · Evalúa tu idea con IA
+    <section style={wrap}>
+      <h1 style={{ fontSize: 40, lineHeight: 1.1, margin: "0 0 12px" }}>
+        Evalúa tu idea de negocio con IA
       </h1>
-      <p className="mt-4 text-lg text-zinc-600">
-        Ingresa tu idea, responde 5 pasos y recibe un informe claro.
+      <p style={{ color: "#555", margin: "0 0 18px" }}>
+        Completa 5 pasos y recibe un informe claro para decidir. Rápido, simple y visual.
       </p>
-      <div className="mt-8 flex gap-3">
-        <Link href="/auth/sign-in" className="rounded-lg bg-black text-white px-4 py-2">
-          Empieza gratis
-        </Link>
-        <a href="#producto" className="rounded-lg border px-4 py-2">
-          Ver cómo funciona
-        </a>
+
+      <div style={{ display: "flex", gap: 12 }}>
+        <Link href="/auth/sign-in" style={{ ...btn, background: "#111", color: "#fff" }}>Empieza gratis</Link>
+        <a href="#producto" style={btn}>Ver cómo funciona</a>
       </div>
     </section>
   );
