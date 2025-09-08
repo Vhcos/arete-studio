@@ -1,8 +1,12 @@
+// apps/marketing_clean/pages/recursos/centro-de-ayuda.tsx
+import Link from "next/link";
+
 export default function CentroDeAyuda() {
   return (
-    <main className="mx-auto max-w-5xl p-6">
-      <h1 className="text-3xl font-semibold">Centro de ayuda</h1>
-      <p className="mt-4">Pronto: guías de uso, preguntas frecuentes y ejemplos.</p>
+    <main style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
+      <h1>Centro de ayuda</h1>
+      <p>Artículos y preguntas frecuentes (placeholder).</p>
+      <p><Link href="/">← Volver</Link></p>
     </main>
   );
 }
