@@ -1,35 +1,31 @@
+import { headers } from "next/headers";
+import NextAuth, { type NextAuthOptions } from "next-auth";
+import EmailProvider from "next-auth/providers/email";
+import { Resend } from "resend";
+import { prisma } from "@/lib/prisma";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-import { headers as getHeaders } from "next/headers";
-import NextAuth, { type NextAuthOptions, type User, type Account } from "next-auth";
-import EmailProvider from "next-auth/providers/email";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
-import { Resend } from "resend";
-
 const resend = new Resend(process.env.RESEND_API_KEY);
+const TRACK_CUSTOMERS = process.env.ENABLE_CUSTOMERS === "1";
 
-// helper opcional para IP (si NextAuth incluye request en el evento, lo usamos)
-function getIp(req?: any) {
-  try {
-    const h = typeof req?.headers?.get === "function" ? req.headers : req?.headers;
-    const xff = h?.get?.("x-forwarded-for") ?? h?.["x-forwarded-for"];
-    return (xff?.split(",")?.[0] ?? "").trim() || undefined;
-  } catch {
-    return undefined;
-  }
+function getIp(h: Headers) {
+  return h.get("x-real-ip") ?? h.get("cf-connecting-ip") ?? h.get("x-forwarded-for") ?? undefined;
 }
 
 export const authOptions: NextAuthOptions = {
-  // ...providers, adapter, pages, etc.
+  pages: { signIn: "/auth/sign-in" },
+  session: { strategy: "database" },
+  debug: process.env.NODE_ENV !== "production",
+
   providers: [
     EmailProvider({
       from: process.env.EMAIL_FROM,
       async sendVerificationRequest({ identifier, url, provider }) {
         if (process.env.NODE_ENV !== "production") {
-          console.log("🔑 Magic link DEV:", identifier, url);
+          console.log("Magic link DEV:", identifier, url);
           return;
         }
         await resend.emails.send({
@@ -44,6 +40,7 @@ export const authOptions: NextAuthOptions = {
 
   events: {
     async createUser({ user }) {
+      if (!TRACK_CUSTOMERS) return;
       await prisma.customer.upsert({
         where: { userId: user.id },
         create: {
@@ -54,30 +51,22 @@ export const authOptions: NextAuthOptions = {
           signInCount: 1,
           source: "magic-link",
         },
-        update: {},
+        update: {
+          firstLoginAt: new Date(),
+          lastLoginAt: new Date(),
+          source: "magic-link",
+        },
       });
     },
 
     async signIn({ user }) {
-      // 👇 AQUÍ el cambio: await a headers()
-      const h = await getHeaders();
-
-      const ua =
-        h.get("user-agent") ?? undefined;
-
-      const ip =
-        h.get("x-real-ip") ??
-        h.get("x-forwarded-for") ??
-        undefined;
+      if (!TRACK_CUSTOMERS) return;
+      const h = await headers();
+      const ua = h.get("user-agent") ?? undefined;
+      const ip = getIp(h);
 
       await prisma.customer.upsert({
         where: { userId: user.id },
-        update: {
-          lastLoginAt: new Date(),
-          signInCount: { increment: 1 },
-          lastIp: ip,
-          lastUserAgent: ua,
-        },
         create: {
           userId: user.id,
           email: user.email ?? "",
@@ -85,6 +74,12 @@ export const authOptions: NextAuthOptions = {
           lastLoginAt: new Date(),
           signInCount: 1,
           source: "magic-link",
+          lastIp: ip,
+          lastUserAgent: ua,
+        },
+        update: {
+          lastLoginAt: new Date(),
+          signInCount: { increment: 1 },
           lastIp: ip,
           lastUserAgent: ua,
         },
@@ -92,18 +87,15 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-
-
-  // ✅ Redirección segura: si viene ?callbackUrl=/algo lo respetamos, si no → raíz del app
   callbacks: {
     async redirect({ url, baseUrl }) {
       try {
         const u = new URL(url, baseUrl);
         const cb = u.searchParams.get("callbackUrl");
         if (cb && cb.startsWith("/")) return baseUrl + cb;
-        if (url.startsWith("/")) return baseUrl + url;
+        if (cb) return cb;
       } catch {}
-      return baseUrl; // https://app.aret3.cl
+      return baseUrl; // → https://app.aret3.cl
     },
   },
 };
