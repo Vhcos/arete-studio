@@ -1,9 +1,10 @@
 import { z } from "zod";
 
 export const Step1Schema = z.object({
-  projectName: z.string().min(2, "Ingresa un nombre válido"),
+  // ahora permite vacío (mostrarás aviso, pero no bloquea)
+  projectName: z.string().optional(),
   shortDescription: z.string().max(280).optional(),
-  founderName: z.string().min(2, "Nombre muy corto").optional(),
+  founderName: z.string().optional(),
   notifyEmail: z.string().email("Email inválido").optional(),
 });
 
