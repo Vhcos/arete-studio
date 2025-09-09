@@ -1,5 +1,5 @@
-
 import type { WizardData } from "@/lib/state/wizard-store";
+import type { SectorId } from "@/lib/domain/sectors";
 
 /** Largos y reglas usadas por todo el producto */
 export const LENGTHS = {
@@ -9,21 +9,20 @@ export const LENGTHS = {
   sectorMin: 2,
 } as const;
 
-/** Placeholders centralizados para mantener el copy consistente */
+/** Placeholders centralizados */
 export const PLACEHOLDERS = {
-  projectName: "Ej: Joyas de Autor",
+  projectName: "Ej: Joyas Patagonia",
   shortDescription: "¿Qué problema resuelves en una frase?",
   sector: "Retail, SaaS, Educación, etc.",
 } as const;
 
-/** Shape base que usará Tablero/Informe y futuros endpoints */
+/** Shape base que usará Tablero/Informe y endpoints */
 export type EvaluationInput = {
   projectName: string;
   shortDescription?: string;
-  sector: string;
-
-  // Campos de pasos siguientes (opcionales por ahora)
-  businessType?: string;
+  sector: string;          // texto libre (por compatibilidad)
+  sectorId?: SectorId;     // canónico (14 sectores)
+  businessType?: string;   // opcional si quisieras mantenerlo
   template?: string;
   headline?: string;
   country?: string;
@@ -37,30 +36,24 @@ export const DEFAULT_EVALUATION: EvaluationInput = {
   sector: "",
 };
 
-/** Bridge: convierte el store del wizard en EvaluationInput */
 export function fromWizard(w: WizardData): EvaluationInput {
   return {
     ...DEFAULT_EVALUATION,
-    ...(w.step1
-      ? {
-          projectName: w.step1.projectName,
-          shortDescription: w.step1.shortDescription || "",
-          sector: w.step1.sector,
-        }
-      : {}),
-    ...(w.step2
-      ? {
-          businessType: w.step2.businessType,
-          template: w.step2.template,
-        }
-      : {}),
-    ...(w.step3
-      ? {
-          headline: w.step3.headline,
-          country: w.step3.country,
-          city: w.step3.city,
-          stage: w.step3.stage,
-        }
-      : {}),
+    ...(w.step1 ? {
+      projectName: w.step1.projectName,
+      shortDescription: w.step1.shortDescription || "",
+      sector: w.step1.sector,
+    } : {}),
+    ...(w.step2 ? {
+      sectorId: (w.step2 as any).sectorId,
+      template: w.step2.template,
+      // businessType: (w.step2 as any).businessType, // opcional
+    } : {}),
+    ...(w.step3 ? {
+      headline: w.step3.headline,
+      country: w.step3.country,
+      city: w.step3.city,
+      stage: w.step3.stage,
+    } : {}),
   };
 }

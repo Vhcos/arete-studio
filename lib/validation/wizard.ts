@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LENGTHS } from "@/lib/model/app-form";
+import { SECTOR_IDS } from "@/lib/domain/sectors";
 
 export const Step1Schema = z.object({
   projectName: z
@@ -11,14 +12,23 @@ export const Step1Schema = z.object({
 });
 export type Step1 = z.infer<typeof Step1Schema>;
 
-export const businessTypeValues = ["saas","ecommerce","servicio","producto","restaurante"] as const;
-export type BusinessType = typeof businessTypeValues[number];
+/** Tipos auxiliares */
+export type BusinessType = "saas" | "ecommerce" | "servicio" | "producto" | "restaurante";
 
+/**
+ * Nota: z.enum necesita una tupla, pero nuestros IDs vienen de un array dinámico.
+ * Usamos string() + refine para validar contra SECTOR_IDS y mantener flexibilidad.
+ */
 export const Step2Schema = z.object({
-  businessType: z.enum(businessTypeValues),
+  sectorId: z.string().refine(v => SECTOR_IDS.includes(v as any), "Sector inválido"),
   template: z.string().min(2),
+  // businessType: z.string().optional(),
 });
-export type Step2 = z.infer<typeof Step2Schema>;
+export type Step2 = {
+  sectorId: (typeof SECTOR_IDS)[number];
+  template: string;
+  // businessType?: BusinessType;
+};
 
 export const stageValues = ["idea","launch","growth"] as const;
 export type Stage = typeof stageValues[number];
