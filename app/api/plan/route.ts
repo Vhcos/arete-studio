@@ -132,9 +132,7 @@ export async function POST(req: Request) {
   const body = normalizePlanInput(inputRaw);
   const input = body.input ?? {};
   const { sector, sectorId, template } = body;
-  // DEBUG (temporal)
-  console.log("[plan] normalized:", { sector, sectorId, template });
-
+  
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
   
 
