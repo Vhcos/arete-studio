@@ -1,13 +1,30 @@
-"use client";
-// lib/state/wizard-store.ts
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-export type Step1 = { projectName: string; shortDescription?: string; sector: string };
-export type Step2 = { sectorId: string; template: string };
-export type Step3 = { headline: string; country: string; city: string; stage: "idea"|"launch"|"growth" };
+export type Step1 = {
+  projectName: string;
+  shortDescription?: string;
+  founderName?: string;
+  notifyEmail?: string;
+};
 
-export type WizardData = { step1?: Step1; step2?: Step2; step3?: Step3 };
+export type Step2 = {
+  sectorId: string;   // uno de los 14
+  template: string;   // "default" | "lean" | "pitch"
+};
+
+export type Step3 = {
+  headline: string;
+  country: string;
+  city?: string;
+  stage: "idea" | "launch" | "growth";
+};
+
+export type WizardData = {
+  step1?: Step1;
+  step2?: Step2;
+  step3?: Step3;
+};
 
 type WizardStore = {
   data: WizardData;

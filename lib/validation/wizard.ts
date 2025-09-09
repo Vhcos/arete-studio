@@ -1,42 +1,24 @@
 import { z } from "zod";
-import { LENGTHS } from "@/lib/model/app-form";
-import { SECTOR_IDS } from "@/lib/domain/sectors";
 
 export const Step1Schema = z.object({
-  projectName: z
-    .string()
-    .min(LENGTHS.projectNameMin, `Mínimo ${LENGTHS.projectNameMin} caracteres`)
-    .max(LENGTHS.projectNameMax),
-  shortDescription: z.string().max(LENGTHS.shortDescMax).optional().or(z.literal("")),
-  sector: z.string().min(LENGTHS.sectorMin, "Indica un sector"),
+  projectName: z.string().min(2, "Ingresa un nombre válido"),
+  shortDescription: z.string().max(280).optional(),
+  founderName: z.string().min(2, "Nombre muy corto").optional(),
+  notifyEmail: z.string().email("Email inválido").optional(),
 });
-export type Step1 = z.infer<typeof Step1Schema>;
 
-/** Tipos auxiliares */
-export type BusinessType = "saas" | "ecommerce" | "servicio" | "producto" | "restaurante";
-
-/**
- * Nota: z.enum necesita una tupla, pero nuestros IDs vienen de un array dinámico.
- * Usamos string() + refine para validar contra SECTOR_IDS y mantener flexibilidad.
- */
 export const Step2Schema = z.object({
-  sectorId: z.string().refine(v => SECTOR_IDS.includes(v as any), "Sector inválido"),
-  template: z.string().min(2),
-  // businessType: z.string().optional(),
+  sectorId: z.string().min(2, "Selecciona un sector"),
+  template: z.enum(["default", "lean", "pitch"]),
 });
-export type Step2 = {
-  sectorId: (typeof SECTOR_IDS)[number];
-  template: string;
-  // businessType?: BusinessType;
-};
-
-export const stageValues = ["idea","launch","growth"] as const;
-export type Stage = typeof stageValues[number];
 
 export const Step3Schema = z.object({
-  headline: z.string().min(6, "Describe tu propuesta en una frase"),
-  country: z.string().min(2),
-  city: z.string().min(2),
-  stage: z.enum(stageValues),
+  headline: z.string().min(3, "Escribe tu idea en una frase"),
+  country: z.string().min(2, "Selecciona un país"),
+  city: z.string().optional(),
+  stage: z.enum(["idea", "launch", "growth"]),
 });
+
+export type Step1 = z.infer<typeof Step1Schema>;
+export type Step2 = z.infer<typeof Step2Schema>;
 export type Step3 = z.infer<typeof Step3Schema>;
