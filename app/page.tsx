@@ -1,6 +1,7 @@
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities, @typescript-eslint/no-unused-vars */
 import React, { useMemo, useState } from "react";
+import HydrateFromWizard from "@/components/tablero/HydrateFromWizard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -495,7 +496,8 @@ const costoVariableMes =
 
   // -------------------- Render --------------------
   return (
-    <div className="min-h-screen p-6" style={styleAccent}>
+   <div className="min-h-screen p-6" style={styleAccent}>
+     <HydrateFromWizard />
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
