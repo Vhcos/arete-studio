@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useWizardStore } from "@/lib/state/wizard-store";
 import { Step1Schema } from "@/lib/validation/wizard";
 import { NextButton, PrevButton } from "@/components/wizard/WizardNav";
+import { PLACEHOLDERS } from "@/lib/model/app-form";
 
 export default function Step1Page() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function Step1Page() {
             className="mt-1 w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
             value={local.projectName}
             onChange={(e) => setLocal(s => ({ ...s, projectName: e.target.value }))}
-            placeholder="Ej: Joyas Patagonia"
+            placeholder={PLACEHOLDERS.projectName}
             aria-invalid={!!errors.projectName}
             aria-describedby="err-projectName"
           />
@@ -51,7 +52,7 @@ export default function Step1Page() {
             className="mt-1 w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
             value={local.shortDescription}
             onChange={(e) => setLocal(s => ({ ...s, shortDescription: e.target.value }))}
-            placeholder="¿Qué problema resuelves en una frase?"
+            placeholder={PLACEHOLDERS.shortDescription}
             rows={3}
           />
           {errors.shortDescription && <p className="mt-1 text-xs text-red-600">{errors.shortDescription}</p>}
@@ -62,7 +63,7 @@ export default function Step1Page() {
             className="mt-1 w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring"
             value={local.sector}
             onChange={(e) => setLocal(s => ({ ...s, sector: e.target.value }))}
-            placeholder="Retail, SaaS, Educación, etc."
+            placeholder={PLACEHOLDERS.sector}
           />
           {errors.sector && <p className="mt-1 text-xs text-red-600">{errors.sector}</p>}
         </div>

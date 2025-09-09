@@ -1,9 +1,13 @@
 import { z } from "zod";
+import { LENGTHS } from "@/lib/model/app-form";
 
 export const Step1Schema = z.object({
-  projectName: z.string().min(2, "Mínimo 2 caracteres").max(60),
-  shortDescription: z.string().max(200).optional().or(z.literal("")),
-  sector: z.string().min(2, "Indica un sector"),
+  projectName: z
+    .string()
+    .min(LENGTHS.projectNameMin, `Mínimo ${LENGTHS.projectNameMin} caracteres`)
+    .max(LENGTHS.projectNameMax),
+  shortDescription: z.string().max(LENGTHS.shortDescMax).optional().or(z.literal("")),
+  sector: z.string().min(LENGTHS.sectorMin, "Indica un sector"),
 });
 export type Step1 = z.infer<typeof Step1Schema>;
 
