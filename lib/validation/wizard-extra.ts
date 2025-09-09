@@ -13,27 +13,36 @@ export const Step5Schema = z.object({
 });
 
 export const Step6Schema = z.object({
-  inversionInicial: z.number().nonnegative(),
-  capitalTrabajo: z.number().nonnegative(),
+  inversionInicial:       z.number().nonnegative().default(0),
+  capitalTrabajo:         z.number().nonnegative().default(0),
 
-  ventaAnio1: z.number().nonnegative(),
-  ticket: z.number().nonnegative(),
-  conversionPct: z.number().min(0).max(100),
+  // Ventas y demanda
+  ventaAnio1:             z.number().nonnegative().default(0),
+  ticket:                 z.number().nonnegative().default(0),
+  conversionPct:          z.number().min(0).max(100).default(3),
 
-  gastosFijosMensuales: z.number().nonnegative(),
-  costoVarPct: z.number().min(0).max(100).optional(),
-  costoVarUnit: z.number().nonnegative().optional(),
+  // Derivados opcionales que mostramos como preview
+  clientesMensualesCalc:  z.number().nonnegative().default(0).optional(),
+  clientesAnuales:        z.number().nonnegative().default(0).optional(),
 
-  traficoMensual: z.number().nonnegative(),
-  ltv: z.number().nonnegative().optional(),
+  // Costos
+  gastosFijosMensuales:   z.number().nonnegative().default(0),
+  costoVarPct:            z.number().min(0).max(100).default(0).optional(),
+  costoVarUnit:           z.number().nonnegative().default(0).optional(),
 
-  modoInversion: z.enum(["presupuesto","cac"]),
-  presupuestoMarketing: z.number().nonnegative().optional(),
-  cpl: z.number().nonnegative().optional(),
-  cac: z.number().nonnegative().optional(),
+  // Tráfico y LTV
+  traficoMensual:         z.number().nonnegative().default(0),
+  ltv:                    z.number().nonnegative().default(0).optional(),
 
-  frecuenciaCompraMeses: z.number().min(1),
-  mesesPE: z.number().min(0),
+  // Modo de inversión
+  modoInversion:          z.enum(["presupuesto", "cac"]).default("presupuesto"),
+  presupuestoMarketing:   z.number().nonnegative().default(0).optional(),
+  cpl:                    z.number().nonnegative().default(0).optional(),
+  cac:                    z.number().nonnegative().default(0).optional(),
+
+  // Frecuencia y punto de equilibrio
+  frecuenciaCompraMeses:  z.number().min(1).max(24).default(6),
+  mesesPE:                z.number().min(0).max(36).default(6),
 });
 
 export type Step5 = z.infer<typeof Step5Schema>;
