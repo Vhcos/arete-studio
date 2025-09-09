@@ -2,15 +2,15 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 export type Step1 = {
-  projectName: string;
+  projectName?: string;
   shortDescription?: string;
   founderName?: string;
   notifyEmail?: string;
 };
 
 export type Step2 = {
-  sectorId: string;   // uno de los 14
-  template: string;   // "default" | "lean" | "pitch"
+  sectorId: string;
+  template: string;
 };
 
 export type Step3 = {
@@ -20,10 +20,33 @@ export type Step3 = {
   stage: "idea" | "launch" | "growth";
 };
 
+export type Step5 = {
+  problema: number;
+  accesibilidad: number;
+  competencia: number;
+  experiencia: number;
+  pasion: number;
+  planesAlternativos: number;
+  riesgo: number;
+  testeoPrevio: number;
+  redApoyo: number;
+};
+
+export type Step6 = {
+  ticket: number;
+  costoUnit: number;
+  ingresosMeta: number;
+  gastosFijos: number;
+  marketingMensual: number;
+  costoPct: number;
+};
+
 export type WizardData = {
   step1?: Step1;
   step2?: Step2;
   step3?: Step3;
+  step5?: Step5;
+  step6?: Step6;
 };
 
 type WizardStore = {
@@ -31,6 +54,8 @@ type WizardStore = {
   setStep1: (v: Step1) => void;
   setStep2: (v: Step2) => void;
   setStep3: (v: Step3) => void;
+  setStep5: (v: Step5) => void;
+  setStep6: (v: Step6) => void;
   clear: () => void;
 };
 
@@ -41,6 +66,8 @@ export const useWizardStore = create<WizardStore>()(
       setStep1: (v) => set((s) => ({ data: { ...s.data, step1: v } })),
       setStep2: (v) => set((s) => ({ data: { ...s.data, step2: v } })),
       setStep3: (v) => set((s) => ({ data: { ...s.data, step3: v } })),
+      setStep5: (v) => set((s) => ({ data: { ...s.data, step5: v } })),
+      setStep6: (v) => set((s) => ({ data: { ...s.data, step6: v } })),
       clear: () => set({ data: {} }),
     }),
     { name: "wizard", storage: createJSONStorage(() => localStorage) }

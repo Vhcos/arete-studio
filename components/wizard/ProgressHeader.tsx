@@ -1,33 +1,32 @@
 "use client";
 import { usePathname } from "next/navigation";
 
-const steps = [
-  { slug: "/wizard/step-1", label: "Datos" },
-  { slug: "/wizard/step-2", label: "Tipo" },
-  { slug: "/wizard/step-3", label: "Contexto" },
-  { slug: "/wizard/step-4", label: "Confirmar" },
+const STEPS = [
+  { slug:"step-1", label:"Datos" },
+  { slug:"step-2", label:"Tipo" },
+  { slug:"step-3", label:"Contexto" },
+  { slug:"step-4", label:"Confirmar" },
+  { slug:"step-5", label:"Emocional" },
+  { slug:"step-6", label:"Económico" },
 ];
 
 export function ProgressHeader() {
-  const pathname = usePathname();
-  const idx = steps.findIndex(s => pathname?.startsWith(s.slug));
-  const currentIndex = idx === -1 ? 0 : idx;
-  const pct = Math.round(((currentIndex + 1) / steps.length) * 100);
+  const p = usePathname() || "";
+  const idx = Math.max(0, STEPS.findIndex(s => p.includes(s.slug)));
+  const pct = Math.round(((idx+1) / STEPS.length) * 100);
 
   return (
-    <div className="w-full max-w-lg">
-      <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
-        <span>Progreso</span>
-        <span>{pct}%</span>
+    <div className="px-4 py-3 border-b">
+      <div className="max-w-5xl mx-auto">
+        <div className="w-full h-1 bg-slate-200 rounded">
+          <div className="h-1 bg-slate-900 rounded" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="mt-2 flex gap-4 text-xs text-slate-600">
+          {STEPS.map((s,i) => (
+            <span key={s.slug} className={i<=idx ? "font-medium text-slate-900" : ""}>{s.label}</span>
+          ))}
+        </div>
       </div>
-      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden" aria-label={`Progreso ${pct}%`}>
-        <div className="h-2 bg-slate-900" style={{ width: `${pct}%` }} />
-      </div>
-      <ul className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-        {steps.map((s, i) => (
-          <li key={s.slug} className={`truncate ${i <= currentIndex ? "text-slate-900" : ""}`}>{s.label}</li>
-        ))}
-      </ul>
     </div>
   );
 }
