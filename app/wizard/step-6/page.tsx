@@ -1,3 +1,4 @@
+// app/wizard/step-6/page.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
