@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const runtime = "edge";
 
+import { normalizePlanInput } from "@/lib/api/normalize-plan";
+
 import OpenAI from "openai";
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -122,11 +124,17 @@ function augmentRegulacionPorRubro(rubro: string, rows: RegulationRow[]) {
   return rows;
 }
 
+
 export async function POST(req: Request) {
   if (!process.env.OPENAI_API_KEY) return json({ ok:false, error:"OPENAI_API_KEY missing" }, 500);
 
-  const { input = {} } = (await req.json().catch(() => ({ input: {} }))) as any;
+  const inputRaw = await req.json().catch(() => ({} as any));
+  const body = normalizePlanInput(inputRaw);
+  const input = body.input ?? {};
+  const { projectName, shortDescription, sector, sectorId, template } = body;
+
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  
 
    // ---- cálculos de contexto para metas numéricas
   const price = num(input.ticket);
@@ -145,7 +153,8 @@ export async function POST(req: Request) {
 
 
   // Prompt: fuerza plan operativo 90 días (imperativo), y arrays
-  const system = `
+  const system = 
+  `
 Eres consultor de negocios. Devuelve SOLO un JSON válido (sin texto extra).
 Esquema requerido:
 {
@@ -186,6 +195,7 @@ Esquema requerido:
     "Devuelve el JSON EXACTO con el esquema anterior.",
   ].filter(Boolean).join("\n");
 
+  
   // --- Primer pase
   const r = await client.chat.completions.create({
     model,
