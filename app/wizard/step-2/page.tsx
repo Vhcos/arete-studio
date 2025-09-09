@@ -1,26 +1,31 @@
+// app/wizard/step-2/page.tsx
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useWizardStore } from "@/lib/state/wizard-store";
-import { Step2Schema, BusinessType } from "@/lib/validation/wizard";
+import { Step2Schema } from "@/lib/validation/wizard";
 import { NextButton, PrevButton } from "@/components/wizard/WizardNav";
-
-const OPTIONS: { value: BusinessType; label: string; hint: string }[] = [
-  { value: "saas", label: "SaaS", hint: "Software como servicio" },
-  { value: "ecommerce", label: "E-commerce", hint: "Tienda online" },
-  { value: "servicio", label: "Servicios", hint: "Consultoría/Agencia" },
-  { value: "producto", label: "Producto físico", hint: "Fabricación/retail" },
-  { value: "restaurante", label: "Restaurante/Food", hint: "Local o dark-kitchen" },
-];
+import { SECTORS, SectorId, templateForSector } from "@/lib/domain/sectors";
+import { suggestSectors } from "@/lib/suggest/sectors";
 
 export default function Step2Page() {
   const router = useRouter();
   const { data, setStep2 } = useWizardStore();
+
+  const initialSector: SectorId = (data.step2 as any)?.sectorId ?? "tech_saas";
   const [local, setLocal] = useState({
-    businessType: (data.step2?.businessType ?? "saas") as BusinessType,
-    template: data.step2?.template ?? "default",
+    sectorId: initialSector as string,
+    template: (data.step2?.template ?? templateForSector(initialSector)) as string,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [query, setQuery] = useState("");
+  const [suggested, setSuggested] = useState<{ id: SectorId; label: string; reason: string }[]>([]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return SECTORS;
+    return SECTORS.filter(s => s.label.toLowerCase().includes(q));
+  }, [query]);
 
   function onNext() {
     const parsed = Step2Schema.safeParse(local);
@@ -30,29 +35,87 @@ export default function Step2Page() {
       setErrors(errs);
       return;
     }
-    setStep2(parsed.data);
+    setStep2(parsed.data as any);
     router.push("/wizard/step-3");
+  }
+
+  function onGenerate() {
+    const s = suggestSectors({
+      projectName: data.step1?.projectName,
+      shortDescription: data.step1?.shortDescription,
+      sector: data.step1?.sector,
+    });
+    setSuggested(s);
+  }
+
+  function applySuggestion(id: SectorId) {
+    setLocal(s => ({ ...s, sectorId: id, template: templateForSector(id) }));
   }
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">Paso 2 · Tipo de negocio / plantilla</h1>
-      <p className="text-sm text-slate-600 mb-6">Selecciona el arquetipo que mejor calza con tu proyecto. Podrás cambiarlo luego.</p>
+      <h1 className="text-xl font-semibold mb-1">Paso 2 · Sector y plantilla</h1>
+      <p className="text-sm text-slate-600 mb-6">Elige el sector canónico (14 opciones) para personalizar mejor tu plan.</p>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        {OPTIONS.map(op => (
+      {/* Sugerencias */}
+      <div className="rounded-xl border p-4 bg-violet-50/50">
+        <button
+          onClick={onGenerate}
+          className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-violet-700 hover:bg-violet-50 focus:outline-none focus:ring"
+        >
+          ✨ Generar sugerencias
+        </button>
+
+        {suggested.length > 0 ? (
+          <div className="mt-3 grid sm:grid-cols-2 gap-3">
+            {suggested.map(sug => (
+              <button
+                key={sug.id}
+                onClick={() => applySuggestion(sug.id)}
+                className={`text-left rounded-lg border p-3 hover:border-slate-800 focus:outline-none focus:ring ${
+                  local.sectorId === sug.id ? "border-slate-900 ring-1 bg-white" : "border-slate-200 bg-white"
+                }`}
+                aria-pressed={local.sectorId === sug.id}
+              >
+                <div className="font-medium">{sug.label}</div>
+                <div className="text-xs text-slate-600">{sug.reason}</div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-xs text-slate-500">Usaremos lo escrito en el paso 1 para proponer sectores.</p>
+        )}
+      </div>
+
+      {/* Buscador */}
+      <div className="mt-6">
+        <label className="block text-sm font-medium">Buscar sector</label>
+        <input
+          className="mt-1 w-full rounded-lg border px-3 py-2"
+          placeholder="Escribe para filtrar (ej: salud, turismo, fintech)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Lista de 14 sectores */}
+      <div className="mt-4 grid sm:grid-cols-2 gap-4">
+        {filtered.map(s => (
           <button
-            key={op.value}
-            onClick={() => setLocal(s => ({ ...s, businessType: op.value }))}
-            className={`text-left rounded-xl border p-4 hover:border-slate-800 focus:outline-none focus:ring ${local.businessType === op.value ? "border-slate-900 ring-1" : "border-slate-200"}`}
-            aria-pressed={local.businessType === op.value}
+            key={s.id}
+            onClick={() => setLocal(prev => ({ ...prev, sectorId: s.id, template: templateForSector(s.id) }))}
+            className={`text-left rounded-xl border p-4 hover:border-slate-800 focus:outline-none focus:ring ${
+              local.sectorId === s.id ? "border-slate-900 ring-1" : "border-slate-200"
+            }`}
+            aria-pressed={local.sectorId === s.id}
           >
-            <div className="font-medium">{op.label}</div>
-            <div className="text-xs text-slate-600">{op.hint}</div>
+            <div className="font-medium">{s.label}</div>
+            <div className="text-xs text-slate-600 mt-1 line-clamp-2">{s.description}</div>
           </button>
         ))}
       </div>
 
+      {/* Plantilla */}
       <div className="mt-6">
         <label className="block text-sm font-medium">Plantilla</label>
         <select
@@ -60,7 +123,7 @@ export default function Step2Page() {
           value={local.template}
           onChange={(e) => setLocal(s => ({ ...s, template: e.target.value }))}
         >
-          <option value="default">Básica (recomendada)</option>
+          <option value="default">Básica</option>
           <option value="lean">Lean Canvas</option>
           <option value="pitch">Pitch / One-pager</option>
         </select>
