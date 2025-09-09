@@ -3,16 +3,15 @@ import { useRouter } from "next/navigation";
 import { useWizardStore } from "@/lib/state/wizard-store";
 import { fromWizard } from "@/lib/model/app-form";
 
-const SHOW_IA = false; // <- por ahora desactivado
+const SHOW_IA = false; // por ahora desactivado; moveremos IA luego del paso 6
 
 export default function Step4Page() {
   const router = useRouter();
   const { data } = useWizardStore();
   const body = fromWizard(data);
 
-  function onFinish() {
-    // TODO: apunta al Tablero+Informe cuando tengamos la ruta exacta
-    router.push("/"); 
+  function onNext() {
+    router.push("/wizard/step-5"); // ← ahora va al paso emocional
   }
 
   async function onIA() {
@@ -20,7 +19,6 @@ export default function Step4Page() {
       const res = await fetch("/api/plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        // Importante: ya va sectorId desde fromWizard()
         body: JSON.stringify({
           projectName: body.projectName,
           sectorId: body.sectorId,
@@ -45,7 +43,7 @@ export default function Step4Page() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-1">Paso 4 · Confirmación</h1>
-      <p className="text-sm text-slate-600 mb-6">Revisa y cierra para generar tu plan.</p>
+      <p className="text-sm text-slate-600 mb-6">Revisa y continúa para completar Emocional y Económico.</p>
 
       <div className="rounded-lg border p-4 text-sm">
         <p><b>Proyecto:</b> {body.projectName || "—"}</p>
@@ -59,12 +57,12 @@ export default function Step4Page() {
         {SHOW_IA && (
           <button onClick={onIA} className="rounded-lg bg-slate-900 text-white px-4 py-2">Generar plan (IA)</button>
         )}
-        <button onClick={onFinish} className="rounded-lg bg-blue-600 text-white px-4 py-2">Finalizar</button>
+        <button onClick={onNext} className="rounded-lg bg-blue-600 text-white px-4 py-2">Siguiente</button>
       </div>
 
       {!SHOW_IA && (
         <p className="mt-4 text-xs text-slate-500">
-          Nota: La generación con IA se moverá al final (después de “Emocional” y “Económico”) para usar toda la información.
+          Nota: la generación con IA se hará al final, cuando ya tengamos Emocional y Económico.
         </p>
       )}
     </div>

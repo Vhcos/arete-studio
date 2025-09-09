@@ -32,13 +32,29 @@ export type Step5 = {
   redApoyo: number;
 };
 
+// === ECONÓMICO (campos de tu formulario) ===
 export type Step6 = {
-  ticket: number;
-  costoUnit: number;
-  ingresosMeta: number;
-  gastosFijos: number;
-  marketingMensual: number;
-  costoPct: number;
+  inversionInicial: number;
+  capitalTrabajo: number;
+
+  ventaAnio1: number;         // $ venta 12 meses
+  ticket: number;             // precio/promedio
+  conversionPct: number;      // % conv. visitas→clientes
+
+  gastosFijosMensuales: number;
+  costoVarPct?: number;       // % opcional
+  costoVarUnit?: number;      // $ opcional
+
+  traficoMensual: number;     // visitas/leads / mes
+  ltv?: number;
+
+  modoInversion: "presupuesto" | "cac";
+  presupuestoMarketing?: number; // $/mes
+  cpl?: number;                  // costo por lead/visita
+  cac?: number;                  // costo de adquisición por cliente
+
+  frecuenciaCompraMeses: number;  // cada cuántos meses recompra
+  mesesPE: number;                // estimación punto de equilibrio
 };
 
 export type WizardData = {

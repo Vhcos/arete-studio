@@ -13,12 +13,27 @@ export const Step5Schema = z.object({
 });
 
 export const Step6Schema = z.object({
+  inversionInicial: z.number().nonnegative(),
+  capitalTrabajo: z.number().nonnegative(),
+
+  ventaAnio1: z.number().nonnegative(),
   ticket: z.number().nonnegative(),
-  costoUnit: z.number().nonnegative(),
-  ingresosMeta: z.number().nonnegative(),
-  gastosFijos: z.number().nonnegative(),
-  marketingMensual: z.number().nonnegative(),
-  costoPct: z.number().min(0).max(100),
+  conversionPct: z.number().min(0).max(100),
+
+  gastosFijosMensuales: z.number().nonnegative(),
+  costoVarPct: z.number().min(0).max(100).optional(),
+  costoVarUnit: z.number().nonnegative().optional(),
+
+  traficoMensual: z.number().nonnegative(),
+  ltv: z.number().nonnegative().optional(),
+
+  modoInversion: z.enum(["presupuesto","cac"]),
+  presupuestoMarketing: z.number().nonnegative().optional(),
+  cpl: z.number().nonnegative().optional(),
+  cac: z.number().nonnegative().optional(),
+
+  frecuenciaCompraMeses: z.number().min(1),
+  mesesPE: z.number().min(0),
 });
 
 export type Step5 = z.infer<typeof Step5Schema>;
