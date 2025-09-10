@@ -1,49 +1,123 @@
+// lib/validation/wizard-extra.ts
+// Schemas y utilidades de validación para los pasos del Wizard.
+
 import { z } from "zod";
 
-export const Step5Schema = z.object({
-  problema: z.number().min(0).max(10),
-  accesibilidad: z.number().min(0).max(10),
-  competencia: z.number().min(0).max(10),
-  experiencia: z.number().min(0).max(10),
-  pasion: z.number().min(0).max(10),
-  planesAlternativos: z.number().min(0).max(10),
-  riesgo: z.number().min(0).max(10),
-  testeoPrevio: z.number().min(0).max(10),
-  redApoyo: z.number().min(0).max(10),
-});
+/* Utilidad: coerciona strings tipo "12.000", "3000", "" -> number */
+const toNum = z.preprocess((v) => {
+  if (v === "" || v === null || v === undefined) return 0;
+  if (typeof v === "string") {
+    const s = v.replace(/[^\d.-]/g, "");
+    return s === "" ? 0 : Number(s);
+  }
+  return v;
+}, z.number().finite());
 
+/* Paso 6 (Económico) */
 export const Step6Schema = z.object({
-  inversionInicial:       z.number().nonnegative().default(0),
-  capitalTrabajo:         z.number().nonnegative().default(0),
+  inversionInicial: toNum.optional(),
+  capitalTrabajo: toNum.optional(),
 
-  // Ventas y demanda
-  ventaAnio1:             z.number().nonnegative().default(0),
-  ticket:                 z.number().nonnegative().default(0),
-  conversionPct:          z.number().min(0).max(100).default(3),
+  ventaAnual: toNum.optional(),      // "Ingresos meta" 12m
+  ticket: toNum.optional(),
+  conversionPct: toNum.optional(),   // 0–100
 
-  // Derivados opcionales que mostramos como preview
-  clientesMensualesCalc:  z.number().nonnegative().default(0).optional(),
-  clientesAnuales:        z.number().nonnegative().default(0).optional(),
+  costoVarPct: toNum.optional(),     // % del precio
+  costoVarUnit: toNum.optional(),    // $ unitario (si viene, manda sobre %)
 
-  // Costos
-  gastosFijosMensuales:   z.number().nonnegative().default(0),
-  costoVarPct:            z.number().min(0).max(100).default(0).optional(),
-  costoVarUnit:           z.number().nonnegative().default(0).optional(),
+  gastosFijosMensuales: toNum.optional(),
+  traficoMensual: toNum.optional(),
 
-  // Tráfico y LTV
-  traficoMensual:         z.number().nonnegative().default(0),
-  ltv:                    z.number().nonnegative().default(0).optional(),
+  presupuestoMarketing: toNum.optional(), // $/mes
+  marketingMensual: toNum.optional(),     // alias opcional
 
-  // Modo de inversión
-  modoInversion:          z.enum(["presupuesto", "cac"]).default("presupuesto"),
-  presupuestoMarketing:   z.number().nonnegative().default(0).optional(),
-  cpl:                    z.number().nonnegative().default(0).optional(),
-  cac:                    z.number().nonnegative().default(0).optional(),
+  frecuenciaCompraMeses: toNum.optional(), // meses entre compras
+  mesesPE: toNum.optional(),               // meses para llegar a P.E.
 
-  // Frecuencia y punto de equilibrio
-  frecuenciaCompraMeses:  z.number().min(1).max(24).default(6),
-  mesesPE:                z.number().min(0).max(36).default(6),
+  // Campos opcionales que algunos formularios calculan
+  clientesMensuales: z.number().nonnegative().optional(),
 });
-
-export type Step5 = z.infer<typeof Step5Schema>;
 export type Step6 = z.infer<typeof Step6Schema>;
+
+/* Paso 5 (Emocional) – valores 0–10 */
+export const Step5Schema = z.object({
+  urgencia: toNum.optional(),
+  accesibilidad: toNum.optional(),
+  competencia: toNum.optional(),
+  experiencia: toNum.optional(),
+  pasion: toNum.optional(),
+  planesAlternativos: toNum.optional(),
+  toleranciaRiesgo: toNum.optional(),
+  testeoPrevio: toNum.optional(),
+  redApoyo: toNum.optional(),
+});
+export type Step5 = z.infer<typeof Step5Schema>;
+
+/* Paso 1 (cabecera) */
+export const Step1Schema = z.object({
+  projectName: z.string().min(1).max(120),
+  founderName: z.string().optional().default(""),
+  email: z.string().email().optional().default(""),
+});
+export type Step1 = z.infer<typeof Step1Schema>;
+
+/* Paso 2 (contexto corto) */
+export const Step2Schema = z.object({
+  idea: z.string().optional().default(""),
+  ventajaTexto: z.string().optional().default(""),
+  sectorId: z.string().optional().default(""),
+  rubro: z.string().optional().default(""),
+  ubicacion: z.string().optional().default(""),
+});
+export type Step2 = z.infer<typeof Step2Schema>;
+
+/* Paso 3 (VHC) */
+export const Step3Schema = z.object({
+  ventajaTexto: z.string().trim().optional().default(""),
+  country: z.string().optional().default(""),
+  city: z.string().optional().default(""),
+});
+export type Step3 = z.infer<typeof Step3Schema>;
+
+/* Estructura general que usaremos para mapear a "legacy" */
+export const WizardDataSchema = z.object({
+  step1: Step1Schema.optional(),
+  step2: Step2Schema.optional(),
+  step3: Step3Schema.optional(),
+  step5: Step5Schema.optional(),
+  step6: Step6Schema,
+});
+export type WizardData = z.infer<typeof WizardDataSchema>;
+
+/* Deriva costo unitario desde Step6 */
+export function deriveCostoUnit(s6: Step6): number {
+  const unit = s6.costoVarUnit ?? 0;
+  const pct = s6.costoVarPct ?? 0;
+  const ticket = s6.ticket ?? 0;
+
+  if (unit && unit > 0) return Math.round(unit);
+  if (pct && ticket) return Math.round((ticket * pct) / 100);
+  return 0;
+}
+
+/* Payload para /api/plan (preview IA) */
+export function toPlanApiPayload(data: WizardData) {
+  const s1 = data.step1 ?? ({ projectName: "" } as Step1);
+  const s2 = data.step2 ?? ({} as Step2);
+  const s6 = data.step6;
+
+  const costoUnit = deriveCostoUnit(s6);
+
+  return {
+    projectName: s1.projectName || "Proyecto",
+    sectorId: s2.sectorId || "tech_saas",
+    input: {
+      ticket: s6.ticket ?? 0,
+      costoUnit,
+      ingresosMeta: s6.ventaAnual ?? 0,
+      gastosFijos: (s6.gastosFijosMensuales ?? 0) * 12,
+      marketingMensual: s6.presupuestoMarketing ?? s6.marketingMensual ?? 0,
+      costoPct: s6.costoVarPct ?? 0,
+    },
+  };
+}

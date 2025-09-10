@@ -1,6 +1,6 @@
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities, @typescript-eslint/no-unused-vars */
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect  } from "react";
 import HydrateFromWizard from "@/components/tablero/HydrateFromWizard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import InformePreview from "@/components/informe/InformePreview";
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
 import {
   Radar,
@@ -100,6 +101,12 @@ function uiHint(title: string, fallback: string) {
 // -------------------- Helpers GLOBALES useState--------------------
 
 
+
+// Devuelve string formateado para los <Input> CLP; vacío si viene null/undefined
+function toInputCLP(v: any) {
+  if (v === null || v === undefined) return "";
+  return formatCLPLike(String(v));
+}
 
 function formatCLPLike(s: string) {
   if (s == null) return "";
@@ -492,12 +499,38 @@ const costoVariableMes =
 }
 
 //----------------------FIN DE LOS USESTATE Y FUNCIONES----------------------
+// ——————————— Hidratación desde el Wizard (Formulario legacy) ———————————
+
+const num = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+// helper: formatea números a string CLP para inputs del form
+useEffect(() => {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem("arete:fromWizard");
+    if (!raw) return;
+    const { meta } = JSON.parse(raw) ?? {};
+    if (!meta) return;
+
+    setProjectName(meta.projectName ?? "");
+    setFounderName(meta.founderName ?? "");
+    setEmail(meta.email ?? meta.notifyEmail ?? "");
+    setIdea(meta.idea ?? "");   // ← mapeo correcto
+    setRubro(meta.sectorId ?? "");         // si tu UI muestra 'rubro'
+    if (meta.ubicacion) setUbicacion(meta.ubicacion);
+    if (meta.ventajaTexto) setVentajaTexto(meta.ventajaTexto);
+  } catch (e) {
+    console.error("[Formulario] hydration error", e);
+  }
+}, []);
 
 
   // -------------------- Render --------------------
   return (
    <div className="min-h-screen p-6" style={styleAccent}>
-     <HydrateFromWizard />
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1267,6 +1300,7 @@ const costoVariableMes =
                    <>
                    <div>
                      <h2 className="text-lg font-bold">Evaluación (IA)</h2>
+                      <InformePreview />
                       <ReportView report={aiReport} />
                    </div>
 

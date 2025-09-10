@@ -4,11 +4,11 @@ export type SectorSuggestion = { id: SectorId; label: string; reason: string };
 
 export function suggestSectors(input: {
   projectName?: string;
-  shortDescription?: string;
+  idea?: string;
   sector?: string;
 }): SectorSuggestion[] {
   const hay = (s?: string) => (s || "").toLowerCase();
-  const text = [input.projectName, input.shortDescription, input.sector].map(hay).join(" ");
+  const text = [input.projectName, input.idea, input.sector].map(hay).join(" ");
   if (!text.trim()) return [];
 
   const scored = SECTORS

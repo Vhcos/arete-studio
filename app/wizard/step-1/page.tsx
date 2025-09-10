@@ -12,7 +12,7 @@ export default function Step1Page() {
 
   const [local, setLocal] = useState({
     projectName: s1.projectName ?? "",
-    shortDescription: s1.shortDescription ?? "",
+    idea: s1.idea ?? "",
     founderName: s1.founderName ?? "",
     notifyEmail: s1.notifyEmail ?? "",
   });
@@ -32,10 +32,10 @@ export default function Step1Page() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">Paso 1 · Datos básicos</h1>
-      <p className="text-sm text-slate-600 mb-6">Nombre del proyecto, descripción breve y datos de contacto.</p>
+      <h1 className="text-xl font-semibold mb-1">Paso 1 · Bienvenido a Aret3</h1>
+      <p className="text-sm text-slate-600 mb-6">Estamos encantado de tenerte inicia este viaje con estos primeros pasos.</p>
 
-      <label className="block text-sm font-medium">Nombre del proyecto</label>
+      <label className="block text-sm font-medium">Que nombre le tienes a tu Proyecto</label>
       <input
         className="mt-1 w-full rounded-lg border px-3 py-2"
         placeholder="p. ej. Joyas Patagonia"
@@ -44,16 +44,16 @@ export default function Step1Page() {
       />
       {errors.projectName && <p className="mt-1 text-xs text-red-600">{errors.projectName}</p>}
 
-      <label className="block text-sm font-medium mt-4">Descripción breve</label>
+      <label className="block text-sm font-medium mt-4">¿Cuál es tu Idea que te Inspira?</label>
       <textarea
         className="mt-1 w-full rounded-lg border px-3 py-2"
-        placeholder="¿Qué problema resuelves en una frase?"
+        placeholder="Describe brevemente tu maravillosa idea eso ayudara a la IA."
         rows={3}
-        value={local.shortDescription}
-        onChange={(e) => setLocal((s) => ({ ...s, shortDescription: e.target.value }))}
+        value={local.idea}
+        onChange={(e) => setLocal((s) => ({ ...s, idea: e.target.value }))}
       />
 
-      <label className="block text-sm font-medium mt-4">Nombre del emprendedor/a</label>
+      <label className="block text-sm font-medium mt-4">Danos tu nombre emprendedora/o</label>
       <input
         className="mt-1 w-full rounded-lg border px-3 py-2"
         placeholder="p. ej. Carola Plaza"
@@ -61,7 +61,7 @@ export default function Step1Page() {
         onChange={(e) => setLocal((s) => ({ ...s, founderName: e.target.value }))}
       />
 
-      <label className="block text-sm font-medium mt-4">Email de notificaciones</label>
+      <label className="block text-sm font-medium mt-4">Tu email asi recibiras tu informe </label>
       <input
         type="email"
         className="mt-1 w-full rounded-lg border px-3 py-2"

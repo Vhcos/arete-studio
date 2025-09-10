@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 type LegacyForm = {
   projectName?: string;
-  shortDescription?: string;
+  idea?: string;
   sectorId?: string;
   plan?: {
     ticket?: number;

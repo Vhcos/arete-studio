@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 export type Step1 = {
   projectName?: string;
-  shortDescription?: string;
+  idea?: string;
   founderName?: string;
   notifyEmail?: string;
 };
@@ -14,10 +14,9 @@ export type Step2 = {
 };
 
 export type Step3 = {
-  headline: string;
   country: string;
   city?: string;
-  stage: "idea" | "launch" | "growth";
+  ventajaTexto?: string;
 };
 
 export type Step5 = {

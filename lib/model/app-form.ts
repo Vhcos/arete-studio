@@ -1,33 +1,66 @@
-import type { WizardData } from "@/lib/state/wizard-store";
+import type { WizardData, Step1, Step2, Step6 } from "@/lib/state/wizard-store";
 
+/**
+ * Construye el cuerpo con los campos que usa el Formulario (app/page.tsx).
+ * - Mapea shortDescription -> idea
+ * - Tolera alias económicos (ventaAnual | ventaAnio1, presupuestoMarketing | marketingMensual)
+ * - Evita TS errors tipando como Partial<StepX> en lugar de {}
+ */
 export function fromWizard(data: WizardData) {
-  const s1 = data.step1 ?? {};
-  const s2 = data.step2 ?? {};
-  const eco = data.step6 ?? {};
+  const s1 = (data.step1 ?? {}) as Partial<Step1>;
+  const s2 = (data.step2 ?? {}) as Partial<Step2>;
+  const eco = (data.step6 ?? {}) as Partial<Step6>;
 
-  // Derivar fields que la API ya espera
-  const ingresosMeta = eco.ventaAnio1 ? eco.ventaAnio1 / 12 : 0;
-  const costoUnit = eco.costoVarUnit && eco.costoVarUnit > 0
-    ? eco.costoVarUnit
-    : (eco.ticket ? (eco.ticket * (eco.costoVarPct ?? 0) / 100) : 0);
-  const costoPct = eco.ticket && (eco.costoVarUnit ?? 0) > 0
-    ? Math.min(100, Math.max(0, (eco.costoVarUnit! / eco.ticket) * 100))
-    : (eco.costoVarPct ?? 0);
+  // === ALIAS / DERIVADOS ECONÓMICOS ===
+  // Algunos proyectos usan 'ventaAnual' y otros 'ventaAnio1' -> aceptamos ambos
+  const ventaAnual = (eco as any).ventaAnual ?? (eco as any).ventaAnio1 ?? 0;
+
+  const ticket = (eco as any).ticket ?? 0;
+
+  // costo variable unitario: si no viene directo, lo derivamos desde % sobre ticket
+  const costoVarUnitDirect = (eco as any).costoVarUnit;
+  const costoVarPctDirect = (eco as any).costoVarPct;
+
+  const costoUnit =
+    typeof costoVarUnitDirect === "number" && costoVarUnitDirect > 0
+      ? costoVarUnitDirect
+      : ticket > 0 && typeof costoVarPctDirect === "number"
+      ? (ticket * Math.max(0, Math.min(100, costoVarPctDirect))) / 100
+      : 0;
+
+  // costo variable %: si no viene directo, lo derivamos desde unit / ticket
+  const costoPct =
+    typeof costoVarPctDirect === "number"
+      ? Math.max(0, Math.min(100, costoVarPctDirect))
+      : ticket > 0 && costoUnit > 0
+      ? Math.max(0, Math.min(100, (costoUnit / ticket) * 100))
+      : 0;
+
+  const gastosFijosMensuales = (eco as any).gastosFijosMensuales ?? 0;
+
+  // alias: 'presupuestoMarketing' o 'marketingMensual'
+  const marketingMensual =
+    (eco as any).presupuestoMarketing ?? (eco as any).marketingMensual ?? 0;
+
+  // La API del tablero trabaja con ingresos MENSUALES meta:
+  const ingresosMeta = ventaAnual ? ventaAnual / 12 : 0;
 
   return {
+    // === CABECERA QUE LEE app/page.tsx ===
     projectName: s1.projectName ?? "",
-    shortDescription: s1.shortDescription ?? "",
+    idea: s1.idea ?? "", // ← mapeo correcto al formulario
     founderName: s1.founderName ?? "",
     notifyEmail: s1.notifyEmail ?? "",
     sectorId: s2.sectorId ?? "",
     template: s2.template ?? "default",
 
-    // Económicos mapeados a la API
-    ticket: eco.ticket ?? 0,
+    // === ECONÓMICOS QUE USA EL TABLERO/INFORME EN app/page.tsx ===
+    ticket,
     costoUnit,
     ingresosMeta,
-    gastosFijos: eco.gastosFijosMensuales ?? 0,
-    marketingMensual: eco.presupuestoMarketing ?? 0,
+    gastosFijos: gastosFijosMensuales,
+    marketingMensual,
     costoPct,
   };
 }
+

@@ -3,7 +3,7 @@ import { SECTORS, SECTOR_IDS, sectorById, templateForSector } from "@/lib/domain
 /** Devuelve el body normalizado sin romper el shape actual */
 export function normalizePlanInput(raw: any) {
   // Texto libre para heurística (si no viene sectorId)
-  const freeText = [raw?.sector, raw?.projectName, raw?.shortDescription]
+  const freeText = [raw?.sector, raw?.projectName, raw?.idea]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();

@@ -1,11 +1,16 @@
 import { z } from "zod";
 
+// Cuenta palabras reales (no caracteres)
+const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+
 export const Step1Schema = z.object({
   // ahora permite vacío (mostrarás aviso, pero no bloquea)
   projectName: z.string().optional(),
-  shortDescription: z.string().max(280).optional(),
+  idea: z.string().trim().optional().default("").refine((v) => wordCount(v) <= 500, {
+      message: "Máximo 500 palabras",
+    }),
   founderName: z.string().optional(),
-  notifyEmail: z.string().email("Email inválido").optional(),
+  notifyEmail: z.string().email("Ingresa un email válido para su informe").optional(),
 });
 
 export const Step2Schema = z.object({
@@ -14,10 +19,9 @@ export const Step2Schema = z.object({
 });
 
 export const Step3Schema = z.object({
-  headline: z.string().min(3, "Escribe tu idea en una frase"),
+  ventajaTexto: z.string().trim().optional().default(""),
   country: z.string().min(2, "Selecciona un país"),
   city: z.string().optional(),
-  stage: z.enum(["idea", "launch", "growth"]),
 });
 
 export type Step1 = z.infer<typeof Step1Schema>;
