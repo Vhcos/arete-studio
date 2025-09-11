@@ -39,7 +39,7 @@ export default function SignInClient({ initialEmail = "" }: { initialEmail?: str
 
     
     // La pantalla de bienvenida guardará token/email y auto-redirigirá
-    const callbackUrl = "https://app.aret3.cl/bienvenido?next=/wizard/step-1";
+    const callbackUrl = "/bienvenido?next=/wizard/step-1";
 
     const res = await signIn("email", {
       email,

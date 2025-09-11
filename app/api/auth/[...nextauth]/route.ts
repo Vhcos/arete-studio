@@ -39,21 +39,26 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-// Si usas "pages" personalizadas, déjalas como ya las tienes
+ // 👇 ESTE es el cambio clave: respetar siempre callbackUrl relativo (/bienvenido?...).
   callbacks: {
-  async redirect({ url, baseUrl }) {
-    // Si viene callbackUrl válida (relativa), úsala
-    try {
-      const u = new URL(url, baseUrl);
-      const cb = u.searchParams.get("callbackUrl");
-      if (cb && cb.startsWith("/")) return baseUrl + cb;
-      // O si NextAuth nos entrega un path relativo, también sirve
-      if (url.startsWith("/")) return baseUrl + url;
-    } catch {}
-    // Por defecto: home
-    return baseUrl;
+    async redirect({ url, baseUrl }) {
+      try {
+        // Soporta paths relativos como "/bienvenido?next=/wizard/step-1"
+        const target = new URL(url, baseUrl);
+        const sameOrigin = target.origin === baseUrl;
+
+        console.log("[auth][redirect]", {
+          url, baseUrl, target: target.toString(), sameOrigin,
+        });
+
+        if (sameOrigin) return target.toString(); // respeta callbackUrl del mismo origen
+      } catch (e) {
+        console.log("[auth][redirect][error]", e);
+      }
+      // Fallback seguro: home
+      return baseUrl;
+    },
   },
-},
 
   // ✅ Solo eventos soportados por tu versión
   events: {

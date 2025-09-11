@@ -3,5 +3,8 @@ export { default } from "next-auth/middleware";
 
 // Solo protegemos estas zonas por ahora (deja el wizard libre)
 export const config = {
-  matcher: ["/protected/:path*", "/dashboard/:path*", "/report/:path*"],
+  matcher: [
+    "/wizard/:path*",
+    "/(protected)/:path*",
+  ],
 };
