@@ -1,7 +1,6 @@
 "use client";
 import * as React from "react";
 import { signIn } from "next-auth/react";
-import { Button, Input } from "@arete-studio/ui";
 
 export default function SignInClient({ initialEmail = "" }: { initialEmail?: string }) {
   const [email, setEmail] = React.useState(initialEmail);
@@ -13,10 +12,8 @@ export default function SignInClient({ initialEmail = "" }: { initialEmail?: str
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     const destination = "/wizard/step-1";
     const callbackUrl = `/bienvenido?next=${encodeURIComponent(destination)}`;
-
     const res = await signIn("email", { email, redirect: false, callbackUrl });
     setLoading(false);
     if (res?.error) setError(res.error);
@@ -25,11 +22,12 @@ export default function SignInClient({ initialEmail = "" }: { initialEmail?: str
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@dominio.com" />
-      <Button type="submit" disabled={loading} className="w-full">
+      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+             placeholder="tucorreo@dominio.com" className="w-full rounded-lg border px-3 py-2" />
+      <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white" disabled={loading}>
         {loading ? "Enviando…" : "Enviar enlace"}
-      </Button>
-      {sent && <p className="text-sm mt-2">Enviamos un enlace a <b>{email}</b>. Al abrirlo verás una bienvenida y serás redirigido automáticamente.</p>}
+      </button>
+      {sent && <p className="text-sm mt-2">Revisa tu correo. Verás una bienvenida y luego te redirigirá automáticamente.</p>}
       {error && <p className="text-sm text-red-600">{String(error)}</p>}
     </form>
   );

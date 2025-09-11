@@ -542,8 +542,8 @@ useEffect(() => {
           </div>
 
             <h1 className="text-2xl font-bold tracking-tight">
-             <span className="hidden sm:inline">Areté · Evalúa tu Idea de Negocio con IA</span>
-             <span className="sm:hidden">Areté · Evalúa tu Idea de Negocio</span>
+             <span className="hidden sm:inline">Aret3 · Evalúa tu Idea de Negocio con IA</span>
+             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio</span>
            </h1>
            <p className="text-sm text-muted-foreground -mt-1">
             Cumple tu propósito de la mejor manera
