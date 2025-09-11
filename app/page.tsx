@@ -520,7 +520,7 @@ useEffect(() => {
     setEmail(meta.email ?? meta.notifyEmail ?? "");
     setIdea(meta.idea ?? "");   // ← mapeo correcto
     setRubro(meta.sectorId ?? "");         // si tu UI muestra 'rubro'
-    if (meta.ubicacion) setUbicacion(meta.ubicacion);
+    if (meta.city) setUbicacion(meta.city);
     if (meta.ventajaTexto) setVentajaTexto(meta.ventajaTexto);
   } catch (e) {
     console.error("[Formulario] hydration error", e);

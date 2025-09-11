@@ -1,12 +1,9 @@
-/* apps/marketing_clean/styles/globals.css */
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+@import "tailwindcss";
+
+/* Ajustes mínimos globales */
+:root {
+  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-/* Si usas Tailwind en el repo raíz, puedes dejar estas directivas:
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-*/
+html, body { margin: 0; padding: 0; }

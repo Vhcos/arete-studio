@@ -32,7 +32,7 @@ export default function Step2Page() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-1">Paso 2 · Sector y plantilla</h1>
-      <p className="text-sm text-slate-600 mb-6">Elige el sector canónico (14 opciones) para personalizar tu plan.</p>
+      <p className="text-sm text-slate-600 mb-6">Elige el sector que mas se acerque a tu Idea.</p>
 
       <div className="mt-2">
         <label className="block text-sm font-medium">Sector</label>

@@ -71,12 +71,12 @@ export default function Step4Page() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-1">Paso 4 · Confirmación</h1>
-      <p className="text-sm text-slate-600 mb-6">Revisa y continúa para completar Emocional y Económico.</p>
+      <p className="text-sm text-slate-600 mb-6">Revisa y entramos en los números y las emociones.</p>
 
       <div className="rounded-lg border p-4 text-sm">
         <p><b>Proyecto:</b> {body.projectName || "—"}</p>
         <p><b>Descripción:</b> {body.idea || "—"}</p>
-        <p><b>Sector (canónico):</b> {body.sectorId || "—"}</p>
+        <p><b>Sector:</b> {body.sectorId || "—"}</p>
         <p><b>Plantilla:</b> {body.template || "default"}</p>
       </div>
 
@@ -90,7 +90,7 @@ export default function Step4Page() {
 
       {!SHOW_IA && (
         <p className="mt-4 text-xs text-slate-500">
-          Nota: la generación con IA se hará al final, cuando ya tengamos Emocional y Económico.
+          Nota: la generación con IA se hará al final, cuando ya tengamos los Datos Emocionales  y Económico.
         </p>
       )}
     </div>

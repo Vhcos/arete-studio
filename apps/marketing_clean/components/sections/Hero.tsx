@@ -1,31 +1,32 @@
-// apps/marketing_clean/components/sections/Hero.tsx
+/** apps/marketing_clean/components/sections/Hero.tsx */
+import Link from "next/link";
+
 const APP = process.env.NEXT_PUBLIC_APP_ORIGIN || "https://app.aret3.cl";
 
 export default function Hero() {
-  const box: React.CSSProperties = { maxWidth: 1120, margin: "0 auto", padding: "0 20px" };
-  const btn: React.CSSProperties = { padding: "10px 16px", borderRadius: 8, border: "1px solid #111" };
-
   return (
-    <section style={{ padding: "32px 0" }}>
-      <div style={box}>
-        <h1 style={{ fontSize: 40, margin: 0 }}>Evalúa tu idea de negocio con IA</h1>
-        <p style={{ color: "#555", marginTop: 8 }}>
-          Completa 5 pasos y recibe un informe claro para decidir. Rápido, simple y visual.
-        </p>
+    <section className="mx-auto max-w-5xl px-4 py-12">
+      <p className="text-xs font-medium text-slate-500">ARET3</p>
+      <h1 className="mt-2 text-3xl sm:text-4xl font-bold text-slate-900">
+        Evalúa tu idea de negocio con IA
+      </h1>
+      <p className="mt-3 max-w-2xl text-slate-600">
+        Completa 5 pasos y recibe un informe claro para decidir. Rápido, simple y visual.
+      </p>
 
-        <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
-          {/* CTA principal: va al dominio del app */}
-          <a
-            href={`${APP}/auth/sign-in?callbackUrl=/`}
-            style={{ ...btn, background: "#111", color: "#fff" }}
-            rel="noopener"
-          >
-            Empieza gratis
-          </a>
-
-          {/* Secundario: ancla interna */}
-          <a href="#producto" style={btn}>Ver cómo funciona</a>
-        </div>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <Link
+          href={`${APP}/auth/sign-in?callbackUrl=/`}
+          className="inline-flex items-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+        >
+          Empieza gratis
+        </Link>
+        <Link
+          href="/#como-funciona"
+          className="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+        >
+          Ver cómo funciona
+        </Link>
       </div>
     </section>
   );
