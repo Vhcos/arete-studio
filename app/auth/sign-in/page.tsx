@@ -19,7 +19,8 @@ export default function Page({
     <main className="mx-auto w-full max-w-md px-6 py-10">
       <h1 className="text-2xl font-semibold">Solo necesitamos confirmar que existes</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Llegará un enlace a tu email no se te pedirá contraseña NI PAGO.
+        Llegará un enlace a tu email no se te pedirá contraseña 
+        NI ningun tipo de PAGO.
       </p>
 
       <div className="mt-6 rounded-2xl border p-6 shadow-sm">

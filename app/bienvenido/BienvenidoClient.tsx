@@ -55,7 +55,7 @@ export default function BienvenidoClient() {
         </h1>
 
         <p className="mt-4 max-w-prose text-balance text-slate-600">
-          En la filosofía griega, <span className="font-semibold">areté</span> es la excelencia:
+          En la filosofía griega, <span className="font-semibold">ARETé</span> es la excelencia:
           el cumplimiento acabado del propósito. Empieza tu viaje para dar forma a tu idea y
           transformarla en un plan claro y accionable.
         </p>

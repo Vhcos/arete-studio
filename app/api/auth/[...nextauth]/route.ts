@@ -1,34 +1,72 @@
-import NextAuth from "next-auth";
-import EmailProvider from "next-auth/providers/email";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-/**
- * Nota:
- * - Si usas SMTP: define EMAIL_SERVER y EMAIL_FROM en Vercel y listo.
- * - Si usas Resend: puedes seguir usando el comportamiento anterior si tu proyecto ya lo tenía
- *   (por ejemplo, un wrapper que manda por Resend en otro archivo). Este handler no lo bloquea.
- */
-const handler = NextAuth({
+import NextAuth, {
+  type NextAuthOptions,
+  type User,
+  type Account,
+} from "next-auth";
+import EmailProvider from "next-auth/providers/email";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { prisma } from "@/lib/prisma";
+import { Resend } from "resend";
+import type { Adapter } from "next-auth/adapters";
+
+const resend = new Resend(process.env.RESEND_API_KEY!);
+
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma) as Adapter,
+  session: { strategy: "database" },
+  pages: { signIn: "/auth/sign-in" },
+  debug: process.env.NODE_ENV !== "production",
+
   providers: [
     EmailProvider({
-      server: process.env.EMAIL_SERVER as any, // si usas SMTP; si NO, déjalo como está, NextAuth ignorará si personalizas el envío en otro lado
-      from: process.env.EMAIL_FROM,            // ej: "Arete <login@aret3.cl>"
-      // No sobreescribimos sendVerificationRequest aquí para no tocar tu flujo que "ya funcionaba".
+      from: process.env.EMAIL_FROM,
+      async sendVerificationRequest({ identifier, url, provider }) {
+        // 👇 Aquí logueamos la creación del “token/enlace”
+        if (process.env.NODE_ENV !== "production") {
+          console.log("🔗 Magic link DEV:", identifier, url);
+          return;
+        }
+        await resend.emails.send({
+          from: provider.from!,
+          to: identifier,
+          subject: "Tu acceso a Areté",
+          html: `<p>Entra con este enlace:</p><p><a href="${url}">${url}</a></p>`,
+        });
+      },
     }),
   ],
-
-  pages: { signIn: "/auth/sign-in" },
-
+// Si usas "pages" personalizadas, déjalas como ya las tienes
   callbacks: {
-    // 👉 Asegura que NO se pierda el callbackUrl hacia /bienvenido
-    async redirect({ url, baseUrl }) {
-      try {
-        if (url.startsWith("/")) return `${baseUrl}${url}`; // relativo → OK
-        const u = new URL(url);
-        if (u.origin === baseUrl) return url;               // mismo host → OK
-      } catch {}
-      return baseUrl;                                       // otros hosts → bloquear
+  async redirect({ url, baseUrl }) {
+    // Si viene callbackUrl válida (relativa), úsala
+    try {
+      const u = new URL(url, baseUrl);
+      const cb = u.searchParams.get("callbackUrl");
+      if (cb && cb.startsWith("/")) return baseUrl + cb;
+      // O si NextAuth nos entrega un path relativo, también sirve
+      if (url.startsWith("/")) return baseUrl + url;
+    } catch {}
+    // Por defecto: home
+    return baseUrl;
+  },
+},
+
+  // ✅ Solo eventos soportados por tu versión
+  events: {
+    async linkAccount(message: { user: User; account: Account }) {
+      console.log("🔗 linkAccount:", message.user?.id);
+    },
+    async createUser(message: { user: User }) {
+      console.log("👤 createUser:", message.user?.email);
     },
   },
-});
+};
 
+
+
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
