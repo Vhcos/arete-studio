@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,38 +9,42 @@ export default function BienvenidoClient() {
   const router = useRouter();
   const sp = useSearchParams();
 
+  // Datos opcionales (los guardamos si vienen, pero ya no dependemos de esto)
   const token = sp.get("token") ?? sp.get("t");
   const email = sp.get("email") ?? sp.get("e");
-  const next = sp.get("next") || "/wizard/step-1";
-  const delayMs = Number(sp.get("delay") ?? 8000); // 8s por defecto
 
-  // Guardar token/email si vienen en el link
-  useEffect(() => {
+  // Destino y comportamiento
+  const next = sp.get("next") || "/wizard/step-1";
+  const delayMs = Number(sp.get("delay") ?? 8000);  // 8s por defecto
+  const auto = sp.get("auto") !== "0";              // permitir desactivar con ?auto=0
+
+  // Persistencia opcional de token/email si vinieran en el link
+  React.useEffect(() => {
     try {
       if (token) localStorage.setItem("aret3:magicToken", token);
       if (email) localStorage.setItem("aret3:email", email);
     } catch {}
   }, [token, email]);
 
-  // Contador y progreso para auto-redirección
-  const [remaining, setRemaining] = useState(Math.ceil(delayMs / 1000));
-  const [progress, setProgress] = useState(0);
+  // Contador y progreso SIEMPRE (ya no condicionado al token)
+  const [remaining, setRemaining] = React.useState(Math.ceil(delayMs / 1000));
+  const [progress, setProgress] = React.useState(0);
 
-  useEffect(() => {
-    if (!token) return; // sólo auto-redirige si viene con token
+  React.useEffect(() => {
+    if (!auto) return;
     const start = Date.now();
-    const id = setInterval(() => {
+    const iv = setInterval(() => {
       const elapsed = Date.now() - start;
       const leftMs = Math.max(0, delayMs - elapsed);
       setRemaining(Math.ceil(leftMs / 1000));
       setProgress(Math.min(100, Math.round((elapsed / delayMs) * 100)));
       if (leftMs <= 0) {
-        clearInterval(id);
+        clearInterval(iv);
         router.push(next);
       }
     }, 250);
-    return () => clearInterval(id);
-  }, [token, delayMs, next, router]);
+    return () => clearInterval(iv);
+  }, [auto, delayMs, next, router]);
 
   return (
     <main className="relative isolate">
@@ -55,48 +59,36 @@ export default function BienvenidoClient() {
         </h1>
 
         <p className="mt-4 max-w-prose text-balance text-slate-600">
-          En la filosofía griega, <span className="font-semibold">ARETé</span> es la excelencia:
+          En la filosofía griega, <span className="font-semibold">aretḗ</span> es la excelencia:
           el cumplimiento acabado del propósito. Empieza tu viaje para dar forma a tu idea y
           transformarla en un plan claro y accionable.
         </p>
 
-        {/* Estado + contador */}
         <div className="mt-5 w-full max-w-md text-sm">
-          {token ? (
-            <div className="space-y-2">
-              <span className="inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-green-700">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="stroke-green-700">
-                  <path d="M20 6L9 17l-5-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Acceso verificado{email && <span className="text-slate-500"> · {email}</span>}
-              </span>
-
-              <p className="text-slate-600">
-                Serás redireccionado automáticamente en{" "}
-                <span className="font-semibold">{remaining}s</span>…
-              </p>
-
-              {/* barra de progreso simple */}
-              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                <div
-                  className="h-full bg-slate-900 transition-all"
-                  style={{ width: `${progress}%` }}
-                  aria-hidden
-                />
-              </div>
-            </div>
-          ) : (
-            <span className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-slate-600">
-              <svg width="16" height="16" viewBox="0 0 24 24" className="stroke-slate-600">
-                <path d="M12 9v4m0 4h.01M21 12A9 9 0 1 1 3 12a9 9 0 0 1 18 0Z" strokeWidth="2" strokeLinecap="round" />
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-green-700">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="stroke-green-700">
+                <path d="M20 6L9 17l-5-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Listo para comenzar
+              Acceso verificado{email && <span className="text-slate-500"> · {email}</span>}
             </span>
-          )}
+
+            <p className="text-slate-600">
+              Serás redireccionado automáticamente en{" "}
+              <span className="font-semibold">{remaining}s</span>…
+            </p>
+
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-full bg-slate-900 transition-all"
+                style={{ width: `${progress}%` }}
+                aria-hidden
+              />
+            </div>
+          </div>
         </div>
 
-        {/* CTA (sin mencionar "wizard") */}
-        <div className="mt-10 flex items-center justify-center gap-3">
+        <div className="mt-8 flex items-center justify-center gap-3">
           <button
             onClick={() => router.push(next)}
             className="rounded-xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-800 active:bg-slate-900"
