@@ -1,72 +1,25 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-import NextAuth, {
-  type NextAuthOptions,
-  type User,
-  type Account,
-} from "next-auth";
+import NextAuth from "next-auth";
 import EmailProvider from "next-auth/providers/email";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
-import { Resend } from "resend";
-import type { Adapter } from "next-auth/adapters";
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
-
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
-  session: { strategy: "database" },
-  pages: { signIn: "/auth/sign-in" },
-  debug: process.env.NODE_ENV !== "production",
-
+const handler = NextAuth({
   providers: [
     EmailProvider({
+      server: process.env.EMAIL_SERVER as any,
       from: process.env.EMAIL_FROM,
-      async sendVerificationRequest({ identifier, url, provider }) {
-        // 👇 Aquí logueamos la creación del “token/enlace”
-        if (process.env.NODE_ENV !== "production") {
-          console.log("🔗 Magic link DEV:", identifier, url);
-          return;
-        }
-        await resend.emails.send({
-          from: provider.from!,
-          to: identifier,
-          subject: "Tu acceso a Areté",
-          html: `<p>Entra con este enlace:</p><p><a href="${url}">${url}</a></p>`,
-        });
-      },
+      // Sin sendVerificationRequest: usa plantilla por defecto y respeta callbackUrl
     }),
   ],
-// Si usas "pages" personalizadas, déjalas como ya las tienes
+  pages: { signIn: "/auth/sign-in" },
   callbacks: {
-  async redirect({ url, baseUrl }) {
-    // Si viene callbackUrl válida (relativa), úsala
-    try {
-      const u = new URL(url, baseUrl);
-      const cb = u.searchParams.get("callbackUrl");
-      if (cb && cb.startsWith("/")) return baseUrl + cb;
-      // O si NextAuth nos entrega un path relativo, también sirve
-      if (url.startsWith("/")) return baseUrl + url;
-    } catch {}
-    // Por defecto: home
-    return baseUrl;
-  },
-},
-
-  // ✅ Solo eventos soportados por tu versión
-  events: {
-    async linkAccount(message: { user: User; account: Account }) {
-      console.log("🔗 linkAccount:", message.user?.id);
-    },
-    async createUser(message: { user: User }) {
-      console.log("👤 createUser:", message.user?.email);
+    async redirect({ url, baseUrl }) {
+      try {
+        if (url.startsWith("/")) return `${baseUrl}${url}`; // relativo ⇒ OK
+        const u = new URL(url);
+        if (u.origin === baseUrl) return url;               // mismo host ⇒ OK
+      } catch {}
+      return baseUrl;                                       // otros hosts ⇒ bloquea
     },
   },
-};
+});
 
-
-
-const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
