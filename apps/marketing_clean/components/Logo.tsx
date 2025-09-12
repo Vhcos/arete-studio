@@ -1,16 +1,18 @@
-import Image from "next/image";
+import React from "react";
 
-export default function Logo({ size = 44 }: { size?: number }) {
+export default function Logo({ className = "" }: { className?: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <Image
+    <div className={`flex items-center gap-2 ${className}`}>
+      <img
         src="/aret3-logo.svg"
-        alt="ARET3"
-        width={size}
-        height={size}
-        priority
+        alt="Aret3"
+        className="h-40 w-40"
+        width={70}
+        height={70}
       />
-      <span className="text-xl font-semibold tracking-tight">ARET3</span>
+      <span className="text-lg font-semibold tracking-tight text-slate-900">
+        ARET3
+      </span>
     </div>
   );
 }
