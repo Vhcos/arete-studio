@@ -677,6 +677,48 @@ useEffect(() => {
     setInversionInicial(inv == null || inv === "" ? "" : toInputCLP(inv)
     );
 
+
+    // --- Step-5 → Form (9 sliders 0–10) ---
+const getS5 = (k: string) => {
+  let v: any = (meta as any)?.[k];
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step5?.[k];
+    } catch {}
+  }
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(10, Math.round(n))) : null;
+};
+
+// problema → urgencia
+{ const n = getS5("urgencia"); if (n !== null) setUrgencia(n); }
+
+// accesibilidad
+{ const n = getS5("accesibilidad"); if (n !== null) setAccesibilidad(n); }
+
+// competencia
+{ const n = getS5("competencia"); if (n !== null) setCompetencia(n); }
+
+// experiencia
+{ const n = getS5("experiencia"); if (n !== null) setExperiencia(n); }
+
+// pasión
+{ const n = getS5("pasion"); if (n !== null) setPasion(n); }
+
+// planes alternativos
+{ const n = getS5("planesAlternativos"); if (n !== null) setPlanesAlternativos(n); }
+
+// riesgo → tolerancia al riesgo
+{ const n = getS5("toleranciaRiesgo"); if (n !== null) setToleranciaRiesgo(n); }
+
+// testeo previo
+{ const n = getS5("testeoPrevio"); if (n !== null) setTesteoPrevio(n); }
+
+// red de apoyo
+{ const n = getS5("redApoyo"); if (n !== null) setRedApoyo(n); }
+
+
     // (opcionales) logs de verificación
     console.log("[FORM] meta al montar:", meta);
     console.log("[FORM] ubicacion resuelta:", ubic);
@@ -835,6 +877,15 @@ useEffect(() => {
                 <div className="md:col-span-1 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Ubicación</Label>
                   <Input value={ubicacion} onChange={e => setUbicacion(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="Comuna, País, Continente" />
+                </div>
+
+
+                 {/* === SECCION DATOS FINANCIEROS === */}
+                 
+                 <div className="md:col-span-3 rounded-xl border-2 p-4 border-red-600 bg-blue-600 text-white shadow-sm">
+                   <div className="font-medium">
+                      Aquí tienes <strong>TUS DATOS FINANCIEROS </strong> una aproximación a tus resultados
+                   </div>
                 </div>
 
                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
@@ -1142,20 +1193,12 @@ useEffect(() => {
                     una curva de 12 meses que es un estimado de llegada a punto de equli¡brio estos 12m equivalen a una avance del 8% de avance mensual en ventas.</p>
                 </div>
 
-                <div className="md:col-span-3 rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
-                  <div className="font-medium">Califica de <strong>0 a 10</strong> cada ítem</div>
-                  <ul className="text-sm text-muted-foreground list-disc pl-5 mt-1 space-y-1">
-                    <li><strong>Tu idea resuelve un problema</strong>: 0 = poco, 10 = mucho.</li>
-                    <li><strong>Competencia</strong>: cantidad/calidad de competidores (alto = mucha competencia).</li>
-                    <li><strong>TU tolerancia al riesgo</strong>: cuánta volatilidad soportas.</li>
-                    <li><strong>Testeo previo</strong>: entrevistas, lista de espera, reuniones, respuestas positivas, seguidores.</li>
-                    <li><strong>Red de apoyo</strong>: mentores, socios, partners, contactos.</li>
-                    <li><strong>Planes alternativos a las dificultades</strong>: mitigaciones listas si algo sale mal.</li>
-                  </ul>
+                <div className="md:col-span-3 rounded-xl border-2 p-4 border-red-600 bg-blue-600 text-white shadow-sm">
+                   <div className="font-medium">
+                      Aquí tienes los datos <strong>blandos de tu idea</strong> aspectos cualitativos y <strong>emocionales</strong> que impactarán a tu negocio
+                   </div>
                 </div>
 
-             
-          
                 {/* Sliders */}
                 <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-5">
                   <SliderField label="Tu idea resuelve un problema (0–10)" value={urgencia} onChange={setUrgencia} accent={accent} accentSoft={accentSoft} />

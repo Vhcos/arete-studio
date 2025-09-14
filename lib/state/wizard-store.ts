@@ -21,13 +21,13 @@ export type Step3 = {
 };
 
 export type Step5 = {
-  problema: number;
+  urgencia: number;
   accesibilidad: number;
   competencia: number;
   experiencia: number;
   pasion: number;
   planesAlternativos: number;
-  riesgo: number;
+  toleranciaRiesgo: number;
   testeoPrevio: number;
   redApoyo: number;
 };

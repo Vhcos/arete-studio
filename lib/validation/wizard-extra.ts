@@ -120,17 +120,3 @@ export function toPlanApiPayload(data: WizardData) {
     },
   };
 }
-
-// === Helper mínimo para reflejar meta en localStorage ===
-export function mergeFromWizardMeta(patch: Record<string, any>) {
-  try {
-    if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("arete:fromWizard");
-    const prev = raw ? JSON.parse(raw) : {};
-    const prevMeta = (prev?.meta ?? {}) as Record<string, any>;
-    const next = { ...prev, meta: { ...prevMeta, ...patch } };
-    localStorage.setItem("arete:fromWizard", JSON.stringify(next));
-  } catch {
-    // silencioso
-  }
-}

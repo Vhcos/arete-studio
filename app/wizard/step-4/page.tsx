@@ -70,7 +70,7 @@ export default function Step4Page() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">Paso 4 · Confirmación</h1>
+      <h1 className="text-xl font-semibold mb-1">Paso 6 · Confirmación</h1>
       <p className="text-sm text-slate-600 mb-6">Revisa y entramos en los números y las emociones.</p>
 
       <div className="rounded-lg border p-4 text-sm">

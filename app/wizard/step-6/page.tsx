@@ -224,7 +224,7 @@ export default function Step6Page() {
       const parsed = Step6Schema.safeParse(s6);
       if (!parsed.success) {
         const first = parsed.error.issues[0];
-        throw new Error(first?.message || "Revisa los campos del Paso 6");
+        throw new Error(first?.message || "Revisa los campos del Paso 4");
       }
 
       setStep6(s6 as any);
@@ -266,7 +266,7 @@ export default function Step6Page() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
-      <h1 className="mb-6 text-lg font-semibold tracking-tight">Paso 6 · Económico</h1>
+      <h1 className="mb-6 text-lg font-semibold tracking-tight">Paso 4 · Económico</h1>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 mb-8">
         {FieldMoney("inversionInicial", "Inversión inicial ($)", "", "Gastos antes de abrir tu negocio a los clientes.")}
