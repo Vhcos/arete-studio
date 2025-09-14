@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 export type Step1 = {
   projectName?: string;
+  ubicacion?: string; // ← NUEVO (compatibilidad y prefill)
   idea?: string;
   founderName?: string;
   notifyEmail?: string;
@@ -11,12 +12,12 @@ export type Step1 = {
 export type Step2 = {
   sectorId: string;
   template: string;
+  
 };
 
 export type Step3 = {
-  country: string;
-  city?: string;
   ventajaTexto?: string;
+  
 };
 
 export type Step5 = {

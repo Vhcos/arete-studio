@@ -43,7 +43,7 @@ export default function Home() {
           <h2 className="text-xl font-semibold text-slate-900">Precios</h2>
           <hr className="my-4 border-slate-200" />
           <p className="text-slate-700">
-            Comienza gratis. Pro desde US$8/mes (placeholder).
+            Comienza gratis. Pro desde US$5/mes con 100 consultas a la IA.
           </p>
         </section>
 

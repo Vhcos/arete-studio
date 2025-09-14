@@ -5,9 +5,9 @@ const STEPS = [
   { slug:"step-1", label:"Datos" },
   { slug:"step-2", label:"Tipo" },
   { slug:"step-3", label:"Contexto" },
-  { slug:"step-4", label:"Confirmar" },
-  { slug:"step-5", label:"Emocional" },
   { slug:"step-6", label:"Económico" },
+  { slug:"step-5", label:"Emocional" },
+  { slug:"step-4", label:"Confirmar" },
 ];
 
 export function ProgressHeader() {

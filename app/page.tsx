@@ -247,9 +247,9 @@ export default function AreteDemo() {
    () =>
     isValidEmail(email) &&
     idea.trim().length >= 8 &&        // evita “Hola”
-    rubro.trim().length > 0 &&
-    ubicacion.trim().length > 0,
-  [email, idea, rubro, ubicacion]
+    rubro.trim().length > 0,        // Bloqueo imprimir 
+    
+  [email, idea, rubro]
  );
    
 
@@ -262,7 +262,7 @@ export default function AreteDemo() {
    const clientesMensCalc = (() => {
      const vAnual = parseNumberCL(ventaAnual);
      const t = parseNumberCL(ticket);
-     const cliCalc = t > 0
+     const cliCalc = t > 0 
        ? (vAnual > 0 ? (vAnual / 12) : 0) / t
        : 0;
      const cliManual = parseNumberCL(clientesManual);
@@ -506,21 +506,189 @@ const num = (v: any) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-// helper: formatea números a string CLP para inputs del form
+// helper: hidrata el formulario leyendo arete:fromWizard y, si falta algo,
+// cae al persist del wizard (para compat invertida)
 useEffect(() => {
   if (typeof window === "undefined") return;
+
   try {
     const raw = localStorage.getItem("arete:fromWizard");
     if (!raw) return;
-    const { meta } = JSON.parse(raw) ?? {};
-    if (!meta) return;
 
+    // Soporta ambos shapes: { meta: {...} } o directamente {...}
+    const parsed = JSON.parse(raw) ?? {};
+    const meta = (parsed?.meta ?? parsed) ?? {};
+
+    // --- Ubicación (con fallback al persist del wizard) ---
+    let ubic: string =
+      (meta as any)?.ubicacion != null ? String((meta as any).ubicacion) : "";
+    if (!ubic) {
+      try {
+        const wraw = localStorage.getItem("wizard");
+        if (wraw) {
+          const w = JSON.parse(wraw);
+          ubic =
+            w?.state?.data?.step1?.ubicacion ??
+            w?.state?.data?.step3?.ubicacion ??
+            "";
+        }
+      } catch {
+        /* silencioso */
+      }
+    }
+            //HIDRATACION DEL FORM//
+    // --- Inversión inicial (meta -> wizard.step6) ---
+
+    // --- Capital de trabajo disponible ($) ---
+{
+  let v: unknown = (meta as any)?.capitalTrabajo;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.capitalTrabajo;
+    } catch {}
+  }
+  setCapitalTrabajo(v == null || v === "" ? "" : toInputCLP(v));
+}
+
+// --- % Conversión (0–100) ---
+{
+  let v: unknown = (meta as any)?.conversionPct;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.conversionPct;
+    } catch {}
+  }
+  // en tu Form es string
+  setConvPct(v == null || v === "" ? "" : String(v).replace(/[^\d]/g, ""));
+}
+
+// --- Gastos fijos mensuales ($) ---
+{
+  let v: unknown = (meta as any)?.gastosFijosMensuales;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.gastosFijosMensuales;
+    } catch {}
+  }
+  setGastosFijos(v == null || v === "" ? "" : toInputCLP(v));
+}
+
+// --- Costo variable unitario ($) ---
+{
+  let v: unknown = (meta as any)?.costoVarUnit;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.costoVarUnit;
+    } catch {}
+  }
+  setCostoUnit(v == null || v === "" ? "" : toInputCLP(v));
+}
+
+// --- Presupuesto de marketing mensual ($) ---
+{
+  let v: unknown = (meta as any)?.presupuestoMarketing;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.presupuestoMarketing;
+    } catch {}
+  }
+  setMarketingMensual(v == null || v === "" ? "" : toInputCLP(v));
+}
+
+// --- Frecuencia de compra: meses -> veces/año (number) ---
+{
+  let meses: unknown = (meta as any)?.frecuenciaCompraMeses;
+  if (meses == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) meses = JSON.parse(wraw)?.state?.data?.step6?.frecuenciaCompraMeses;
+    } catch {}
+  }
+  const m = Number(meses);
+  const freqAnual = Number.isFinite(m) && m > 0 ? Math.max(1, Math.round(12 / m)) : 6;
+  setFrecuenciaAnual(freqAnual); // ← NUMBER (evita el error ts2345)
+}
+
+// --- Meses para punto de equilibrio (si tienes este setter como number) ---
+{
+  let v: unknown = (meta as any)?.mesesPE;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.mesesPE;
+    } catch {}
+  }
+  const n = Number(v);
+  if (typeof setMesesPE === "function") {
+    setMesesPE(Number.isFinite(n) ? n : 6);
+  }
+}
+
+    // --- Ticket ($) ---
+{
+  let tk: unknown = (meta as any)?.ticket;
+  if (tk == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) {
+        const w = JSON.parse(wraw);
+        tk = w?.state?.data?.step6?.ticket;
+      }
+    } catch {}
+  }
+  setTicket(tk == null || tk === "" ? "" : toInputCLP(tk)); // usa tu helper de CLP
+}
+
+// --- Venta anual ($) --- (mapea meta.ventaAnual <- step6.ventaAnio1)
+{
+  let anual: unknown =
+    (meta as any)?.ventaAnual ??
+    (meta as any)?.ventaAnio1; // por si ya existiera con ese nombre
+
+  if (anual == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) {
+        const w = JSON.parse(wraw);
+        anual = w?.state?.data?.step6?.ventaAnio1;
+      }
+    } catch {}
+  }
+  setVentaAnual(anual == null || anual === "" ? "" : toInputCLP(anual));
+}
+
+    let inv: unknown = (meta as any)?.inversionInicial;
+    if (inv == null) {
+      try {
+        const wraw = localStorage.getItem("wizard");
+        if (wraw) {
+          const w = JSON.parse(wraw);
+          inv = w?.state?.data?.step6?.inversionInicial;
+        }
+      } catch {
+        /* silencioso */
+      }
+    }
+    setInversionInicial(inv == null || inv === "" ? "" : toInputCLP(inv)
+    );
+
+    // (opcionales) logs de verificación
+    console.log("[FORM] meta al montar:", meta);
+    console.log("[FORM] ubicacion resuelta:", ubic);
+    console.log("[FORM] inversionInicial resuelta:", inv);
+
+    // Resto de campos (como ya los tenías)
     setProjectName(meta.projectName ?? "");
     setFounderName(meta.founderName ?? "");
     setEmail(meta.email ?? meta.notifyEmail ?? "");
-    setIdea(meta.idea ?? "");   // ← mapeo correcto
-    setRubro(meta.sectorId ?? "");         // si tu UI muestra 'rubro'
-    if (meta.city) setUbicacion(meta.city);
+    setIdea(meta.idea ?? ""); // mapeo correcto
+    setRubro(meta.sectorId ?? ""); // si tu UI muestra 'rubro'
+    setUbicacion(ubic ?? "");
     if (meta.ventajaTexto) setVentajaTexto(meta.ventajaTexto);
   } catch (e) {
     console.error("[Formulario] hydration error", e);
@@ -648,7 +816,7 @@ useEffect(() => {
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">   </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Idea (1–2 frases)</Label>
+                  <Label>¿Cuál es tu Idea que te inspira? Al menos <strong>2 frases</strong> para que la IA te ayude!!!</Label>
                   <Textarea rows={3} value={idea} onChange={e => setIdea(e.target.value)} className="border-2" style={{ borderColor: accent }} />
                 </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
@@ -666,7 +834,7 @@ useEffect(() => {
                 </div>
                 <div className="md:col-span-1 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Ubicación</Label>
-                  <Input value={ubicacion} onChange={e => setUbicacion(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="Comuna, Región, País" />
+                  <Input value={ubicacion} onChange={e => setUbicacion(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="Comuna, País, Continente" />
                 </div>
 
                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>

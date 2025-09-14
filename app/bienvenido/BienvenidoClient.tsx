@@ -52,7 +52,7 @@ export default function BienvenidoClient() {
 
       <section className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-6 py-14 text-center">
         {/* Logo grande centrado 400x400 */}
-        <Image src="/aret3-logo.svg" alt="ARET3" width={400} height={400} className="mb-6" />
+        <Image src="/aret3-logo.svg" alt="ARET3" width={200} height={200} className="mb-6" />
 
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
           ¡Estamos felices de tenerte aquí!

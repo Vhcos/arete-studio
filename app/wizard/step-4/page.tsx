@@ -81,7 +81,7 @@ export default function Step4Page() {
       </div>
 
       <div className="mt-6 flex gap-3">
-        <button onClick={() => router.push("/wizard/step-3")} className="rounded-lg border px-4 py-2">Atrás</button>
+        <button onClick={() => router.push("/wizard/step-5")} className="rounded-lg border px-4 py-2">Atrás</button>
         {SHOW_IA && (
           <button onClick={onIA} className="rounded-lg bg-slate-900 text-white px-4 py-2">Generar plan (IA)</button>
         )}

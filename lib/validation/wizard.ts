@@ -5,10 +5,9 @@ const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
 export const Step1Schema = z.object({
   // ahora permite vacío (mostrarás aviso, pero no bloquea)
+  ubicacion: z.string().trim().optional().default(""), // ← NUEVO
   projectName: z.string().optional(),
-  idea: z.string().trim().optional().default("").refine((v) => wordCount(v) <= 500, {
-      message: "Máximo 500 palabras",
-    }),
+  idea: z.string().trim().optional().default("").refine((v) => wordCount(v) <= 500, {message: "Máximo 500 palabras",}),
   founderName: z.string().optional(),
   notifyEmail: z.string().email("Ingresa un email válido para su informe").optional(),
 });
@@ -20,8 +19,7 @@ export const Step2Schema = z.object({
 
 export const Step3Schema = z.object({
   ventajaTexto: z.string().trim().optional().default(""),
-  country: z.string().min(2, "Selecciona un país"),
-  city: z.string().optional(),
+
 });
 
 export type Step1 = z.infer<typeof Step1Schema>;

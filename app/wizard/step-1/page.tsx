@@ -13,6 +13,7 @@ export default function Step1Page() {
   const [local, setLocal] = useState({
     projectName: s1.projectName ?? "",
     idea: s1.idea ?? "",
+    ubicacion: s1.ubicacion ?? "",
     founderName: s1.founderName ?? "",
     notifyEmail: s1.notifyEmail ?? "",
   });
@@ -26,6 +27,8 @@ export default function Step1Page() {
       setErrors(e);
       return;
     }
+    console.log("[S1] ubicacion a guardar:", parsed.data.ubicacion);  //Verifica que Step-1 realmente guarda ubicacion
+
     setStep1(parsed.data);
     router.push("/wizard/step-2");
   }
@@ -51,6 +54,14 @@ export default function Step1Page() {
         rows={3}
         value={local.idea}
         onChange={(e) => setLocal((s) => ({ ...s, idea: e.target.value }))}
+      />
+        {/* NUEVO: Ubicación (mismo patrón que founderName) */}
+      <label className="block text-sm font-medium mt-4">Ubicación</label>
+      <input
+        className="mt-1 w-full rounded-lg border px-3 py-2"
+        placeholder="Comuna, País, Continente"
+        value={local.ubicacion}
+        onChange={(e) => setLocal((s) => ({ ...s, ubicacion: e.target.value }))}
       />
 
       <label className="block text-sm font-medium mt-4">Danos tu nombre emprendedora/o</label>

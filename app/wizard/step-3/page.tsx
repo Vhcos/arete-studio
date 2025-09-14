@@ -1,3 +1,4 @@
+/** app/wizard/step-3/page.tsx */
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -11,41 +12,48 @@ export default function Step3Page() {
   const router = useRouter();
   const { data, setStep3 } = useWizardStore();
 
-  // Evita ts(2339): tipa como Partial<Step3>
+  // Prefill desde el store del wizard (si hubiera)
   const s3 = (data.step3 ?? {}) as Partial<Step3>;
 
-  const [local, setLocal] = useState<Step3>({
+  // Solo manejamos ventajaTexto en este paso
+  const [local, setLocal] = useState<{ ventajaTexto?: string }>({
     ventajaTexto: s3.ventajaTexto ?? "",
-    country: s3.country ?? "Chile",
-    city: s3.city ?? "Santiago",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-function onNext() {
-  const parsed = Step3Schema.safeParse(local);
-  if (!parsed.success) {
-    const errs: Record<string, string> = {};
-    parsed.error.issues.forEach((i) => (errs[i.path.join(".")] = i.message));
-    setErrors(errs);
-    return;
-  }
-  setStep3(parsed.data);
-  router.push("/wizard/step-4");
-}
+  function onNext() {
+    // Validamos SOLO ventajaTexto (Step3Schema puede tener más campos opcionales y no afecta)
+    const parsed = Step3Schema.safeParse({
+      ventajaTexto: (local.ventajaTexto ?? "").trim(),
+    });
 
+    if (!parsed.success) {
+      const errs: Record<string, string> = {};
+      parsed.error.issues.forEach((i) => (errs[i.path.join(".")] = i.message));
+      setErrors(errs);
+      return;
+    }
+
+    // Guardamos el paso con lo validado (solo ventajaTexto)
+    setStep3(parsed.data as Step3);
+
+    router.push("/wizard/step-6");
+  }
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">Paso 3 · Es muy especial cuenta la gracia de tu idea y dónde estará</h1>
+      <h1 className="text-xl font-semibold mb-1">
+        Paso 3 · Cuéntanos qué harás distinto, cuál será tu impacto diferenciador y dónde harás tu negocio.
+      </h1>
       <p className="text-sm text-slate-600 mb-6">
-        Cuéntanos qué harás distinto, cuál será tu impacto diferenciador y dónde harás tu negocio.
+        Es muy importante pienses en esto !!!.
       </p>
 
       <div className="space-y-5">
         <div>
           <label className="block text-sm font-medium">
-            Tu ventaja diferenciadora (texto)
+            Tu ventaja diferenciadora (escribe con inspiración)
           </label>
           <textarea
             className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -58,36 +66,11 @@ function onNext() {
             <p className="mt-1 text-xs text-red-600">{errors.ventajaTexto}</p>
           )}
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium">País</label>
-            <input
-              className="mt-1 w-full rounded-lg border px-3 py-2"
-              value={local.country ?? ""}
-              onChange={(e) => setLocal((s) => ({ ...s, country: e.target.value }))}
-            />
-            {errors.country && (
-              <p className="mt-1 text-xs text-red-600">{errors.country}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Ciudad</label>
-            <input
-              className="mt-1 w-full rounded-lg border px-3 py-2"
-              value={local.city ?? ""}
-              onChange={(e) => setLocal((s) => ({ ...s, city: e.target.value }))}
-            />
-            {errors.city && (
-              <p className="mt-1 text-xs text-red-600">{errors.city}</p>
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="mt-8 flex items-center justify-between">
         <PrevButton href="/wizard/step-2" />
-        <NextButton onClick={onNext} />
+        <NextButton onClick={onNext } />
       </div>
     </div>
   );

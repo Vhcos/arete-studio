@@ -58,6 +58,7 @@ export const Step1Schema = z.object({
   projectName: z.string().min(1).max(120),
   founderName: z.string().optional().default(""),
   email: z.string().email().optional().default(""),
+  ubicacion: z.string().optional().default(""),
 });
 export type Step1 = z.infer<typeof Step1Schema>;
 
@@ -67,15 +68,13 @@ export const Step2Schema = z.object({
   ventajaTexto: z.string().optional().default(""),
   sectorId: z.string().optional().default(""),
   rubro: z.string().optional().default(""),
-  ubicacion: z.string().optional().default(""),
+
 });
 export type Step2 = z.infer<typeof Step2Schema>;
 
 /* Paso 3 (VHC) */
 export const Step3Schema = z.object({
   ventajaTexto: z.string().trim().optional().default(""),
-  country: z.string().optional().default(""),
-  city: z.string().optional().default(""),
 });
 export type Step3 = z.infer<typeof Step3Schema>;
 
@@ -120,4 +119,18 @@ export function toPlanApiPayload(data: WizardData) {
       costoPct: s6.costoVarPct ?? 0,
     },
   };
+}
+
+// === Helper mínimo para reflejar meta en localStorage ===
+export function mergeFromWizardMeta(patch: Record<string, any>) {
+  try {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem("arete:fromWizard");
+    const prev = raw ? JSON.parse(raw) : {};
+    const prevMeta = (prev?.meta ?? {}) as Record<string, any>;
+    const next = { ...prev, meta: { ...prevMeta, ...patch } };
+    localStorage.setItem("arete:fromWizard", JSON.stringify(next));
+  } catch {
+    // silencioso
+  }
 }
