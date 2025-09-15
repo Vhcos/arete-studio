@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import  Logo  from "@/components/Logo";
+import Logo from "../components/Logo";
 import NavApp from "./components/NavApp"; // <- importa así (relativo)
 import { Suspense } from "react";
 
