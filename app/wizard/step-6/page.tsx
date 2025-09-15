@@ -8,6 +8,7 @@ import { Step6Schema } from "@/lib/validation/wizard-extra";
 import { toLegacyForm } from "@/lib/bridge/wizard-to-legacy";
 import { getTemplateForSector } from "@/lib/model/step6-distributions";
 import type { SectorId } from "@/lib/model/sectors";
+import EconomicHeader from "./_components/EconomicHeader";
 import { SECTORS } from "@/lib/model/sectors";
 
 /* =============== Helpers CLP y números =============== */
@@ -320,11 +321,19 @@ export default function Step6Page() {
 
   return (
     <main className="mx-auto max-w-7xl px-0.1 py-8">
-      <h1 className="text-xl font-semibold mb-1">Paso 6 · Económico</h1>
-      <p className="text-sm text-slate-600 mb-6">
-          Rubro escogido: <span className="font-medium">{sectorLabel}</span> · Plantilla:{" "}
-        <span className="font-medium">{templateLetter}</span>
-     </p>
+      <EconomicHeader
+  sectorLabel={sectorLabel}
+  // usamos tus valores ya calculados para mostrar el chip "Clientes/mes"
+  // si alguno es 0, pasamos null para ocultar el chip y evitar ruido visual
+  ventaMensual={derived.ventaMensual > 0 ? derived.ventaMensual : null}
+  ticket={num(local.ticket) > 0 ? num(local.ticket) : null}
+/>
+
+<p className="text-xs text-slate-600 mt-2 mb-6">
+  Rubro: <span className="font-medium">{sectorLabel}</span> · Plantilla:{" "}
+  <span className="font-medium">{templateLetter}</span>
+</p>
+
 
       {/* Layout de 2 columnas: Izq = A y B (apilados). Der = Estado de Resultado + nota */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

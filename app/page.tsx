@@ -35,6 +35,8 @@ import { buildInvestorNarrative } from "@/app/lib/nonAI-report"; // recomendado 
 import type { AiPlan, CompetitiveRow, RegulationRow } from './types/plan';
 import type { ChartPoint } from './types/report';
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+
 
 export function sanitizeTxt(s: string, max = 120) {
   return String(s ?? '')
@@ -246,7 +248,7 @@ export default function AreteDemo() {
   const canRunAI = useMemo(
    () =>
     isValidEmail(email) &&
-    idea.trim().length >= 8 &&        // evita “Hola”
+    idea.trim().length >= 2 &&        // evita “Hola” RESTRICCION DE LONGITUD
     rubro.trim().length > 0,        // Bloqueo imprimir 
     
   [email, idea, rubro]
@@ -737,6 +739,24 @@ const getS5 = (k: string) => {
   }
 }, []);
 
+    //----------Sincronizar tus Tabs con ?tab= cambio de formulario----------
+    // para que puedas compartir URLs con tab fijo
+    // o volver al tab previo al recargar la página
+    const router = useRouter();
+    const search = useSearchParams();
+
+    const initialTab = (() => {
+     const t = search?.get("tab") ?? null;  // ← safe
+       return t === "board" || t === "explain" || t === "form" ? (t as "board" | "explain" | "form") : "form";
+   })();
+
+    const [tab, setTab] = useState<"form" | "board" | "explain">(initialTab);
+
+   useEffect(() => { setTab(initialTab); }, [initialTab]);
+
+   // ------ Botón “Evaluar con IA” rojo con letras blancas
+
+  const isAIEnabled = canRunAI && !iaLoading;
 
   // -------------------- Render --------------------
   return (
@@ -761,58 +781,42 @@ const getS5 = (k: string) => {
 
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
-             <Link
-               href="/ayuda"
-               className="inline-flex items-center rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+            <Link
+              href="/wizard/step-4"
+              className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
+              title="Volver al Paso 4 del asistente"
             >
-               Guia de uso
+                ← Volver al paso 6
             </Link>
-           <Button
-             variant="outline"
-             className="hidden sm:inline-flex"
-             onClick={() => {
-               const s = nonAIReport.sections;
-               const txt = [
-                 `Rubro: ${s.industryBrief}`,
-                 `Competencia: ${s.competitionLocal}`,
-                 `FODA + Mercado: ${s.swotAndMarket}`,
-                 `Veredicto: ${s.finalVerdict}`,
-                 `Score: ${nonAIReport.ranking.score}/100`
-               ].join('\n');
-               navigator.clipboard.writeText(txt);
-               alert('Informe copiado al portapapeles.');
-             }}
-           >
-             Copiar informe
-          <div className="flex flex-wrap gap-2 sm:justify-end"></div>  
-           </Button>
+             
             <Button
-               onClick={() =>
-                  sendReportEmail({
-                   to: email,               // correo del usuario
-                   reason: 'user-asked',
-                   report: aiReport ?? nonAIReport, // prioriza IA si ya está
-                   aiPlan,                  // si ya generaste plan 100 palabras
-                   user: { projectName, founderName, email, idea, rubro, ubicacion },
-                })
-               }
-               disabled={!emailOK || emailSending}
-            >
-              Informe a mi email
-            </Button>
-            <Button onClick={handleEvaluateAI} disabled={!canRunAI || iaLoading}>Evaluar con IA</Button>
-           
-
-            <Button onClick={() => downloadJSON(outputs.report, `arete_result_${Date.now()}.json`)}><Download className="mr-2 h-4 w-4" /> Descargar Informe</Button>
+              onClick={handleEvaluateAI}
+              disabled={!isAIEnabled}
+              className={
+                isAIEnabled
+                 ? "bg-red-600 hover:bg-red-700 text-white"
+                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
+              }
+               title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
+              >
+               {iaLoading ? "Evaluando…" : "Evaluar con IA"}
+             </Button>
           </div>
         </div>
 
-        <Tabs defaultValue="form">
-          <TabsList className="mt-2 w-full grid grid-cols-3 md:w-auto">
-            <TabsTrigger value="form"><Settings className="h-4 w-4 mr-2" />Formulario</TabsTrigger>
-            <TabsTrigger value="board"><Rocket className="h-4 w-4 mr-2" />Tablero</TabsTrigger>
-            <TabsTrigger value="explain"><Sparkles className="h-4 w-4 mr-2" />Informe</TabsTrigger>
-          </TabsList>
+              {/* Cambia el contenedor de Tabs (reemplaza defaultValue="form"):*/}
+            <Tabs
+              value={tab}
+              onValueChange={(v) => {
+               setTab(v as "form" | "board" | "explain");
+
+               // Construye los params existentes de forma segura
+             const params = new URLSearchParams(search ? Array.from(search.entries()) : []);
+             params.set("tab", v);
+             router.replace(`/?${params.toString()}`, { scroll: false });
+             }}
+            >
+
 
           {/* FORM */}
           <TabsContent value="form">
@@ -863,7 +867,7 @@ const getS5 = (k: string) => {
                 </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Tu ventaja diferenciadora (texto)</Label>
-                  <Textarea rows={3} value={ventajaTexto} onChange={e => setVentajaTexto(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="¿Qué harás distinto o especial? tecnología, experiencia, costos, tiempo, marca, red, datos, etc." />
+                  <Textarea rows={3} value={ventajaTexto} onChange={e => setVentajaTexto(e.target.value)} className="border-2 " style={{ borderColor: accent }} placeholder="¿Qué harás distinto o especial? tecnología, experiencia, costos, tiempo, marca, red, datos, etc." />
                   <p className="text-xs text-muted-foreground">La IA asignará una <strong>nota 1–10</strong> a esta ventaja al presionar "Evaluar con IA". Sin IA, usamos una heurística local.</p>
                 </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
@@ -1246,7 +1250,14 @@ const getS5 = (k: string) => {
               <CardContent>
                   <div className="no-print mb-3">
                    <Button onClick={() => printOnly('tablero')}>Imprimir tablero</Button>
-                  </div>
+                  
+                  <Link
+    href="/informe"
+    className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+  >
+    Ir a informe
+  </Link>
+</div>
                   <section id="tablero" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-3 -mt-2">
                   <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -1491,6 +1502,21 @@ const getS5 = (k: string) => {
                  >
                    Imprimir informe
                  </Button>
+
+                 <Button
+               onClick={() =>
+                  sendReportEmail({
+                   to: email,               // correo del usuario
+                   reason: 'user-asked',
+                   report: aiReport ?? nonAIReport, // prioriza IA si ya está
+                   aiPlan,                  // si ya generaste plan 100 palabras
+                   user: { projectName, founderName, email, idea, rubro, ubicacion },
+                })
+               }
+               disabled={!emailOK || emailSending}
+            >
+              Informe a mi email
+            </Button>
                </div>
                <div className="rounded-md border bg-white p-4 text-sm">
                   <div><span className="font-semibold">Proyecto:</span> {projectName || '—'}</div>

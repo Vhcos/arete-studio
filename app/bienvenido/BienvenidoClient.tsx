@@ -7,16 +7,20 @@ import Image from "next/image";
 
 export default function BienvenidoClient() {
   const router = useRouter();
-  const sp = useSearchParams();
+  const sp = useSearchParams(); // puede ser null según tu setup
 
-  // Datos opcionales (los guardamos si vienen, pero ya no dependemos de esto)
-  const token = sp.get("token") ?? sp.get("t");
-  const email = sp.get("email") ?? sp.get("e");
+  // Helper null-safe para leer query params
+  const get = (k: string) => sp?.get(k) ?? null;
+
+  // Datos opcionales (guardamos si vienen, pero no dependemos de esto)
+  const token = get("token") ?? get("t");
+  const email = get("email") ?? get("e");
 
   // Destino y comportamiento
-  const next = sp.get("next") || "/wizard/step-1";
-  const delayMs = Number(sp.get("delay") ?? 8000);  // 8s por defecto
-  const auto = sp.get("auto") !== "0";              // permitir desactivar con ?auto=0
+  const next = get("next") || "/wizard/step-1";
+  const delayRaw = get("delay");
+  const delayMs = delayRaw ? Number(delayRaw) : 8000; // 8s por defecto
+  const auto = get("auto") !== "0"; // permitir desactivar con ?auto=0
 
   // Persistencia opcional de token/email si vinieran en el link
   React.useEffect(() => {
@@ -51,7 +55,6 @@ export default function BienvenidoClient() {
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-50 to-white" />
 
       <section className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center px-6 py-14 text-center">
-        {/* Logo grande centrado 400x400 */}
         <Image src="/aret3-logo.svg" alt="ARET3" width={200} height={200} className="mb-6" />
 
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">

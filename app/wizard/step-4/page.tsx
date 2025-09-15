@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useWizardStore } from "@/lib/state/wizard-store";
 import { fromWizard } from "@/lib/model/app-form";
+import { useEffect } from "react";
 
 const SHOW_IA = false; // por ahora desactivado; moveremos IA luego del paso 6
 
@@ -10,37 +11,58 @@ export default function Step4Page() {
   const { data } = useWizardStore();
   const body = fromWizard(data);
 
-  function onNext() {
+function onNext() {
   try {
-    // Wizard store
+    // Wizard store consolidado
     const s1 = (data as any)?.step1 ?? {};
     const s2 = (data as any)?.step2 ?? {};
-    const s3 = (data as any)?.step3 ?? {}; 
+    const s3 = (data as any)?.step3 ?? {};
+    const s6 = (data as any)?.step6 ?? {}; // ← por si ya tienes datos económicos capturados
 
+    // Lo esencial que el Tablero necesitará (ajústalo a tus nombres reales)
     const meta = {
       projectName: s1.projectName ?? "",
       founderName: s1.founderName ?? "",
       email: s1.notifyEmail ?? "",
       idea: s1.idea ?? "",
       sectorId: s2.sectorId ?? "",
-      ventajaTexto: s3.ventajaTexto ?? "", 
-      // Si más adelante capturas ubicación/ventaja en el wizard, las agregas aquí:
-      // ubicacion: sX.ubicacion ?? "",
-      // ventajaTexto: sX.ventajaTexto ?? "",
+      template: s2.template ?? "",
+
+      // Económico (si existen; si no, quedan vacíos y Tablero mostrará “—”)
+      inversionInicial: s6.inversionInicial ?? null,
+      ventaMensual: s6.ventaMensual ?? (typeof s6.ventaAnio1 === "number" ? s6.ventaAnio1 / 12 : null),
+      ventaAnio1: s6.ventaAnio1 ?? (typeof s6.ventaMensual === "number" ? s6.ventaMensual * 12 : null),
+      ticket: s6.ticket ?? null,
+      gastosFijosMensuales: s6.gastosFijosMensuales ?? null,
+      costoVarUnit: s6.costoVarUnit ?? null,
+      marketingMensual: s6.marketingMensual ?? null,
+
+      // Cualitativos (si ya los guardaste antes)
+      ventajaTexto: s3.ventajaTexto ?? "",
     };
 
     localStorage.setItem(
       "arete:fromWizard",
-      JSON.stringify({ meta, steps: ["step-1","step-2","step-3","step-4"] })
+      JSON.stringify({
+        meta,
+        steps: ["step-1", "step-2", "step-3", "step-6", "confirmacion"],
+      })
     );
 
-    // Ir al Formulario con marcador
-    router.push("/?from=wizard=1");
+    // Redirección al Tablero
+    const APP = process.env.NEXT_PUBLIC_APP_ORIGIN ?? "";
+    // Usa replace para no volver atrás al wizard con “atrás”
+    if (APP) {
+      router.replace(`${APP}/tablero`);
+    } else {
+      router.replace("/tablero");
+    }
   } catch (e) {
-    console.error("[Step4] onNext error", e);
-    router.push("/?from=wizard=1");
+    console.error("[Wizard] onNext error", e);
+    router.replace("/tablero");
   }
 }
+
 
   async function onIA() {
     try {
