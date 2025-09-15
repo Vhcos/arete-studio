@@ -1,72 +1,125 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-import NextAuth, {
-  type NextAuthOptions,
-  type User,
-  type Account,
-} from "next-auth";
+import NextAuth, { type NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import { Resend } from "resend";
-import type { Adapter } from "next-auth/adapters";
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
+/**
+ * EmailProvider: soporta dos modos
+ *  - SMTP: define EMAIL_SERVER y EMAIL_FROM
+ *  - Resend API: define RESEND_API_KEY y EMAIL_FROM
+ */
+const hasSMTP = !!process.env.EMAIL_SERVER;
+const hasResend = !!process.env.RESEND_API_KEY;
+const from = process.env.EMAIL_FROM;
+
+if (!from) {
+  console.error("[auth] Falta EMAIL_FROM");
+}
+
+function buildEmailProvider() {
+  if (hasSMTP) {
+    return EmailProvider({
+      server: process.env.EMAIL_SERVER!,
+      from: from!,
+    });
+  }
+
+  if (hasResend) {
+    return EmailProvider({
+      from: from!,
+      // Enviamos el correo con Resend (sin SMTP)
+      async sendVerificationRequest({ identifier, url }) {
+        try {
+          const r = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: from!,
+              to: identifier,
+              subject: "Tu acceso a Areté",
+              html: `
+                <p>Entra con este enlace:</p>
+                <p><a href="${url}">${url}</a></p>
+                <p style="color:#777;font-size:12px">Si no solicitaste este acceso, ignora este correo.</p>
+              `,
+              text: `Entra con este enlace: ${url}`,
+            }),
+          });
+
+          if (!r.ok) {
+            const text = await r.text();
+            console.error("[auth][email][resend] Error HTTP", r.status, text);
+            throw new Error(`Resend HTTP ${r.status}`);
+          }
+
+          console.log("[auth][email] Enviado con Resend a", identifier);
+        } catch (e) {
+          console.error("[auth][email] Error al enviar verificación:", e);
+          throw e;
+        }
+      },
+    });
+  }
+
+  // Ningún modo disponible
+  throw new Error(
+    "[auth] Debes configurar EMAIL_SERVER (SMTP) o RESEND_API_KEY (Resend) junto a EMAIL_FROM."
+  );
+}
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
-  session: { strategy: "database" },
-  pages: { signIn: "/auth/sign-in" },
-  debug: process.env.NODE_ENV !== "production",
+  // ⚠️ Fuerza JWT para que el middleware pueda autorizar leyendo el token
+  session: { strategy: "jwt" },
+  secret: process.env.NEXTAUTH_SECRET,
 
-  providers: [
-    EmailProvider({
-      from: process.env.EMAIL_FROM,
-      async sendVerificationRequest({ identifier, url, provider }) {
-        // 👇 Aquí logueamos la creación del “token/enlace”
-        if (process.env.NODE_ENV !== "production") {
-          console.log("🔗 Magic link DEV:", identifier, url);
-          return;
-        }
-        await resend.emails.send({
-          from: provider.from!,
-          to: identifier,
-          subject: "Tu acceso a Areté",
-          html: `<p>Entra con este enlace:</p><p><a href="${url}">${url}</a></p>`,
-        });
-      },
-    }),
-  ],
-// Si usas "pages" personalizadas, déjalas como ya las tienes
+  adapter: PrismaAdapter(prisma),
+
+  providers: [buildEmailProvider()],
+
+  pages: {
+    signIn: "/auth/sign-in",
+  },
+
   callbacks: {
-  async redirect({ url, baseUrl }) {
-    // Si viene callbackUrl válida (relativa), úsala
-    try {
-      const u = new URL(url, baseUrl);
-      const cb = u.searchParams.get("callbackUrl");
-      if (cb && cb.startsWith("/")) return baseUrl + cb;
-      // O si NextAuth nos entrega un path relativo, también sirve
-      if (url.startsWith("/")) return baseUrl + url;
-    } catch {}
-    // Por defecto: home
-    return baseUrl;
-  },
-},
+    /**
+     * Respeta siempre callbackUrl relativo del mismo origen
+     * (p.ej. /bienvenido?next=/wizard/step-1)
+     */
+    async redirect({ url, baseUrl }) {
+      try {
+        const target = new URL(url, baseUrl);
+        const sameOrigin = target.origin === baseUrl;
+        console.log("[auth][redirect]", {
+          url,
+          baseUrl,
+          target: target.toString(),
+          sameOrigin,
+        });
+        if (sameOrigin) return target.toString();
+      } catch (e) {
+        console.log("[auth][redirect][error]", e);
+      }
+      return baseUrl;
+    },
 
-  // ✅ Solo eventos soportados por tu versión
-  events: {
-    async linkAccount(message: { user: User; account: Account }) {
-      console.log("🔗 linkAccount:", message.user?.id);
+    // Propaga id de usuario en el token/session (opcional pero útil)
+    async jwt({ token, user }) {
+      if (user?.id) (token as any).uid = (user as any).id;
+      return token;
     },
-    async createUser(message: { user: User }) {
-      console.log("👤 createUser:", message.user?.email);
+    async session({ session, token }) {
+      if (session.user && (token as any)?.uid) {
+        (session.user as any).id = (token as any).uid;
+      }
+      return session;
     },
   },
+
+  // debug: process.env.NODE_ENV !== "production",
 };
-
-
 
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };

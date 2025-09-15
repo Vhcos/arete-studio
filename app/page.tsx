@@ -1,6 +1,7 @@
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities, @typescript-eslint/no-unused-vars */
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect  } from "react";
+import HydrateFromWizard from "@/components/tablero/HydrateFromWizard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import InformePreview from "@/components/informe/InformePreview";
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
 import {
   Radar,
@@ -33,6 +35,8 @@ import { buildInvestorNarrative } from "@/app/lib/nonAI-report"; // recomendado 
 import type { AiPlan, CompetitiveRow, RegulationRow } from './types/plan';
 import type { ChartPoint } from './types/report';
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+
 
 export function sanitizeTxt(s: string, max = 120) {
   return String(s ?? '')
@@ -99,6 +103,12 @@ function uiHint(title: string, fallback: string) {
 // -------------------- Helpers GLOBALES useState--------------------
 
 
+
+// Devuelve string formateado para los <Input> CLP; vacío si viene null/undefined
+function toInputCLP(v: any) {
+  if (v === null || v === undefined) return "";
+  return formatCLPLike(String(v));
+}
 
 function formatCLPLike(s: string) {
   if (s == null) return "";
@@ -238,10 +248,10 @@ export default function AreteDemo() {
   const canRunAI = useMemo(
    () =>
     isValidEmail(email) &&
-    idea.trim().length >= 8 &&        // evita “Hola”
-    rubro.trim().length > 0 &&
-    ubicacion.trim().length > 0,
-  [email, idea, rubro, ubicacion]
+    idea.trim().length >= 2 &&        // evita “Hola” RESTRICCION DE LONGITUD
+    rubro.trim().length > 0,        // Bloqueo imprimir 
+    
+  [email, idea, rubro]
  );
    
 
@@ -254,7 +264,7 @@ export default function AreteDemo() {
    const clientesMensCalc = (() => {
      const vAnual = parseNumberCL(ventaAnual);
      const t = parseNumberCL(ticket);
-     const cliCalc = t > 0
+     const cliCalc = t > 0 
        ? (vAnual > 0 ? (vAnual / 12) : 0) / t
        : 0;
      const cliManual = parseNumberCL(clientesManual);
@@ -491,11 +501,266 @@ const costoVariableMes =
 }
 
 //----------------------FIN DE LOS USESTATE Y FUNCIONES----------------------
+// ——————————— Hidratación desde el Wizard (Formulario legacy) ———————————
 
+const num = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+// helper: hidrata el formulario leyendo arete:fromWizard y, si falta algo,
+// cae al persist del wizard (para compat invertida)
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const raw = localStorage.getItem("arete:fromWizard");
+    if (!raw) return;
+
+    // Soporta ambos shapes: { meta: {...} } o directamente {...}
+    const parsed = JSON.parse(raw) ?? {};
+    const meta = (parsed?.meta ?? parsed) ?? {};
+
+    // --- Ubicación (con fallback al persist del wizard) ---
+    let ubic: string =
+      (meta as any)?.ubicacion != null ? String((meta as any).ubicacion) : "";
+    if (!ubic) {
+      try {
+        const wraw = localStorage.getItem("wizard");
+        if (wraw) {
+          const w = JSON.parse(wraw);
+          ubic =
+            w?.state?.data?.step1?.ubicacion ??
+            w?.state?.data?.step3?.ubicacion ??
+            "";
+        }
+      } catch {
+        /* silencioso */
+      }
+    }
+            //HIDRATACION DEL FORM//
+    // --- Inversión inicial (meta -> wizard.step6) ---
+
+    // --- Capital de trabajo disponible ($) ---
+{
+  let v: unknown = (meta as any)?.capitalTrabajo;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.capitalTrabajo;
+    } catch {}
+  }
+  setCapitalTrabajo(v == null || v === "" ? "" : toInputCLP(v));
+}
+
+// --- % Conversión (0–100) ---
+{
+  let v: unknown = (meta as any)?.conversionPct;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.conversionPct;
+    } catch {}
+  }
+  // en tu Form es string
+  setConvPct(v == null || v === "" ? "" : String(v).replace(/[^\d]/g, ""));
+}
+
+// --- Gastos fijos mensuales ($) ---
+{
+  let v: unknown = (meta as any)?.gastosFijosMensuales;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.gastosFijosMensuales;
+    } catch {}
+  }
+  setGastosFijos(v == null || v === "" ? "" : toInputCLP(v));
+}
+
+// --- Costo variable unitario ($) ---
+{
+  let v: unknown = (meta as any)?.costoVarUnit;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.costoVarUnit;
+    } catch {}
+  }
+  setCostoUnit(v == null || v === "" ? "" : toInputCLP(v));
+}
+
+// --- Presupuesto de marketing mensual ($) ---
+{
+  let v: unknown = (meta as any)?.presupuestoMarketing;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.presupuestoMarketing;
+    } catch {}
+  }
+  setMarketingMensual(v == null || v === "" ? "" : toInputCLP(v));
+}
+
+// --- Frecuencia de compra: meses -> veces/año (number) ---
+{
+  let meses: unknown = (meta as any)?.frecuenciaCompraMeses;
+  if (meses == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) meses = JSON.parse(wraw)?.state?.data?.step6?.frecuenciaCompraMeses;
+    } catch {}
+  }
+  const m = Number(meses);
+  const freqAnual = Number.isFinite(m) && m > 0 ? Math.max(1, Math.round(12 / m)) : 6;
+  setFrecuenciaAnual(freqAnual); // ← NUMBER (evita el error ts2345)
+}
+
+// --- Meses para punto de equilibrio (si tienes este setter como number) ---
+{
+  let v: unknown = (meta as any)?.mesesPE;
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.mesesPE;
+    } catch {}
+  }
+  const n = Number(v);
+  if (typeof setMesesPE === "function") {
+    setMesesPE(Number.isFinite(n) ? n : 6);
+  }
+}
+
+    // --- Ticket ($) ---
+{
+  let tk: unknown = (meta as any)?.ticket;
+  if (tk == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) {
+        const w = JSON.parse(wraw);
+        tk = w?.state?.data?.step6?.ticket;
+      }
+    } catch {}
+  }
+  setTicket(tk == null || tk === "" ? "" : toInputCLP(tk)); // usa tu helper de CLP
+}
+
+// --- Venta anual ($) --- (mapea meta.ventaAnual <- step6.ventaAnio1)
+{
+  let anual: unknown =
+    (meta as any)?.ventaAnual ??
+    (meta as any)?.ventaAnio1; // por si ya existiera con ese nombre
+
+  if (anual == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) {
+        const w = JSON.parse(wraw);
+        anual = w?.state?.data?.step6?.ventaAnio1;
+      }
+    } catch {}
+  }
+  setVentaAnual(anual == null || anual === "" ? "" : toInputCLP(anual));
+}
+
+    let inv: unknown = (meta as any)?.inversionInicial;
+    if (inv == null) {
+      try {
+        const wraw = localStorage.getItem("wizard");
+        if (wraw) {
+          const w = JSON.parse(wraw);
+          inv = w?.state?.data?.step6?.inversionInicial;
+        }
+      } catch {
+        /* silencioso */
+      }
+    }
+    setInversionInicial(inv == null || inv === "" ? "" : toInputCLP(inv)
+    );
+
+
+    // --- Step-5 → Form (9 sliders 0–10) ---
+const getS5 = (k: string) => {
+  let v: any = (meta as any)?.[k];
+  if (v == null) {
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) v = JSON.parse(wraw)?.state?.data?.step5?.[k];
+    } catch {}
+  }
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(10, Math.round(n))) : null;
+};
+
+// problema → urgencia
+{ const n = getS5("urgencia"); if (n !== null) setUrgencia(n); }
+
+// accesibilidad
+{ const n = getS5("accesibilidad"); if (n !== null) setAccesibilidad(n); }
+
+// competencia
+{ const n = getS5("competencia"); if (n !== null) setCompetencia(n); }
+
+// experiencia
+{ const n = getS5("experiencia"); if (n !== null) setExperiencia(n); }
+
+// pasión
+{ const n = getS5("pasion"); if (n !== null) setPasion(n); }
+
+// planes alternativos
+{ const n = getS5("planesAlternativos"); if (n !== null) setPlanesAlternativos(n); }
+
+// riesgo → tolerancia al riesgo
+{ const n = getS5("toleranciaRiesgo"); if (n !== null) setToleranciaRiesgo(n); }
+
+// testeo previo
+{ const n = getS5("testeoPrevio"); if (n !== null) setTesteoPrevio(n); }
+
+// red de apoyo
+{ const n = getS5("redApoyo"); if (n !== null) setRedApoyo(n); }
+
+
+    // (opcionales) logs de verificación
+    console.log("[FORM] meta al montar:", meta);
+    console.log("[FORM] ubicacion resuelta:", ubic);
+    console.log("[FORM] inversionInicial resuelta:", inv);
+
+    // Resto de campos (como ya los tenías)
+    setProjectName(meta.projectName ?? "");
+    setFounderName(meta.founderName ?? "");
+    setEmail(meta.email ?? meta.notifyEmail ?? "");
+    setIdea(meta.idea ?? ""); // mapeo correcto
+    setRubro(meta.sectorId ?? ""); // si tu UI muestra 'rubro'
+    setUbicacion(ubic ?? "");
+    if (meta.ventajaTexto) setVentajaTexto(meta.ventajaTexto);
+  } catch (e) {
+    console.error("[Formulario] hydration error", e);
+  }
+}, []);
+
+    //----------Sincronizar tus Tabs con ?tab= cambio de formulario----------
+    // para que puedas compartir URLs con tab fijo
+    // o volver al tab previo al recargar la página
+    const router = useRouter();
+    const search = useSearchParams();
+
+    const initialTab = (() => {
+     const t = search?.get("tab") ?? null;  // ← safe
+       return t === "board" || t === "explain" || t === "form" ? (t as "board" | "explain" | "form") : "form";
+   })();
+
+    const [tab, setTab] = useState<"form" | "board" | "explain">(initialTab);
+
+   useEffect(() => { setTab(initialTab); }, [initialTab]);
+
+   // ------ Botón “Evaluar con IA” rojo con letras blancas
+
+  const isAIEnabled = canRunAI && !iaLoading;
 
   // -------------------- Render --------------------
   return (
-    <div className="min-h-screen p-6" style={styleAccent}>
+   <div className="min-h-screen p-6" style={styleAccent}>
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -507,8 +772,8 @@ const costoVariableMes =
           </div>
 
             <h1 className="text-2xl font-bold tracking-tight">
-             <span className="hidden sm:inline">Areté · Evalúa tu Idea de Negocio con IA</span>
-             <span className="sm:hidden">Areté · Evalúa tu Idea de Negocio</span>
+             <span className="hidden sm:inline">Aret3 · Evalúa tu Idea de Negocio con IA</span>
+             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio</span>
            </h1>
            <p className="text-sm text-muted-foreground -mt-1">
             Cumple tu propósito de la mejor manera
@@ -516,58 +781,42 @@ const costoVariableMes =
 
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
-             <Link
-               href="/ayuda"
-               className="inline-flex items-center rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+            <Link
+              href="/wizard/step-4"
+              className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
+              title="Volver al Paso 4 del asistente"
             >
-               Guia de uso
+                ← Volver al paso 6
             </Link>
-           <Button
-             variant="outline"
-             className="hidden sm:inline-flex"
-             onClick={() => {
-               const s = nonAIReport.sections;
-               const txt = [
-                 `Rubro: ${s.industryBrief}`,
-                 `Competencia: ${s.competitionLocal}`,
-                 `FODA + Mercado: ${s.swotAndMarket}`,
-                 `Veredicto: ${s.finalVerdict}`,
-                 `Score: ${nonAIReport.ranking.score}/100`
-               ].join('\n');
-               navigator.clipboard.writeText(txt);
-               alert('Informe copiado al portapapeles.');
-             }}
-           >
-             Copiar informe
-          <div className="flex flex-wrap gap-2 sm:justify-end"></div>  
-           </Button>
+             
             <Button
-               onClick={() =>
-                  sendReportEmail({
-                   to: email,               // correo del usuario
-                   reason: 'user-asked',
-                   report: aiReport ?? nonAIReport, // prioriza IA si ya está
-                   aiPlan,                  // si ya generaste plan 100 palabras
-                   user: { projectName, founderName, email, idea, rubro, ubicacion },
-                })
-               }
-               disabled={!emailOK || emailSending}
-            >
-              Informe a mi email
-            </Button>
-            <Button onClick={handleEvaluateAI} disabled={!canRunAI || iaLoading}>Evaluar con IA</Button>
-           
-
-            <Button onClick={() => downloadJSON(outputs.report, `arete_result_${Date.now()}.json`)}><Download className="mr-2 h-4 w-4" /> Descargar Informe</Button>
+              onClick={handleEvaluateAI}
+              disabled={!isAIEnabled}
+              className={
+                isAIEnabled
+                 ? "bg-red-600 hover:bg-red-700 text-white"
+                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
+              }
+               title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
+              >
+               {iaLoading ? "Evaluando…" : "Evaluar con IA"}
+             </Button>
           </div>
         </div>
 
-        <Tabs defaultValue="form">
-          <TabsList className="mt-2 w-full grid grid-cols-3 md:w-auto">
-            <TabsTrigger value="form"><Settings className="h-4 w-4 mr-2" />Formulario</TabsTrigger>
-            <TabsTrigger value="board"><Rocket className="h-4 w-4 mr-2" />Tablero</TabsTrigger>
-            <TabsTrigger value="explain"><Sparkles className="h-4 w-4 mr-2" />Informe</TabsTrigger>
-          </TabsList>
+              {/* Cambia el contenedor de Tabs (reemplaza defaultValue="form"):*/}
+            <Tabs
+              value={tab}
+              onValueChange={(v) => {
+               setTab(v as "form" | "board" | "explain");
+
+               // Construye los params existentes de forma segura
+             const params = new URLSearchParams(search ? Array.from(search.entries()) : []);
+             params.set("tab", v);
+             router.replace(`/?${params.toString()}`, { scroll: false });
+             }}
+            >
+
 
           {/* FORM */}
           <TabsContent value="form">
@@ -613,12 +862,12 @@ const costoVariableMes =
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">   </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
-                  <Label>Idea (1–2 frases)</Label>
+                  <Label>¿Cuál es tu Idea que te inspira? Al menos <strong>2 frases</strong> para que la IA te ayude!!!</Label>
                   <Textarea rows={3} value={idea} onChange={e => setIdea(e.target.value)} className="border-2" style={{ borderColor: accent }} />
                 </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Tu ventaja diferenciadora (texto)</Label>
-                  <Textarea rows={3} value={ventajaTexto} onChange={e => setVentajaTexto(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="¿Qué harás distinto o especial? tecnología, experiencia, costos, tiempo, marca, red, datos, etc." />
+                  <Textarea rows={3} value={ventajaTexto} onChange={e => setVentajaTexto(e.target.value)} className="border-2 " style={{ borderColor: accent }} placeholder="¿Qué harás distinto o especial? tecnología, experiencia, costos, tiempo, marca, red, datos, etc." />
                   <p className="text-xs text-muted-foreground">La IA asignará una <strong>nota 1–10</strong> a esta ventaja al presionar "Evaluar con IA". Sin IA, usamos una heurística local.</p>
                 </div>
                 <div className="md:col-span-3 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
@@ -631,7 +880,16 @@ const costoVariableMes =
                 </div>
                 <div className="md:col-span-1 space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
                   <Label>Ubicación</Label>
-                  <Input value={ubicacion} onChange={e => setUbicacion(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="Comuna, Región, País" />
+                  <Input value={ubicacion} onChange={e => setUbicacion(e.target.value)} className="border-2" style={{ borderColor: accent }} placeholder="Comuna, País, Continente" />
+                </div>
+
+
+                 {/* === SECCION DATOS FINANCIEROS === */}
+                 
+                 <div className="md:col-span-3 rounded-xl border-2 p-4 border-red-600 bg-blue-600 text-white shadow-sm">
+                   <div className="font-medium">
+                      Aquí tienes <strong>TUS DATOS FINANCIEROS </strong> una aproximación a tus resultados
+                   </div>
                 </div>
 
                 <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
@@ -939,20 +1197,12 @@ const costoVariableMes =
                     una curva de 12 meses que es un estimado de llegada a punto de equli¡brio estos 12m equivalen a una avance del 8% de avance mensual en ventas.</p>
                 </div>
 
-                <div className="md:col-span-3 rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
-                  <div className="font-medium">Califica de <strong>0 a 10</strong> cada ítem</div>
-                  <ul className="text-sm text-muted-foreground list-disc pl-5 mt-1 space-y-1">
-                    <li><strong>Tu idea resuelve un problema</strong>: 0 = poco, 10 = mucho.</li>
-                    <li><strong>Competencia</strong>: cantidad/calidad de competidores (alto = mucha competencia).</li>
-                    <li><strong>TU tolerancia al riesgo</strong>: cuánta volatilidad soportas.</li>
-                    <li><strong>Testeo previo</strong>: entrevistas, lista de espera, reuniones, respuestas positivas, seguidores.</li>
-                    <li><strong>Red de apoyo</strong>: mentores, socios, partners, contactos.</li>
-                    <li><strong>Planes alternativos a las dificultades</strong>: mitigaciones listas si algo sale mal.</li>
-                  </ul>
+                <div className="md:col-span-3 rounded-xl border-2 p-4 border-red-600 bg-blue-600 text-white shadow-sm">
+                   <div className="font-medium">
+                      Aquí tienes los datos <strong>blandos de tu idea</strong> aspectos cualitativos y <strong>emocionales</strong> que impactarán a tu negocio
+                   </div>
                 </div>
 
-             
-          
                 {/* Sliders */}
                 <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-5">
                   <SliderField label="Tu idea resuelve un problema (0–10)" value={urgencia} onChange={setUrgencia} accent={accent} accentSoft={accentSoft} />
@@ -1000,7 +1250,14 @@ const costoVariableMes =
               <CardContent>
                   <div className="no-print mb-3">
                    <Button onClick={() => printOnly('tablero')}>Imprimir tablero</Button>
-                  </div>
+                  
+                  <Link
+    href="/informe"
+    className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+  >
+    Ir a informe
+  </Link>
+</div>
                   <section id="tablero" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-3 -mt-2">
                   <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -1245,6 +1502,21 @@ const costoVariableMes =
                  >
                    Imprimir informe
                  </Button>
+
+                 <Button
+               onClick={() =>
+                  sendReportEmail({
+                   to: email,               // correo del usuario
+                   reason: 'user-asked',
+                   report: aiReport ?? nonAIReport, // prioriza IA si ya está
+                   aiPlan,                  // si ya generaste plan 100 palabras
+                   user: { projectName, founderName, email, idea, rubro, ubicacion },
+                })
+               }
+               disabled={!emailOK || emailSending}
+            >
+              Informe a mi email
+            </Button>
                </div>
                <div className="rounded-md border bg-white p-4 text-sm">
                   <div><span className="font-semibold">Proyecto:</span> {projectName || '—'}</div>
@@ -1265,6 +1537,7 @@ const costoVariableMes =
                    <>
                    <div>
                      <h2 className="text-lg font-bold">Evaluación (IA)</h2>
+                      <InformePreview />
                       <ReportView report={aiReport} />
                    </div>
 

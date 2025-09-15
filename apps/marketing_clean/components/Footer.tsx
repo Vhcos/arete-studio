@@ -10,7 +10,7 @@ export default function Footer() {
   return (
     <footer style={{ borderTop: "1px solid #eee", marginTop: 20 }}>
       <div style={wrap}>
-        <small>© {new Date().getFullYear()} Areté</small>
+        <small>© {new Date().getFullYear()} Aret3</small>
         <nav style={{ display: "flex", gap: 16 }}>
           <Link href="/recursos/centro-de-ayuda">Centro de ayuda</Link>
           <Link href="/recursos/asesorias">Asesorías</Link>

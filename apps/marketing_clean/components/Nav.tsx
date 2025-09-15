@@ -1,32 +1,25 @@
-// apps/marketing_clean/components/Nav.tsx
-import Link from "next/link";
+import React from "react";
+import Logo from "./Logo";
 
 const APP = process.env.NEXT_PUBLIC_APP_ORIGIN || "https://app.aret3.cl";
 
 export default function Nav() {
   return (
-    <header style={{ borderBottom: "1px solid #eee" }}>
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "12px 20px",
-                    display:"flex", alignItems:"center", gap:16 }}>
-        <Link href="/" style={{ fontWeight: 600 }}>Areté</Link>
-
-        <nav style={{ marginLeft: "auto", display: "flex", gap: 16 }}>
-          <a href="#producto">Producto</a>
-          <a href="#precios">Precios</a>
-          <Link href="/recursos/centro-de-ayuda">Recursos</Link>
-
-          {/* Acceder */}
+    <header className="mx-auto max-w-6xl px-4 py-4">
+      <div className="flex items-center justify-between">
+        <Logo />
+        <nav className="flex items-center gap-4 text-sm">
+          <a href="#producto" className="text-slate-700 hover:text-slate-900">Producto</a>
+          <a href="#precios" className="text-slate-700 hover:text-slate-900">Precios</a>
           <a
             href={`${APP}/auth/sign-in?callbackUrl=/`}
-            style={{ padding: "8px 12px", border: "1px solid #111", borderRadius: 8 }}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
           >
             Acceder
           </a>
-
-          {/* Empieza gratis */}
           <a
             href={`${APP}/auth/sign-in?callbackUrl=/`}
-            style={{ padding: "8px 12px", borderRadius: 8, background: "#111", color: "#fff" }}
+            className="rounded-lg bg-blue-600 px-3 py-1.5 font-medium text-white hover:opacity-90"
           >
             Empieza gratis
           </a>

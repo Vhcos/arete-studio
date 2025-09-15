@@ -5,7 +5,7 @@
     "**/*.tsx",
     "next-env.d.ts",
     ".next/types/**/*.ts"
-  ],
+, "../marketing_clean/layout.tsx", "../marketing_clean/components/Logo.tsx"  ],
   "exclude": [
     "node_modules"
   ],

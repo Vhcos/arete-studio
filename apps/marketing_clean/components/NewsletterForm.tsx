@@ -1,41 +1,28 @@
-// apps/marketing_clean/components/NewsletterForm.tsx
-import { FormEvent, useState } from "react";
+"use client";
 
-const input: React.CSSProperties = {
-  flex: 1, padding: "12px 14px", borderRadius: 12, border: "1px solid #ccc",
-};
-const btn: React.CSSProperties = { padding: "12px 18px", borderRadius: 12, border: "1px solid #111" };
+import * as React from "react";
 
 export default function NewsletterForm() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle"|"loading"|"ok"|"error">("idle");
+  const [email, setEmail] = React.useState("");
 
-  async function onSubmit(e: FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("loading");
-    try {
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, source: "marketing_clean", utm_source: "landing" }),
-      });
-      if (res.ok) { setStatus("ok"); setEmail(""); } else { setStatus("error"); }
-    } catch { setStatus("error"); }
+    // TODO: manda a tu backend / newsletter service
+    alert(`¡Gracias! Te avisaremos a: ${email}`);
+    setEmail("");
   }
 
   return (
-    <>
-      <form onSubmit={onSubmit} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <input
-          type="email" required placeholder="tu@email.com"
-          value={email} onChange={(e) => setEmail(e.target.value)} style={input}
-        />
-        <button disabled={status === "loading"} style={btn}>
-          {status === "loading" ? "Enviando…" : "Quiero probar"}
-        </button>
-      </form>
-      {status === "ok" && <p style={{ color: "green" }}>¡Listo! Te avisaremos.</p>}
-      {status === "error" && <p style={{ color: "crimson" }}>Ups, intenta de nuevo.</p>}
-    </>
+    <form onSubmit={onSubmit} className="flex gap-2 max-w-md">
+      <input
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="tu@email.com"
+        className="flex-1 rounded-md border border-slate-300 px-3 py-2"
+      />
+      <button className="rounded-md px-4 py-2 bg-black text-white">Quiero probar</button>
+    </form>
   );
 }

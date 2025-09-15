@@ -18,7 +18,7 @@ function mapError(code?: string) {
     case "EmailSignin":
       return "No pudimos enviar el correo. Verifica el email e intenta nuevamente.";
     case "Configuration":
-      return "Falta configurar el proveedor de email (Resend).";
+      return "Falta configurar el proveedor de email (Resend/SMTP).";
     case "AccessDenied":
       return "Acceso denegado.";
     default:
@@ -37,10 +37,14 @@ export default function SignInClient({ initialEmail = "" }: { initialEmail?: str
     setLoading(true);
     setError(null);
 
+    
+    // La pantalla de bienvenida guardará token/email y auto-redirigirá
+    const callbackUrl = "/bienvenido?next=/wizard/step-1";
+
     const res = await signIn("email", {
       email,
-      redirect: false,         // mostramos confirmación aquí mismo
-      callbackUrl: "/wizard/idea",
+      redirect: false,       // mostramos confirmación aquí mismo
+      callbackUrl,           // el enlace del mail apuntará a /bienvenido
     });
 
     setLoading(false);
@@ -56,7 +60,9 @@ export default function SignInClient({ initialEmail = "" }: { initialEmail?: str
     <Card>
       <CardHeader>
         <CardTitle>Accede con tu email</CardTitle>
-        <CardDescription>Te enviaremos un enlace de acceso. No necesitas contraseña.</CardDescription>
+        <CardDescription>
+          Te enviaremos un enlace de acceso. No necesitas contraseña.
+        </CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -64,8 +70,7 @@ export default function SignInClient({ initialEmail = "" }: { initialEmail?: str
           <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
             <p>✅ Enviamos un enlace a <b>{email}</b>. Revisa tu buzón y spam.</p>
             <p className="mt-2 text-xs text-zinc-500">
-              En <i>development</i> el enlace también aparece en la consola del servidor.
-              Si tu dominio de Resend está en sandbox, solo correos verificados recibirán el email.
+              Al abrir el enlace verás una pantalla de bienvenida y serás redireccionado automáticamente para comenzar.
             </p>
           </div>
         ) : (
