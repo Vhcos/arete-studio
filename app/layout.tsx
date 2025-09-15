@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import  Logo  from "@/components/Logo";
 import NavApp from "./components/NavApp"; // <- importa así (relativo)
-
+import { Suspense } from "react";
 
 
 
@@ -31,9 +31,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-white text-slate-900">
         <header className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
           <Logo />
-          <NavApp />
+          <Suspense fallback={<div className="h-9 w-40" />}>
+            <NavApp />
+          </Suspense>
         </header>
-        <main className="mx-auto max-w-6xl px-4">{children}</main>
+
+        <main className="mx-auto max-w-6xl px-4">
+          {/* 👇 Suspense global que cubre /, /bienvenido, /wizard/*, etc. */}
+          <Suspense fallback={<div className="py-10 text-sm text-slate-500">Cargando…</div>}>
+            {children}
+          </Suspense>
+        </main>
+
         <footer className="mx-auto max-w-6xl px-4 py-10 text-sm text-slate-500">
           © {new Date().getFullYear()} ARET3. Todos los derechos reservados.
         </footer>
