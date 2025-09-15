@@ -36,6 +36,7 @@ export default function Step5Page() {
       return;
     }
     setStep5(parsed.data);
+
     router.push("/wizard/step-4");
   }
 
