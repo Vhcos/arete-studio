@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import InformePreview from "@/components/informe/InformePreview";
+import EERRAnual from "@/components/finance/EERRAnual";
+import { getTemplateForSector } from "@/lib/model/step6-distributions";
+import type { SectorId } from "@/lib/model/sectors";
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
 import {
   Radar,
@@ -500,6 +503,28 @@ const costoVariableMes =
   }
 }
 
+//------Estado + hydratación para conocer el sectorId del wizard (fallback a retail_local):
+
+   const [sectorId, setSectorId] = useState<SectorId>("retail_local");
+
+     useEffect(() => {
+       try {
+         const wraw = localStorage.getItem("wizard");
+         if (!wraw) return;
+         const w = JSON.parse(wraw);
+         const sid = w?.state?.data?.step2?.sectorId;
+         if (sid) setSectorId(sid as SectorId);
+       } catch {}
+    }, []);
+
+     const tpl = useMemo(() => getTemplateForSector(sectorId), [sectorId]);
+
+    const ventaAnualEERR =
+         Number.isFinite(ventaAnualNum) && ventaAnualNum > 0
+          ? Math.round(ventaAnualNum)
+          : Math.round((ventasAnual ?? 0));
+
+
 //----------------------FIN DE LOS USESTATE Y FUNCIONES----------------------
 // ——————————— Hidratación desde el Wizard (Formulario legacy) ———————————
 
@@ -799,7 +824,7 @@ const getS5 = (k: string) => {
               }
                title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
               >
-               {iaLoading ? "Evaluando…" : "Evaluar con IA"}
+               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
              </Button>
           </div>
         </div>
@@ -1252,12 +1277,12 @@ const getS5 = (k: string) => {
                    <Button onClick={() => printOnly('tablero')}>Imprimir tablero</Button>
                   
                   <Link
-    href="/informe"
-    className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-  >
-    Ir a informe
-  </Link>
-</div>
+                    href="/informe"
+                      className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                   Ir a informe
+                  </Link>
+                 </div>
                   <section id="tablero" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-3 -mt-2">
                   <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -1318,164 +1343,111 @@ const getS5 = (k: string) => {
                   </div>
                 </div>
 
+                
 
-            
-                <div className="space-y-4">
-                  <div className="rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
-                    <div className="text-sm text-muted-foreground">Punto de equilibrio</div>
-                    <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <div className="text-muted-foreground">Margen de Contribución Unitario</div>
-                        <div className="font-semibold">${fmtCL(outputs.pe.mcUnit)}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Clientes en equilibrio</div>
-                        <div className="font-semibold">{Number.isFinite(outputs.pe.clientsPE)? fmtNum(outputs.pe.clientsPE) : '—'}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Ventas en equilibrio</div>
-                        <div className="font-semibold">${fmtCL(outputs.pe.ventasPE)}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Autonomía de caja</div>
-                        <div className="font-semibold">{Number.isFinite(outputs.pe.runwayMeses)? `${outputs.pe.runwayMeses.toFixed(1)} meses` : '—'}</div>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      <strong>Margen de contribución = Ventas − Costos de venta</strong>.<br/>
-                      <strong>Autonomía de caja</strong> = Meses sin venta para cubrir gastos fijos con capital de trabajo.
-                    </div>
-                    <div className="mt-2 text-sm">
-                      {(() => {
-                        const cap = outputs.report.input.capitalTrabajo || 0;
-                        const acu = outputs.peCurve.acumDeficitUsuario || 0;
-                        const cg = capitalGap(cap, acu);
-                        return (
-                          <>
-                            Capital actual: <strong>${fmtCL(cap)}</strong> · Déficit acumulado hasta P.E. (plan {mesesPE}m): <strong>${fmtCL(acu)}</strong><br/>
-                            {cg.suficiente
-                              ? <span className="text-green-700 font-medium">✔ Capital alcanza (superávit ${fmtCL(cg.gap)})</span>
-                              : <span className="text-red-700 font-medium">✖ Falta capital: ${fmtCL(cg.gap)}</span>}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                            {/* BOARD de EERR */}
+                          <div className="lg:col-span-1 space-y-4">
+  {/* BOARD de EERR */}
+  <div
+    className="rounded-xl border-2 p-4"
+    style={{ borderColor: accent, background: accentSoft }}
+  >
+    <EERRAnual ventaAnual={ventaAnualEERR} tpl={tpl} />
+  </div>
 
-                  <Card className="sm:col-span-2">
-                   <CardHeader>
-                      <CardTitle>Estado de resultado (12 meses)</CardTitle>
-                   </CardHeader>
-                     <CardContent>
-                       <div className="space-y-1">
-                         <Row k="Ventas primer año" v={fmtMaybeCL(ventasAnual)} strong />
-                         <Row k="Costo variable anual" v={fmtMaybeCL(costoVariableAnual)} neg />
-                         <Row k="Gastos fijos anual" v={fmtMaybeCL(gastosFijosAnual)} neg />
-                         <Row k="Gastos en Marketing" v={fmtMaybeCL(marketingAnual)} neg />
-                       <div className="mt-2 border-t pt-2">
-                         <Row k="Resultado anual" v={fmtMaybeCL(resultadoAnual)} strong large />
-                       </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                           Nota: Resultado anual <strong>Estimado</strong> antes de impuestos y devolución de inversiones.
-                        </p>
-                       </div>
-                     </CardContent>
-                   </Card>
+  
+<div className="rounded-xl border p-5">
+    <div className="text-muted-foreground"><strong>VEREDICTO</strong></div>
+    <div className="text-xl font-bold mt-1" style={{ color: accent }}>
+      {outputs.verdict.title}
+    </div>
+    <p className="text-sm mt-1 leading-relaxed">{outputs.verdict.subtitle}</p>
+    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
+      {(outputs.verdict?.actions ?? []).map((a: string, i: number) => (
+        <li key={i}>{a}</li>
+      ))}
+    </ul>
+  </div>
+<div className="rounded-xl border p-5">
+    <div className="text-muted-foreground"><strong>TOP RIESGOS</strong></div>
+    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
+      {(outputs.topRisks ?? []).map((r: string, i: number) => (
+        <li key={i}>{r}</li>
+      ))}
+    </ul>
+  </div>
+<div className="rounded-xl border p-5">
+    <div className="text-muted-foreground"><strong>Experimentos sugeridos (2 semanas)</strong></div>
+    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
+      {(outputs.experiments ?? []).map((r: string, i: number) => (
+        <li key={i}>{r}</li>
+      ))}
+    </ul>
+  </div>
+
+</div>
+<div className="lg:col-span-2 -mt-2">
+{/* Brújula menor (fusión P.E. + Marketing) */}
+  <div
+    className="rounded-xl border-2 p-4"
+    style={{ borderColor: accent, background: accentSoft }}
+  >
+    <div className="font-medium mb-2">BRUJULA MENOR</div>
+
+    {/* KPIs superiores */}
+    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+      
+      <div>
+        <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
+        <div className="font-semibold">
+          ${fmtCL((outputs?.peCurve?.acumDeficitUsuario ?? 0))}
+        </div>
+      </div>
+    </div>
+
+  {/* Métricas operativas */}
+  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+    <div className="flex items-center justify-between">
+      <span>Ventas para P.E.</span>
+      <span className="font-medium">${fmtCL(outputs.pe.ventasPE)}</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Clientes para tu P.E.</span>
+      <span className="font-medium">{fmtNum(outputs.pe.clientsPE)}</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Clientes objetivo (mes)</span>
+      <span className="font-medium">{fmtNum(N)}</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Tráfico requerido</span>
+      <span className="font-medium">{fmtNum(Q)}</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Costo unitario tráfico por cliente</span>
+      <span className="font-medium">
+        {fmtCL(
+          (mode === "budget")
+            ? CPL_implicito
+            : (Q > 0 ? Math.round(M_requerido / Q) : 0)
+        )}
+      </span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Costo por cliente que compra</span>
+      <span className="font-medium">
+        {fmtCL(
+          (mode === "budget")
+            ? CAC_implicito
+            : (N > 0 ? Math.round(M_requerido / N) : 0)
+        )}
+      </span>
+    </div>
+  </div>
+</div>
+</div>
 
 
-                           {/* BOARD de MC */}
-                   <Card>
-                     <CardHeader>
-                       <CardTitle>Margen de contribución (post marketing)</CardTitle>
-                     </CardHeader>
-                     <CardContent>
-                      <div className="text-2xl font-bold">{fmtCL(margenContribucionMes)}</div>
-                      <div className="text-sm text-muted-foreground">
-                       {Number.isFinite(margenContribucionPct) ? (margenContribucionPct*100).toFixed(1) + "%" : "—"} sobre ventas
-                     </div>
-                     <div className="mt-2 text-xs text-muted-foreground">
-                       Considera: Ventas − Costos variables − <b>Marketing</b>.
-                     </div>
-                   </CardContent>
-                 </Card>
-                           {/* BOARD  de Marketing*/}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Marketing · métricas</CardTitle>
-                   </CardHeader>
-                   <CardContent className="space-y-2">
-                     <div className="flex items-center justify-between">
-                       <span className="text-sm text-muted-foreground">Clientes objetivo (mes)</span>
-                       <span className="font-medium">{fmtNum(N)}</span>
-                     </div>
-                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Tráfico requerido</span>
-                        <span className="font-medium">{fmtNum(Q)}</span>
-                     </div>
 
-                     {mode === 'budget' ? (
-                       <>
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Costo unitario por trafico de Cliente (CPL)</span>
-                            <span className="font-medium">{fmtCL(CPL_implicito)}</span>
-                         </div>
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Costo por Cliente que compra(CAC)</span>
-                            <span className="font-medium">{fmtCL(CAC_implicito)}</span>
-                         </div>
-                       </>
-                     ) : (
-                       <>
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Presupuesto de Marketing</span>
-                            <span className="font-medium">{fmtCL(M_requerido)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">CPL objetivo</span>
-                            <span className="font-medium">{fmtCL(CPL_objetivo)}</span>
-                        </div>
-                        {marketingMensual && (
-                          <div className={`rounded-md border text-xs px-2 py-1 ${Number.isFinite(gapM) ? (gapM >= 0 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200") : "bg-white"}`}>
-                            {Number.isFinite(gapM)
-                             ? gapM >= 0
-                               ? <>Con tu M actual ({fmtCL(M)}) sobran {fmtCL(gapM)}.</>
-                               : <>Con tu M actual ({fmtCL(M)}) faltan {fmtCL(Math.abs(gapM))}.</>
-                             : "Ingresa Marketing para comparar con el requerido."}
-                         </div>
-                        )}
-                      </>
-                     )}
-                   </CardContent>
-                </Card>
-
-                  <div className="rounded-xl border p-4">
-                    <div className="text-sm text-muted-foreground">Veredicto</div>
-                    <div className="text-xl font-bold mt-1" style={{ color: accent }}>{outputs.verdict.title}</div>
-                    <p className="text-sm mt-1">{outputs.verdict.subtitle}</p>
-                    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {(outputs.verdict?.actions ?? []).map((a: string, i: number) => (
-                        <li key={i}>{a}</li>
-                    ))}
-                    </ul>
-                  </div>
-                  <div className="rounded-xl border p-4">
-                    <div className="text-sm text-muted-foreground">Top riesgos</div>
-                    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {(outputs.topRisks ?? []).map((r: string, i: number) => (
-                        <li key={i}>{r}</li>
-                     ))}
-                    </ul>
-                  </div>
-                  <div className="rounded-xl border p-4">
-                    <div className="text-sm text-muted-foreground">Experimentos sugeridos (2 semanas)</div>
-                    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {(outputs.experiments ?? []).map((r: string, i: number) => (
-                        <li key={i}>{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
                </section> 
               </CardContent>
             </Card>

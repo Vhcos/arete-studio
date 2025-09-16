@@ -107,7 +107,7 @@ function onNext() {
         {SHOW_IA && (
           <button onClick={onIA} className="rounded-lg bg-slate-900 text-white px-4 py-2">Generar plan (IA)</button>
         )}
-        <button onClick={onNext} className="rounded-lg bg-blue-600 text-white px-4 py-2">Ir al Formulario</button>
+        <button onClick={onNext} className="rounded-lg bg-blue-600 text-white px-4 py-2">Ir al Tablero </button>
       </div>
 
       {!SHOW_IA && (
