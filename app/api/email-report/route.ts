@@ -1,124 +1,179 @@
 // app/api/email-report/route.ts
-import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
-import { buildInvestorNarrative } from "@/app/lib/nonAI-report";
+import { NextResponse } from "next/server";
+import { Resend } from "resend";
+import { buildInvestorNarrative } from "../../lib/nonAI-report";
 
-const resendKey = process.env.RESEND_API_KEY || '';
-const FROM = process.env.EMAIL_FROM || '';
-const DEV_TO = process.env.NEXT_PUBLIC_DEV_TO || process.env.DEV_TO || '';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-function esc(s: unknown) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    .slice(0, 4000);
+const resend = new Resend(process.env.RESEND_API_KEY || "");
+const EMAIL_FROM    = process.env.EMAIL_FROM    || "ARET3 <login@aret3.cl>";
+const EMAIL_BCC     = process.env.EMAIL_BCC     || "login@aret3.cl";
+const EMAIL_TEST_TO = process.env.EMAIL_TEST_TO || ""; // opcional QA
+
+const isEmail = (s?: string) => !!s && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s || "");
+
+// ---------------- Fallbacks server-side ----------------
+function fallbackCompetitiveMap(input: any): string {
+  const rubro   = input?.rubro || input?.sectorId || "tu categoría";
+  const ticket  = toNum(input?.ticket);
+  const mcUnit  = toNum(input?.mcUnit ?? (ticket - toNum(input?.costoUnit)));
+
+  const precio = ticket ? `$${fmtCL(ticket)}` : "precio de lista";
+  const mc     = Number.isFinite(mcUnit) ? `$${fmtCL(mcUnit)}` : "margen unitario";
+
+  return [
+    `• Segmentos típicos en ${rubro}: low-cost, estándar y premium.`,
+    `• Diferénciate por propuesta y experiencia (no solo precio).`,
+    `• Rango de ${precio}; destaca tu ${mc} y tiempos de entrega.`,
+    `• Ventajas defensibles: canal directo, servicio postventa, casos y reseñas.`,
+    `• Evita “competir en todo”; elige 2–3 atributos clave y sé n°1 ahí.`,
+  ].join("\n");
 }
 
-function todayStamp() {
-  const d = new Date();
-  return d.toLocaleString();
+function fallbackRegulatoryChecklist(input: any): string {
+  const rubro = `${input?.rubro || input?.sectorId || "tu giro"}`.toLowerCase();
+  const comunes = [
+    "• Constitución o formalización (SpA / EIRL).",
+    "• Inicio de actividades en SII y emisión electrónica.",
+    "• Patente municipal (domicilio comercial).",
+    "• Contratos y protección de datos (si captas leads/clientes).",
+    "• Prevención de riesgos / seguridad laboral según tamaño.",
+  ];
+  const extra: string[] = [];
+
+  if (rubro.includes("food") || rubro.includes("alimento") || rubro.includes("rest")) {
+    extra.push("• Autorización sanitaria SEREMI (elaboración/venta de alimentos).");
+  }
+  if (rubro.includes("construction") || rubro.includes("constru") || rubro.includes("realestate")) {
+    extra.push("• Permisos DOM / obras menores-mayores; coordinación mutualidad.");
+  }
+  if (rubro.includes("educa")) extra.push("• Convenios/registro Mineduc/municipal si corresponde.");
+  if (rubro.includes("fintech") || rubro.includes("finan")) extra.push("• Revisa normativa CMF / prevención LA/FT.");
+
+  return [...comunes, ...extra].join("\n");
 }
 
-function buildHtml(payload: any) {
-  const { user = {}, report = null, aiPlan = null } = payload || {};
-  const { projectName, founderName, email, idea, rubro, ubicacion } = user;
+const fmtCL = (n: number) =>
+  new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 })
+    .format(Math.max(0, Math.round(n || 0)));
 
-  const userBlock = `
-    <div style="font:14px system-ui,-apple-system,Segoe UI,Roboto">
-      <h2 style="margin:0 0 8px">Informe Areté</h2>
-      <div style="padding:12px;border:1px solid #eee;border-radius:10px">
-        <div><b>Proyecto:</b> ${esc(projectName) || '-'}</div>
-        <div><b>Emprendedor/a:</b> ${esc(founderName) || '-'}</div>
-        <div><b>Email:</b> ${esc(email) || '-'}</div>
-        ${idea ? `<div><b>Idea:</b> ${esc(idea)}</div>` : ''}
-        ${rubro || ubicacion ? `<div><b>Contexto:</b> ${esc(rubro)} · ${esc(ubicacion)}</div>` : ''}
-      </div>
-    </div>`;
-
-  const repBlock = report ? `
-    <h3 style="margin:18px 0 8px">Informe</h3>
-    <pre style="white-space:pre-wrap;font:13px ui-monospace,Menlo,Consolas,monospace;background:#fafafa;border:1px solid #eee;border-radius:10px;padding:12px">
-${esc(report?.sections?.industryBrief || '')}
-
-${esc(report?.sections?.competitionLocal || '')}
-
-${esc(report?.sections?.swotAndMarket || '')}
-
-${esc(report?.sections?.finalVerdict || '')}
-
-Score: ${esc(report?.ranking?.score)} / 100
-    </pre>` : '';
-  const planBlock = aiPlan ? `
-    <h3 style="margin:18px 0 8px">Plan (IA)</h3>
-    ${aiPlan.plan100 ? `<p style="font:14px system-ui">${esc(aiPlan.plan100)}</p>` : ''}
-    ${Array.isArray(aiPlan.acciones) ? `
-      <div style="font:14px system-ui">
-        <b>Acciones:</b>
-        <ul>
-          ${aiPlan.acciones.slice(0, 10).map((a: any) =>
-            `<li>Día ${esc(a?.dia)} — ${esc(a?.tarea)} (${esc(a?.indicador)})</li>`).join('')}
-        </ul>
-      </div>` : ''}
-  ` : '';
-
-  return `
-  <div style="max-width:720px;margin:0 auto">
-    ${userBlock}
-    ${repBlock}
-    ${planBlock}
-    <div style="margin-top:16px;color:#888;font:12px system-ui">Enviado: ${esc(todayStamp())}</div>
-  </div>`;
-}
+const toNum = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+// -------------------------------------------------------
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const toReq: string | undefined = (body?.to || '').toString().trim();
-    const reason: string = (body?.reason || 'user-asked').toString();
+    const body   = await req.json();
+    const to     = body?.to as string | undefined;
+    const report = body?.report ?? {};
+    const aiPlan = body?.aiPlan ?? null;
+    const user   = body?.user ?? {};
+    const reason = body?.reason || "user-asked";
 
-    // variables de entorno mínimas
-    if (!resendKey || !FROM) {
-      return NextResponse.json({ ok: false, skipped: true, reason: 'env-missing' });
+    const toFinal = isEmail(to) ? to! : (isEmail(EMAIL_TEST_TO) ? EMAIL_TEST_TO : "");
+    if (!toFinal) {
+      return NextResponse.json({ ok: false, error: "Missing 'to' and EMAIL_TEST_TO not set" }, { status: 400 });
     }
 
-    const resend = new Resend(resendKey);
+    const project = user?.projectName?.trim?.() || "Tu evaluación";
+    const subject = `Informe ARET3 — ${project}`;
 
-    const subject = `Informe Areté · ${todayStamp()}`;
-    const html = buildHtml(body);
+    // === mismo resumen que pantalla ===
+    let resumen = "";
+    try { resumen = buildInvestorNarrative(report?.input || {}, report?.meta || {}); } catch {}
 
-    // destino deseado (si falla por 403 → cae a DEV_TO)
-    const desiredTo = toReq || DEV_TO || FROM;
+    const sections = report?.sections || {};
+    const competitionLocal = sections?.competitionLocal || "—";
+    const swotAndMarket    = sections?.swotAndMarket    || "—";
+    const finalVerdict     = sections?.finalVerdict     || "—";
 
-    try {
-      const sent = await resend.emails.send({
-        from: FROM,
-        to: desiredTo,
-        subject,
-        html,
-      });
+    // ← aquí forzamos contenido si no viene en el payload
+    const competitiveMap = (sections?.competitiveMap ?? sections?.mapaCompetitivo) || fallbackCompetitiveMap(report?.input || {});
+    const regulatoryChecklist = (sections?.regulatoryChecklist ?? sections?.checklistRegulatorio) || fallbackRegulatoryChecklist(report?.input || {});
 
-      if (sent?.error) throw sent.error;
-      return NextResponse.json({ ok: true, to: desiredTo });
-    } catch (e: any) {
-      // Modo test/sandbox de Resend (403) → reenviar al dev
-      const code = e?.statusCode || e?.status || 0;
-      if (code === 403 && DEV_TO && desiredTo !== DEV_TO) {
-        await resend.emails.send({ from: FROM, to: DEV_TO, subject, html });
-        return NextResponse.json({ ok: true, to: DEV_TO, testFallback: true });
-      }
-      console.error('[email-report] error:', e);
-      return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+    const html = renderHtmlEmail({
+      project,
+      founder:   user?.founderName || "—",
+      email:     user?.email || "—",
+      rubro:     user?.rubro || "—",
+      ubicacion: user?.ubicacion || "—",
+      resumen,
+      competitionLocal,
+      swotAndMarket,
+      finalVerdict,
+      plan100: aiPlan?.plan100 || "",
+      competitiveMap,
+      regulatoryChecklist,
+      reason,
+    });
+
+    const resp = await resend.emails.send({
+      from: EMAIL_FROM,
+      to:   [toFinal],
+      bcc:  isEmail(EMAIL_BCC) ? [EMAIL_BCC] : [],
+      subject,
+      html,
+    });
+
+    if ((resp as any)?.error) {
+      console.error("Resend error:", (resp as any).error);
+      return NextResponse.json({ ok: false, error: (resp as any).error }, { status: 500 });
     }
-  } catch (err) {
-    console.error('[email-report] fatal:', err);
-    return NextResponse.json({ ok: false, error: 'bad-request' }, { status: 400 });
+    return NextResponse.json({ ok: true, to: toFinal, id: (resp as any)?.data?.id ?? null });
+  } catch (e: any) {
+    console.error(e);
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }
 }
 
+function renderHtmlEmail(o:{
+  project:string; founder:string; email:string; rubro:string; ubicacion:string;
+  resumen:string; competitionLocal:string; swotAndMarket:string; finalVerdict:string;
+  plan100?:string; competitiveMap?:string; regulatoryChecklist?:string; reason:string;
+}) {
+  const wrap = (s:string)=> (s || "—").replace(/\n/g, "<br/>");
+  const esc  = (s:string)=> s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
+  return `<!doctype html>
+<html>
+<head><meta charSet="utf-8"/><title>Informe ARET3 — ${esc(o.project)}</title></head>
+<body style="background:#f6f7fb;margin:0;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
+<table role="presentation" width="100%" style="max-width:680px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;">
+<tr><td>
+  <h1 style="margin:0;font-size:22px;">Informe ARET3 — ${esc(o.project)}</h1>
+  <p style="margin:8px 0;color:#444;">Emprendedor/a: <b>${esc(o.founder)}</b> · Email: ${esc(o.email)}<br/>Rubro: <b>${esc(o.rubro)}</b> · Ubicación: <b>${esc(o.ubicacion)}</b></p>
 
-console.log('[email-report] ENV check', {
-  hasKey: !!process.env.RESEND_API_KEY,
-  from: process.env.EMAIL_FROM,
-  forcedTo: process.env.NEXT_PUBLIC_DEV_TO,
-});
+  <h2 style="font-size:16px;margin:16px 0 6px;">Resumen ejecutivo</h2>
+  <p style="white-space:pre-wrap;line-height:1.5;margin:0 0 12px;">${wrap(o.resumen)}</p>
+
+  <h2 style="font-size:16px;margin:16px 0 6px;">Competencia local</h2>
+  <p style="white-space:pre-wrap;line-height:1.5;margin:0 0 12px;">${wrap(o.competitionLocal)}</p>
+
+  <h2 style="font-size:16px;margin:16px 0 6px;">FODA + Tamaño de mercado</h2>
+  <p style="white-space:pre-wrap;line-height:1.5;margin:0 0 12px;">${wrap(o.swotAndMarket)}</p>
+
+  <h2 style="font-size:16px;margin:16px 0 6px;">Veredicto + próximos pasos</h2>
+  <p style="white-space:pre-wrap;line-height:1.5;margin:0 0 12px;">${wrap(o.finalVerdict)}</p>
+
+  <h2 style="font-size:16px;margin:16px 0 6px;">Mapa competitivo</h2>
+  <p style="white-space:pre-wrap;line-height:1.5;margin:0 0 12px;">${wrap(o.competitiveMap || "—")}</p>
+
+  <h2 style="font-size:16px;margin:16px 0 6px;">Checklist regulatorio</h2>
+  <p style="white-space:pre-wrap;line-height:1.5;margin:0 0 12px;">${wrap(o.regulatoryChecklist || "—")}</p>
+
+  ${o.plan100 ? `
+  <hr style="border:0;border-top:1px solid #eee;margin:16px 0;"/>
+  <h2 style="font-size:16px;margin:16px 0 6px;">Plan de acción (100 palabras)</h2>
+  <p style="white-space:pre-wrap;line-height:1.5;margin:0 0 12px;">${wrap(o.plan100)}</p>` : ""}
+
+  <hr style="border:0;border-top:1px solid #eee;margin:16px 0;"/>
+  <p style="color:#666;font-size:12px;margin:0;">Enviado por ARET3 · Motivo: ${esc(o.reason)}</p>
+</td></tr>
+</table>
+</body>
+</html>`;
+}

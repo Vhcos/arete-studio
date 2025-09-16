@@ -783,6 +783,9 @@ const getS5 = (k: string) => {
 
   const isAIEnabled = canRunAI && !iaLoading;
 
+  // arriba en tu componente para alerta como check 
+  const [copied, setCopied] = useState(false);
+
   // -------------------- Render --------------------
   return (
    <div className="min-h-screen p-6" style={styleAccent}>
@@ -1458,22 +1461,26 @@ const getS5 = (k: string) => {
           </TabsList>
           
           </TabsContent>
-
+ 
           {/* REPORT */}
           <TabsContent value="explain">
             <Card className="border-none shadow-sm">
               <CardHeader><CardTitle>Informe</CardTitle></CardHeader>
               <CardContent>
                <div className="no-print mb-4">
-                 <Button
-                   onClick={() => {
-                     printOnly('informe');
-                     void sendReportEmail({ silent: true, reason: 'print-informe' });
-                   }}
-                   disabled={emailSending}
-                 >
-                   Imprimir informe
-                 </Button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className={[
+                     "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm transition",
+                     "bg-white text-slate-900 border-2 border-blue-600",
+                     "hover:bg-blue-50 hover:border-blue-700 hover:shadow-md",
+                     "active:translate-y-[1px] active:shadow-none",
+                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400"
+                 ].join(" ")}
+                >
+                 Imprimir informe
+               </button>
 
                  <Button
                onClick={() =>
@@ -1527,15 +1534,17 @@ const getS5 = (k: string) => {
 
                        {/* Botón copiar plan – fuera de impresión */}
                        <div className="no-print mt-3">
-                         <button
+                        <button
                            className="mt-2 rounded-md border px-3 py-1 text-sm"
-                           onClick={() => {
-                             navigator.clipboard.writeText(aiPlan.plan100);
-                             alert('Plan copiado.');
+                           onClick={async () => {
+                             await navigator.clipboard.writeText(aiPlan?.plan100 ?? "");
+                             setCopied(true);
+                             setTimeout(() => setCopied(false), 2500);
                            }}
-                         >
-                         Copiar plan
-                       </button>
+                        >
+                           Copiar plan
+                      </button>
+                      {copied && <span className="ml-2 text-xs text-green-700">Copiado ✅</span>}
                      </div>
 
                     {/* Tablas IA */}
