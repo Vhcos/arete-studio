@@ -902,22 +902,10 @@ const getS5 = (k: string) => {
             >
                 ← Volver al paso 6
             </Link>
-             
-            <Button
-              onClick={handleEvaluateAI}
-              disabled={!isAIEnabled}
-              className={
-                isAIEnabled
-                 ? "bg-red-600 hover:bg-red-700 text-white"
-                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
-              }
-               title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
-              >
-               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
-             </Button>
-              <p className="text-sm text-muted-foreground -mt-1">
-            Dirígete a Informe para ver resultados
+             <p className="text-sm text-muted-foreground -mt-1">
+            <strong>En Informe podrás aplicar IA a tu idea y obtener un plan de negocio</strong>
            </p>
+            
           </div>
         </div>
 
@@ -1550,7 +1538,7 @@ const getS5 = (k: string) => {
           </TabsList>
           
           </TabsContent>
- 
+                    {/* ZONA DE BOTONES EN INFORME*/}
           {/* REPORT */}
           <TabsContent value="explain">
             <Card className="border-none shadow-sm">
@@ -1595,7 +1583,21 @@ const getS5 = (k: string) => {
 >
   Informe a mi email
 </Button>
+<Button
+              onClick={handleEvaluateAI}
+              disabled={!isAIEnabled}
+              className={
+                isAIEnabled
+                 ? "bg-red-600 hover:bg-red-700 text-white"
+                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
+              }
+               title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
+              >
+               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
+             </Button>
                </div>
+
+
                <div className="rounded-md border bg-white p-4 text-sm">
                   <div><span className="font-semibold">Proyecto:</span> {projectName || '—'}</div>
                   <div><span className="font-semibold">Emprendedor/a:</span> {founderName || '—'}</div>
