@@ -40,6 +40,64 @@ import type { ChartPoint } from './types/report';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
+// --- helpers para bullets (acepta string[] o filas de tabla) ---
+function normalizeBullets(input: unknown, fallback: string[]): string[] {
+  if (!input) return fallback;
+  if (Array.isArray(input)) {
+    if (input.length === 0) return fallback;
+    if (typeof input[0] === 'string') return input as string[];
+
+    // CompetitiveRow / RegulationRow -> construir frase legible
+    return (input as any[]).map((row) => {
+      try {
+        // casos típicos: { nombre, caracteristicas } o { item, detalle }
+        if (row?.nombre && row?.caracteristicas) {
+          const attrs = Array.isArray(row.caracteristicas) ? row.caracteristicas.join(', ') : String(row.caracteristicas ?? '');
+          return `${row.nombre}: ${attrs}`;
+        }
+        if (row?.item && row?.detalle) {
+          return `${row.item}: ${row.detalle}`;
+        }
+        // fallback: primera propiedad string que encuentre
+        const first = Object.values(row).find(v => typeof v === 'string') as string | undefined;
+        return first ?? JSON.stringify(row);
+      } catch {
+        return JSON.stringify(row);
+      }
+    });
+  }
+  return fallback;
+}
+
+// Detecta pasos del plan (Mes 1:, 1., etc.) y separa intro + pasos
+function splitPlan(plan: string) {
+  const lines = (plan || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const steps: string[] = [];
+  const introParts: string[] = [];
+
+  for (const line of lines) {
+    // "Mes 1: ..." | "1. ..." | "Paso 1: ..."
+    if (/^(mes(es)?\s*\d+:|paso\s*\d+:|\d+\.\s+)/i.test(line)) {
+      steps.push(
+        line
+          .replace(/^(mes(es)?)\s*\d+:\s*/i, "")
+          .replace(/^paso\s*\d+:\s*/i, "")
+          .replace(/^\d+\.\s*/, "")
+          .trim()
+      );
+    } else {
+      introParts.push(line);
+    }
+  }
+
+  const intro = introParts.join(" ");
+  return { intro, steps };
+}
+
 
 export function sanitizeTxt(s: string, max = 120) {
   return String(s ?? '')
@@ -211,6 +269,18 @@ export default function AreteDemo() {
   // Supuestos y ajustes IA
   const [aiPlan, setAiPlan] = useState<AiPlan | null>(null);
 
+    type AiPlanTables = {
+     competencia: Array<Record<string, any>>;
+     regulacion: Array<Record<string, any>>;
+   };
+
+    type AiPlan = {
+        plan100?: string;
+        bullets?: string[];                   // ← agrega esto
+        competencia?: string[] | CompetitiveRow[];
+        regulacion?: string[] | RegulationRow[];
+        model?: string;                       // opcional, si lo devuelves
+      };
 
   // Email
   const [emailSending, setEmailSending] = useState(false);
@@ -464,9 +534,17 @@ const costoVariableMes =
     });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
+     console.log("[/api/evaluate] payload", data);
 
-    // guarda informe IA y dispara envío interno
-    setAiReport(data.standardReport ?? null);
+// 1) Soporta ambas formas: { data: {...} } ó { standardReport: {...} }
+const reportFromAPI =
+  (data && (data.data || data.standardReport)) || null;
+
+// 2) Guarda el informe IA para que se muestre el bloque “Evaluación (IA)”
+setAiReport(reportFromAPI);
+
+// 3) Si luego fusionas “scores/meta” con tu base, usa el payload interno si existe
+setIaData(data?.ia ?? data?.scores ? data : (data?.data ?? data));
 
     // ==== Extra: pedir plan competitivo / regulatorio a la IA ====
     try {
@@ -479,12 +557,21 @@ const costoVariableMes =
        }),
      });
 
-     const dataPlan = await resPlan.json();
-     if (dataPlan?.ok && dataPlan.plan) {
-       setAiPlan(dataPlan.plan);
-     } else {
-       console.warn('Plan IA no disponible:', dataPlan?.error || dataPlan);
-     }
+    const dataPlan = await resPlan.json();
+
+// Soportar todos los shapes que he visto en tus pruebas:
+// { ok:true, plan:{...} }  ó  { ok:true, data:{...} }  ó  { ok:true, plan100:'...', ... }
+const plan =
+  dataPlan?.plan ??
+  dataPlan?.data ??
+  (dataPlan?.ok && (dataPlan?.plan100 || dataPlan?.competencia || dataPlan?.regulacion) ? dataPlan : null);
+
+if (plan) {
+  setAiPlan(plan);
+} else {
+  console.warn("Plan IA no disponible:", dataPlan);
+}
+
 
    } catch (e) {
      console.error('No se pudo obtener plan IA:', e);
@@ -793,19 +880,18 @@ const getS5 = (k: string) => {
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-2xl shadow-sm" style={{ background: accent }}>
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
+          
         <div className="flex items-start justify-between gap-4">
           </div>
 
             <h1 className="text-2xl font-bold tracking-tight">
-             <span className="hidden sm:inline">Aret3 · Evalúa tu Idea de Negocio con IA</span>
-             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio</span>
-           </h1>
-           <p className="text-sm text-muted-foreground -mt-1">
+             <span className="hidden sm:inline"> Evalúa tu Idea de Negocio con IA</span>
+             <p className="text-sm text-muted-foreground -mt-1">
             Cumple tu propósito de la mejor manera
            </p>
+             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio</span>
+           </h1>
+           
 
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -1520,47 +1606,90 @@ const getS5 = (k: string) => {
                       <ReportView report={aiReport} />
                    </div>
 
-                    {/* Plan 100 palabras */}
-                    {aiPlan && (
-                     <>
-                       <div className="mt-6 space-y-4">
-                         <h3 className="mt-6 text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-indigo-600">
-                              Plan de Acción — ¡Sigue con tu propósito!
-                         </h3>
-                         <div className="rounded-md border bg-white p-4 text-sm leading-relaxed avoid-break">
-                           {aiPlan.plan100}
-                         </div>
-                       </div>
+                  {/* Plan 100 palabras */}
+{aiPlan && (
+  <>
+    <div className="mt-6 space-y-4">
+      <h3 className="mt-6 text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-indigo-600">
+        Plan de Acción — ¡Sigue con tu propósito!
+      </h3>
 
-                       {/* Botón copiar plan – fuera de impresión */}
-                       <div className="no-print mt-3">
-                        <button
-                           className="mt-2 rounded-md border px-3 py-1 text-sm"
-                           onClick={async () => {
-                             await navigator.clipboard.writeText(aiPlan?.plan100 ?? "");
-                             setCopied(true);
-                             setTimeout(() => setCopied(false), 2500);
-                           }}
-                        >
-                           Copiar plan
-                      </button>
-                      {copied && <span className="ml-2 text-xs text-green-700">Copiado ✅</span>}
-                     </div>
+      {(() => {
+        const { intro, steps } = splitPlan(aiPlan.plan100 ?? "");
 
-                    {/* Tablas IA */}
-                   <h3 className="text-lg font-bold mt-6">Mapa competitivo</h3>
-                   <div className="avoid-break">
-                     <CompetitiveTable rows={aiPlan.competencia} />
-                   </div>
+        return (
+          <div className="rounded-md border bg-white p-4 text-sm leading-relaxed avoid-break">
+  {/* Texto del plan (respeta saltos si vinieran) */}
+  {aiPlan?.plan100 ? (
+    <p className="whitespace-pre-line">{aiPlan.plan100}</p>
+  ) : (
+    <p className="opacity-70">Genera el plan con IA para ver recomendaciones.</p>
+  )}
 
-                   <h3 className="text-lg font-bold mt-6">Checklist regulatorio</h3>
-                   <div className="avoid-break">
-                      <RegulationTable rows={aiPlan.regulacion} />
-                   </div>
+  {/* Pasos si la IA los envió como bullets (igual que en el email) */}
+  {aiPlan?.bullets && aiPlan.bullets.length > 0 && (
+    <ol className="list-decimal pl-6 mt-3 space-y-1">
+      {aiPlan.bullets.map((b, i) => (
+        <li key={`plan-step-${i}`}>{b}</li>
+      ))}
+    </ol>
+  )}
+
+            {/* Lista de pasos si existen */}
+            {steps.length > 0 && (
+              <ol className="list-decimal pl-6 mt-3 space-y-1">
+                {steps.map((s, i) => (
+                  <li key={`step-${i}`}>{s}</li>
+                ))}
+              </ol>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+{/* Botón copiar plan (lo que ya tenías) */}
+    <div className="no-print mt-3">
+      <button
+        className="mt-2 rounded-md border px-3 py-1 text-sm"
+        onClick={async () => {
+          await navigator.clipboard.writeText(aiPlan?.plan100 ?? "");
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2500);
+        }}
+      >
+        Copiar plan
+      </button>
+      {copied && <span className="ml-2 text-xs text-green-700">Copiado ✅</span>}
+    </div>
+
+                    {/* IA – Mapa competitivo + Checklist (bullets como en el email) */}
+<h3 className="text-lg font-bold mt-6">Mapa competitivo</h3>
+<ul className="list-disc pl-6 space-y-1">
+  {normalizeBullets(aiPlan?.competencia, [
+    'Segmentos típicos en tu categoría: low-cost, estándar y premium.',
+    'Diferénciate por propuesta y experiencia (no solo precio).',
+    'Rango de precio de lista; destaca tu ticket y tiempos de entrega.',
+    'Ventajas defendibles: canal directo, servicio postventa, casos y reseñas.',
+    'Evita competir en todo: elige 2–3 atributos clave y sé n°1 allí.',
+  ]).map((b, i) => <li key={`comp-${i}`}>{b}</li>)}
+</ul>
+
+<h3 className="text-lg font-bold mt-6">Checklist regulatorio</h3>
+<ul className="list-disc pl-6 space-y-1">
+  {normalizeBullets(aiPlan?.regulacion, [
+    'Constitución / formalización (SpA o EIRL).',
+    'Inicio de actividades en SII y emisión electrónica.',
+    'Patente municipal (domicilio comercial).',
+    'Protección de datos si captas leads/clientes.',
+    'Prevención de riesgos / seguridad laboral según tamaño.',
+  ]).map((b, i) => <li key={`reg-${i}`}>{b}</li>)}
+</ul>
+
                  </>
                )}
             </>
       )}
+      
                </div>
               </CardContent>
             </Card>

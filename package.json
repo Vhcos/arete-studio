@@ -36,7 +36,7 @@
     "next": "^15.4.7",
     "next-auth": "^4.24.11",
     "nodemailer": "^6.10.1",
-    "openai": "^5.16.0",
+    "openai": "4.104.0",
     "postcss": "8.4.47",
     "react": "19.1.0",
     "react-dom": "19.1.0",
