@@ -889,7 +889,7 @@ const getS5 = (k: string) => {
              <p className="text-sm text-muted-foreground -mt-1">
             Cumple tu propósito de la mejor manera
            </p>
-             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio</span>
+             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio con IA</span>
            </h1>
            
 
@@ -915,6 +915,9 @@ const getS5 = (k: string) => {
               >
                {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
              </Button>
+              <p className="text-sm text-muted-foreground -mt-1">
+            Dirígete a Informe para ver resultados
+           </p>
           </div>
         </div>
 
@@ -1569,19 +1572,29 @@ const getS5 = (k: string) => {
                </button>
 
                  <Button
-               onClick={() =>
-                  sendReportEmail({
-                   to: email,               // correo del usuario
-                   reason: 'user-asked',
-                   report: aiReport ?? nonAIReport, // prioriza IA si ya está
-                   aiPlan,                  // si ya generaste plan 100 palabras
-                   user: { projectName, founderName, email, idea, rubro, ubicacion },
-                })
-               }
-               disabled={!emailOK || emailSending}
-            >
-              Informe a mi email
-            </Button>
+  onClick={() =>
+    sendReportEmail({
+      to: email,                  // correo que escribió el usuario
+      reason: 'user-asked',       // etiqueta para server logs
+      // 👇 Mismo informe que ves en pantalla. Prioriza IA; si no hay, usa el base.
+      report: aiReport ?? nonAIReport,
+      // 👇 Tablas/plan de la IA para “Mapa competitivo” + “Checklist regulatorio” + Plan 100
+      aiPlan,
+      // 👇 Metadatos del usuario que usamos en el encabezado del email
+      user: {
+        projectName,
+        founderName,
+        email,
+        idea,        // tu idea actual (la de la pantalla)
+        rubro,       // rubro/sector
+        ubicacion,   // ubicación (país/ciudad)
+      },
+    })
+  }
+  disabled={!emailOK || emailSending}
+>
+  Informe a mi email
+</Button>
                </div>
                <div className="rounded-md border bg-white p-4 text-sm">
                   <div><span className="font-semibold">Proyecto:</span> {projectName || '—'}</div>
