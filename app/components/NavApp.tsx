@@ -26,7 +26,7 @@ export default function NavApp() {
   const idle   = "text-slate-600 hover:text-slate-900 hover:bg-slate-100";
 
   return (
-    <nav className="flex items-center gap-2">
+    <nav className="flex flex-wrap items-center gap-3 text-sm">
       {/* Tabs principales */}
       <Link
         href="/tablero"
