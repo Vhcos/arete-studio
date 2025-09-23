@@ -4,6 +4,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { tryDebitCredit, refundCredit } from "@/lib/credits";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
@@ -23,8 +27,35 @@ function toJson<T>(s: string | null | undefined): T {
  * No toco tu shape; el prompt concentra la conversión.
  */
 export async function POST(req: Request) {
+
+  // 1) sesión y userId fijo (no opcional en catch)
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const requestId = body?.requestId || crypto.randomUUID();
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true },
+  });
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "no_user" }, { status: 401 });
+  }
+  const userId = user.id; // 👈 queda “cerrado” para usar en catch
+
+  // 2) debitar 1 crédito
+  const ok = await tryDebitCredit(userId, requestId);
+  if (!ok) {
+    return NextResponse.json({ ok: false, error: "no_credits" }, { status: 402 });
+  }
+  // OK, tenemos user.id y requestId (idempotencia)
+  
+  // 3) llamar a OpenAI
   try {
-    const { input, sectorId } = await req.json();
+    const { input, sectorId } = body;
 
     // --- PROMPT: conviértelo a tu estilo/plantilla actual ---
     const system = [
@@ -72,8 +103,9 @@ export async function POST(req: Request) {
       usage: completion.usage, // útil para ver tokens en dev
       model: completion.model,
     });
-  } catch (err: any) {
-    console.error("[/api/evaluate] error:", err);
-    return NextResponse.json({ ok: false, error: String(err?.message || err) }, { status: 500 });
-  }
+  } catch (err: unknown) {
+  const e = err as Error;
+  console.error("[/api/plan] error:", e);
+  return NextResponse.json({ ok: false, error: String(e.message ?? e) }, { status: 500 });
+}
 }

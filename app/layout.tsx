@@ -4,6 +4,7 @@ import "./globals.css";
 import Logo from "../components/Logo";
 import NavApp from "./components/NavApp"; // <- importa así (relativo)
 import { Suspense } from "react";
+import Script from "next/script";
 
 
 
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </Suspense>
         </main>
+         
 
         <footer className="mx-auto max-w-6xl px-4 py-10 text-sm text-slate-500">
           © {new Date().getFullYear()} ARET3. Todos los derechos reservados.

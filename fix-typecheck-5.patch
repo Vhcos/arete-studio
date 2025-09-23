@@ -1,0 +1,189 @@
+diff --git a/app/api/auth/[...nextauth]/route.ts b/app/api/auth/[...nextauth]/route.ts
+index 1111111..2222222 100644
+--- a/app/api/auth/[...nextauth]/route.ts
++++ b/app/api/auth/[...nextauth]/route.ts
+@@ -1,12 +1,8 @@
+-import NextAuth, { type NextAuthOptions } from "next-auth";
+-import { authOptions } from "@/lib/auth";
++import NextAuth from "next-auth";
++import { authOptions } from "@/lib/auth";
+ 
+-// ¡IMPORTANTE! No exportes authOptions desde esta ruta, solo el handler
+-// export const authOptions: NextAuthOptions = { ... }  // ❌ no aquí
+-
+ const handler = NextAuth(authOptions);
+-export { handler as GET, handler as POST, authOptions }; // ❌ no exportes authOptions
++export { handler as GET, handler as POST }; // ✅ solo GET/POST
+ 
+diff --git a/app/auth/sign-in/page.tsx b/app/auth/sign-in/page.tsx
+index 3333333..4444444 100644
+--- a/app/auth/sign-in/page.tsx
++++ b/app/auth/sign-in/page.tsx
+@@ -1,18 +1,15 @@
+ "use client";
+-import { use } from "react";
++import { useSearchParams } from "next/navigation";
+ import SignInClient from "./SignInClient";
+ 
+ export const dynamic = "force-dynamic";
+ 
+-export default function Page({
+-  searchParams,
+-}: {
+-  searchParams?: { email?: string };
+-}) {
+-  const initialEmail = searchParams?.email ?? "";
++export default function Page() {
++  const sp = useSearchParams();
++  const initialEmail = sp.get("email") ?? "";
+ 
+   return (
+     <main className="mx-auto w-full max-w-md px-6 py-10">
+       <h1 className="text-2xl font-semibold">Solo necesitamos confirmar que existes</h1>
+       <p className="mt-1 text-sm text-slate-600">
+         Llegará un enlace a tu email no se te pedirá contraseña 
+         NI ningun tipo de PAGO.
+       </p>
+@@ -24,6 +21,5 @@ export default function Page({
+       </div>
+ 
+       <p className="mt-6 text-xs text-slate-500">
+-        Al continuar aceptas los <a className="underline" href="/terms">Términos</a> y la{" "}
+-        <a className="underline" href="/privacy">Política de Privacidad</a>.
++        Al continuar aceptas los <a className="underline" href="/terms">Términos</a> y la <a className="underline" href="/privacy">Política de Privacidad</a>.
+       </p>
+     </main>
+   );
+diff --git a/app/page.tsx b/app/page.tsx
+index 5555555..6666666 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -1,6 +1,6 @@
+ // … imports …
+ 
+- export const sanitizeTxt = (s: string, max = 120) => {
++ const sanitizeTxt = (s: string, max = 120) => {
+    // implementación…
+  }
+ 
+diff --git a/app/wizard/step-5/page.tsx b/app/wizard/step-5/page.tsx
+index 7777777..8888888 100644
+--- a/app/wizard/step-5/page.tsx
++++ b/app/wizard/step-5/page.tsx
+@@ -35,7 +35,7 @@ export default function Step5Page() {
+     const parsed = schema.safeParse(data);
+     if (!parsed.success) return;
+-    setStep5(parsed.data);
++    setStep5(parsed.data as Step5);
+   }, []);
+ 
+   return ( /* … */ );
+diff --git a/lib/bridge/wizard-to-legacy.ts b/lib/bridge/wizard-to-legacy.ts
+index 9999999..aaaaaaa 100644
+--- a/lib/bridge/wizard-to-legacy.ts
++++ b/lib/bridge/wizard-to-legacy.ts
+@@ -104,7 +104,7 @@ export function wizardToLegacy(s1: any, s2: any, s3: any, s4: any, s5: any, s6:
+     rubro: s1?.rubro ?? "",
+     idea: s1?.idea ?? "",
+     ventajaTexto: s1?.ventajaTexto ?? "",
+-    ubicacion: s2?.ubicacion ?? "",
++    ubicacion: (s2 as any)?.ubicacion ?? (s2 as any)?.region ?? "",
+   };
+ }
+ PATCH
+
+
+diff --git a/app/api/auth/[...nextauth]/route.ts b/app/api/auth/[...nextauth]/route.ts
+index 1111111..2222222 100644
+--- a/app/api/auth/[...nextauth]/route.ts
++++ b/app/api/auth/[...nextauth]/route.ts
+@@ -1,12 +1,8 @@
+-import NextAuth, { type NextAuthOptions } from "next-auth";
+-import { authOptions } from "@/lib/auth";
++import NextAuth from "next-auth";
++import { authOptions } from "@/lib/auth";
+ 
+-// ¡IMPORTANTE! No exportes authOptions desde esta ruta, solo el handler
+-// export const authOptions: NextAuthOptions = { ... }  // ❌ no aquí
+-
+ const handler = NextAuth(authOptions);
+-export { handler as GET, handler as POST, authOptions }; // ❌ no exportes authOptions
++export { handler as GET, handler as POST }; // ✅ solo GET/POST
+ 
+diff --git a/app/auth/sign-in/page.tsx b/app/auth/sign-in/page.tsx
+index 3333333..4444444 100644
+--- a/app/auth/sign-in/page.tsx
++++ b/app/auth/sign-in/page.tsx
+@@ -1,18 +1,15 @@
+ "use client";
+-import { use } from "react";
++import { useSearchParams } from "next/navigation";
+ import SignInClient from "./SignInClient";
+ 
+ export const dynamic = "force-dynamic";
+ 
+-export default function Page({
+-  searchParams,
+-}: {
+-  searchParams?: { email?: string };
+-}) {
+-  const initialEmail = searchParams?.email ?? "";
++export default function Page() {
++  const sp = useSearchParams();
++  const initialEmail = sp.get("email") ?? "";
+ 
+   return (
+     <main className="mx-auto w-full max-w-md px-6 py-10">
+       <h1 className="text-2xl font-semibold">Solo necesitamos confirmar que existes</h1>
+       <p className="mt-1 text-sm text-slate-600">
+         Llegará un enlace a tu email no se te pedirá contraseña 
+         NI ningun tipo de PAGO.
+       </p>
+@@ -24,6 +21,5 @@ export default function Page({
+       </div>
+ 
+       <p className="mt-6 text-xs text-slate-500">
+-        Al continuar aceptas los <a className="underline" href="/terms">Términos</a> y la{" "}
+-        <a className="underline" href="/privacy">Política de Privacidad</a>.
++        Al continuar aceptas los <a className="underline" href="/terms">Términos</a> y la <a className="underline" href="/privacy">Política de Privacidad</a>.
+       </p>
+     </main>
+   );
+diff --git a/app/page.tsx b/app/page.tsx
+index 5555555..6666666 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -1,6 +1,6 @@
+ // … imports …
+ 
+- export const sanitizeTxt = (s: string, max = 120) => {
++ const sanitizeTxt = (s: string, max = 120) => {
+    // implementación…
+  }
+ 
+diff --git a/app/wizard/step-5/page.tsx b/app/wizard/step-5/page.tsx
+index 7777777..8888888 100644
+--- a/app/wizard/step-5/page.tsx
++++ b/app/wizard/step-5/page.tsx
+@@ -35,7 +35,7 @@ export default function Step5Page() {
+     const parsed = schema.safeParse(data);
+     if (!parsed.success) return;
+-    setStep5(parsed.data);
++    setStep5(parsed.data as Step5);
+   }, []);
+ 
+   return ( /* … */ );
+diff --git a/lib/bridge/wizard-to-legacy.ts b/lib/bridge/wizard-to-legacy.ts
+index 9999999..aaaaaaa 100644
+--- a/lib/bridge/wizard-to-legacy.ts
++++ b/lib/bridge/wizard-to-legacy.ts
+@@ -104,7 +104,7 @@ export function wizardToLegacy(s1: any, s2: any, s3: any, s4: any, s5: any, s6:
+     rubro: s1?.rubro ?? "",
+     idea: s1?.idea ?? "",
+     ventajaTexto: s1?.ventajaTexto ?? "",
+-    ubicacion: s2?.ubicacion ?? "",
++    ubicacion: (s2 as any)?.ubicacion ?? (s2 as any)?.region ?? "",
+   };
+ }
+ PATCH
+
