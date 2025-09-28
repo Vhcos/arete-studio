@@ -2212,6 +2212,7 @@ function printOnly(target: 'tablero' | 'informe') {
 
 function ReportView({ report }:{ report: StandardReport }) {
   const s = report.sections;
+  const r = (report as any)?.ranking ?? { score: 0, constraintsOK: false };
   return (
     <div className="rounded-xl border p-4 bg-white/5">
       <Item t="Rubro">{s.industryBrief}</Item>
@@ -2219,7 +2220,8 @@ function ReportView({ report }:{ report: StandardReport }) {
       <Item t="FODA + Tamaño de Mercado">{s.swotAndMarket}</Item>
       <Item t="Veredicto con 3 proximos pasos">{s.finalVerdict}</Item>
       <div className="mt-3 text-xs text-muted-foreground">
-        Score: {report.ranking.score}/100 · {report.ranking.constraintsOK ? '✓ Consistente' : '⚠︎ Revisar campos'}
+        {/* usa r.*, no report.ranking.* */}
+        Score: {r.score}/100 · {r.constraintsOK ? "✓ Consistente" : "⚠︎ Revisar campos"}
       </div>
     </div>
   );

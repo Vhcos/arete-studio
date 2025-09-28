@@ -1,13 +1,10 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { signOut } from "next-auth/react";
-import { usePathname, useSearchParams } from "next/navigation";
 
 export default function BillingBadge() {
   const [count, setCount] = useState<number | null>(null);
   const [plan, setPlan] = useState<string | null | undefined>(undefined);
-  const pathname = usePathname();
-  const search = useSearchParams();
 
   const load = useCallback(async () => {
     try {
@@ -24,20 +21,11 @@ export default function BillingBadge() {
     // 1) Carga inicial
     load();
 
-    // 2) Refresh cuando la pestaña vuelve a estar visible o gana foco
-    const onVisible = () => { if (document.visibilityState === "visible") load(); };
-    const onFocus = () => load();
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onFocus);
-
-    // 3) Refresh cuando cambia la ruta o query
-    load(); // también al primer render de ruta
-    return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onFocus);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load, pathname, search?.toString()]);
+    // 2) Escuchar evento global para refrescar cuando generamos informe
+    const onRefresh = () => load();
+    window.addEventListener("credits:refresh", onRefresh);
+    return () => window.removeEventListener("credits:refresh", onRefresh);
+  }, [load]);
 
   if (count === null) return null;
 

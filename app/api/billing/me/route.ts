@@ -1,68 +1,52 @@
-// app/api/billing/me/route.ts
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth"; 
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
+  const headers = { "Cache-Control": "no-store" };
+
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    const session: any = await getServerSession(authOptions as any);
+    const email = session?.user?.email as string | undefined;
+    const sessionUserId = session?.user?.id as string | undefined;
+
+    if (!email && !sessionUserId) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401, headers });
     }
 
-    // Resolvemos el user.id
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "no_user" }, { status: 401 });
+    // resolve userId por id directo o por email
+    let userId = sessionUserId || null;
+    if (!userId && email) {
+      const u = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+      userId = u?.id || null;
+    }
+    if (!userId) {
+      return NextResponse.json({ ok: false, error: "no_user" }, { status: 401, headers });
     }
 
-    // 1) ¿Hay wallet?
-    let wallet = await prisma.creditWallet.findUnique({ where: { userId: user.id } });
+    // Auto-curación: crear wallet si falta, con seed=20 (una sola vez)
+    let wallet = await prisma.creditWallet.findUnique({ where: { userId } });
 
     if (!wallet) {
-      // No hay wallet ⇒ creamos con seed 10 (una sola vez)
-      await prisma.$transaction([
-        prisma.creditWallet.create({
-          data: { userId: user.id, creditsRemaining: 10, plan: "free" },
-        }),
-        prisma.usageEvent.create({
-          data: { userId: user.id, qty: 10, kind: "seed" },
-        }),
-      ]);
-      wallet = await prisma.creditWallet.findUnique({ where: { userId: user.id } });
-    } else {
-      // 2) Hay wallet: ¿alguna vez recibió “seed”?
-      const hadSeed = await prisma.usageEvent.findFirst({
-        where: { userId: user.id, kind: "seed" },
-        select: { id: true },
+      wallet = await prisma.creditWallet.create({
+        data: { userId, creditsRemaining: 20 },
       });
-
-      if (!hadSeed) {
-        // Wallet existente pero sin seed histórico ⇒ seed única
-        await prisma.$transaction([
-          prisma.creditWallet.update({
-            where: { userId: user.id },
-            data: { creditsRemaining: { increment: 10 } },
-          }),
-          prisma.usageEvent.create({
-            data: { userId: user.id, qty: 10, kind: "seed" },
-          }),
-        ]);
-        wallet = await prisma.creditWallet.findUnique({ where: { userId: user.id } });
-      }
+      await prisma.usageEvent.create({
+        data: { userId, kind: "seed", qty: 20 },
+      });
     }
 
-    return NextResponse.json({
-      ok: true,
-      creditsRemaining: wallet?.creditsRemaining ?? 0,
-      plan: wallet?.plan ?? "free",
-    });
-  } catch (err) {
-    console.error("[/api/billing/me] error:", err);
-    return NextResponse.json({ ok: false, error: String((err as Error)?.message ?? err) }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: true,
+        creditsRemaining: wallet.creditsRemaining,
+        plan: (wallet as any).plan ?? undefined,
+      },
+      { headers }
+    );
+  } catch (e: any) {
+    console.error("[/api/billing/me] error:", e);
+    return NextResponse.json({ ok: false, error: "internal_error" }, { status: 500, headers });
   }
 }

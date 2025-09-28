@@ -77,7 +77,7 @@ function buildEmailProvider() {
 
   const authOptions: NextAuthOptions = {
   // ⚠️ Fuerza JWT para que el middleware pueda autorizar leyendo el token
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 }, // 30 días
   secret: process.env.NEXTAUTH_SECRET,
 
   adapter: PrismaAdapter(prisma),
