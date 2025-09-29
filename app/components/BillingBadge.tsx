@@ -50,17 +50,27 @@ export default function BillingBadge() {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="rounded-full bg-slate-100 text-slate-700 text-xs px-3 py-1">
-        {plan ? `⭐ PRO · IA: ${count}` : <>IA disponibles: <strong>{count}</strong></>}
-      </div>
-      <button
-        onClick={handleSignOut}
-        className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
-        title="Cerrar sesión"
-      >
-        Salir
-      </button>
+  <div className="flex items-center gap-2">
+    <div className="rounded-full bg-slate-100 text-slate-700 text-xs px-3 py-1">
+      {plan ? `⭐ PRO · IA: ${count}` : <>IA disponibles: <strong>{count}</strong></>}
     </div>
-  );
+
+    {/* CTA: Mejora tu plan */}
+    <a
+      href="/billing"
+      className="text-xs px-2 py-1 rounded border border-red-600 text-blue-700 hover:bg-blue-50"
+      title="Mejorar plan"
+    >
+      Mejora tu plan
+    </a>
+
+    <button
+      onClick={handleSignOut}
+      className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+      title="Cerrar sesión"
+    >
+      Salir
+    </button>
+  </div>
+);
 }
