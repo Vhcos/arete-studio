@@ -1,3 +1,4 @@
+//app/api/billing/me/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -36,12 +37,28 @@ export async function GET() {
         data: { userId, kind: "seed", qty: 20 },
       });
     }
+    // ---- saldo de asesorías (grants - uses) ----
+     const [grants, uses] = await Promise.all([
+       prisma.usageEvent.aggregate({
+         where: { userId, kind: "session_grant" },
+         _sum: { qty: true },
+       }),
+     prisma.usageEvent.aggregate({
+       where: { userId, kind: "session_use" },
+         _sum: { qty: true },
+      }),
+    ]);
 
+    const sessionCredits = Math.max(
+     0,
+     (grants._sum.qty ?? 0) - (uses._sum.qty ?? 0)
+    );
     return NextResponse.json(
       {
         ok: true,
         creditsRemaining: wallet.creditsRemaining,
         plan: (wallet as any).plan ?? undefined,
+        sessionCredits, // <- nuevo campo
       },
       { headers }
     );
