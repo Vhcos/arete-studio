@@ -1,5 +1,5 @@
 /**
- * apps/app/lib/credits.ts
+ * lib/credits.ts
  * Manejo de créditos con cantidad variable y whitelist de admins.
  * Mantiene tu esquema: CreditWallet + UsageEvent.
  */
@@ -63,6 +63,43 @@ export async function refundCredit(userId: string, requestId: string, qty: numbe
     });
     await tx.usageEvent.create({
       data: { userId, qty, kind: "refund", requestId: `${requestId}:refund` },
+    });
+    return { ok: true };
+  });
+}
+
+/**
+ * Otorga 'qty' créditos positivos al usuario (e.g., compra pack).
+ * Idempotente por requestId.
+ */
+export async function grantCredits(userId: string, requestId: string, qty: number) {
+  if (qty <= 0) return { ok: true, skipped: true as const };
+  return await prisma.$transaction(async (tx) => {
+    const existing = await tx.usageEvent.findUnique({ where: { requestId } }).catch(() => null);
+    if (existing) return { ok: true, skipped: true as const };
+
+    await tx.creditWallet.upsert({
+      where: { userId },
+      create: { userId, creditsRemaining: qty },
+      update: { creditsRemaining: { increment: qty } },
+    });
+    await tx.usageEvent.create({
+      data: { userId, qty, kind: "grant", requestId },
+    });
+    return { ok: true };
+  });
+}
+
+/**
+ * Registra add-on de sesión (idempotente).
+ */
+export async function incrementSessionEntitlement(userId: string, requestId: string, qty: number = 1) {
+  if (qty <= 0) return { ok: true, skipped: true as const };
+  return await prisma.$transaction(async (tx) => {
+    const existing = await tx.usageEvent.findUnique({ where: { requestId } }).catch(() => null);
+    if (existing) return { ok: true, skipped: true as const };
+    await tx.usageEvent.create({
+      data: { userId, qty, kind: "session_grant", requestId },
     });
     return { ok: true };
   });
