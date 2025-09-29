@@ -10,6 +10,7 @@ import { getTemplateForSector } from "@/lib/model/step6-distributions";
 import type { SectorId } from "@/lib/model/sectors";
 import EconomicHeader from "./_components/EconomicHeader";
 import { SECTORS } from "@/lib/model/sectors";
+import EERRAnual from "@/components/finance/EERRAnual";
 
 /* =============== Helpers CLP y números =============== */
 const onlyDigitsComma = (s: string) => s.replace(/[^\d,]/g, "");
@@ -461,52 +462,9 @@ export default function Step6Page() {
             en algún ítems mejoraras tu rentabilidad.
           </p>
 
-          {/* Tabla: Estado de Resultado Inicial (Guía) */}
-          <div className="rounded-lg border overflow-hidden">
-            <div className="bg-slate-50 px-3 py-2 text-sm font-semibold border-b">
-              ESTADO DE RESULTADO ANUAL· (GUIA)
-            </div>
-
-            <div className="px-3">
-              <Row label="Venta anual" value={derived.ventaAnual} percent={1} strong />
-
-              {/* Costos / Gastos en rojo */}
-              <Row label="Costo variable materiales" value={derived.cvMat} percent={tpl.cv_materiales} cost />
-              <Row label="Costo variable Personal" value={derived.cvPer} percent={tpl.cv_personal} cost />
-
-              <Row label="Margen de contribución" value={derived.margen} percent={tpl.margen_contrib} strong />
-
-              <Row label="Gastos fijos totales" value={derived.gfTot} percent={tpl.gf_tot} strong cost />
-              <Row label="· Arriendo y gastos básicos" value={derived.gfArr} percent={tpl.gf_arriendo} indent cost />
-              <Row label="· Sueldos personal fijo y administración" value={derived.gfAdm} percent={tpl.gf_sueldosAdm} indent cost />
-              <Row label="· Sueldo del dueño" value={derived.gfDuo} percent={tpl.gf_sueldoDueno} indent cost />
-              <Row label="· Otros gastos fijos" value={derived.gfOtr} percent={tpl.gf_otros} indent cost />
-
-              <Row
-                label="Gastos de Marketing o Comercialización"
-                value={derived.mkt}
-                percent={tpl.marketing}
-                cost
-              />
-              <Row
-                label="Resultado antes de impuestos"
-                value={derived.resAI}
-                percent={tpl.resultado}
-                strong
-              />
-              <Row label="Impuestos (2%)" value={derived.impuestos} percent={0.02} cost />
-              {/* % de rentabilidad neta agregado */}
-              <Row
-                label="Rentabilidad neta"
-                value={derived.rentaNeta}
-                percent={derived.rentaNetaPct}
-                strong
-              />
-            </div>
-          </div>
-
-          {/* Nota bajo la tabla */}
-          <p className="mt-4 text-xs text-slate-700 italic">
+          {/* Tabla: Estado de Resultado Inicial (Guía) RESUMIDO EN OTRO ARCHIVO */}
+         <EERRAnual ventaAnual={derived.ventaAnual} tpl={tpl} />
+            <p className="mt-4 text-xs text-slate-700 italic">
             Nota: Porque buscamos el 8% mínimo  por que representa un mes de venta 100% 12(meses)=8%,
             entonces así sabes que estas ganando un mes de ventas con rentabilidad neta.
           </p>

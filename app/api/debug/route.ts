@@ -1,5 +1,7 @@
 // app/api/debug/route.ts
-export const runtime = "edge";
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {

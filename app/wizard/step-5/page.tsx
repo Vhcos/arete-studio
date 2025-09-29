@@ -35,7 +35,9 @@ export default function Step5Page() {
       setErr("Revisa los valores (0 a 10).");
       return;
     }
-    setStep5(parsed.data);
+    // Ensure all fields are numbers (not undefined)
+    const completeData = { ...getDefault(), ...parsed.data };
+    setStep5(completeData);
 
     router.push("/wizard/step-4");
   }

@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import InformePreview from "@/components/informe/InformePreview";
+import EERRAnual from "@/components/finance/EERRAnual";
+import { getTemplateForSector } from "@/lib/model/step6-distributions";
+import type { SectorId } from "@/lib/model/sectors";
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
 import {
   Radar,
@@ -36,6 +39,64 @@ import type { AiPlan, CompetitiveRow, RegulationRow } from './types/plan';
 import type { ChartPoint } from './types/report';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+
+// --- helpers para bullets (acepta string[] o filas de tabla) ---
+function normalizeBullets(input: unknown, fallback: string[]): string[] {
+  if (!input) return fallback;
+  if (Array.isArray(input)) {
+    if (input.length === 0) return fallback;
+    if (typeof input[0] === 'string') return input as string[];
+
+    // CompetitiveRow / RegulationRow -> construir frase legible
+    return (input as any[]).map((row) => {
+      try {
+        // casos típicos: { nombre, caracteristicas } o { item, detalle }
+        if (row?.nombre && row?.caracteristicas) {
+          const attrs = Array.isArray(row.caracteristicas) ? row.caracteristicas.join(', ') : String(row.caracteristicas ?? '');
+          return `${row.nombre}: ${attrs}`;
+        }
+        if (row?.item && row?.detalle) {
+          return `${row.item}: ${row.detalle}`;
+        }
+        // fallback: primera propiedad string que encuentre
+        const first = Object.values(row).find(v => typeof v === 'string') as string | undefined;
+        return first ?? JSON.stringify(row);
+      } catch {
+        return JSON.stringify(row);
+      }
+    });
+  }
+  return fallback;
+}
+
+// Detecta pasos del plan (Mes 1:, 1., etc.) y separa intro + pasos
+function splitPlan(plan: string) {
+  const lines = (plan || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const steps: string[] = [];
+  const introParts: string[] = [];
+
+  for (const line of lines) {
+    // "Mes 1: ..." | "1. ..." | "Paso 1: ..."
+    if (/^(mes(es)?\s*\d+:|paso\s*\d+:|\d+\.\s+)/i.test(line)) {
+      steps.push(
+        line
+          .replace(/^(mes(es)?)\s*\d+:\s*/i, "")
+          .replace(/^paso\s*\d+:\s*/i, "")
+          .replace(/^\d+\.\s*/, "")
+          .trim()
+      );
+    } else {
+      introParts.push(line);
+    }
+  }
+
+  const intro = introParts.join(" ");
+  return { intro, steps };
+}
 
 
 export function sanitizeTxt(s: string, max = 120) {
@@ -208,6 +269,18 @@ export default function AreteDemo() {
   // Supuestos y ajustes IA
   const [aiPlan, setAiPlan] = useState<AiPlan | null>(null);
 
+    type AiPlanTables = {
+     competencia: Array<Record<string, any>>;
+     regulacion: Array<Record<string, any>>;
+   };
+
+    type AiPlan = {
+        plan100?: string;
+        bullets?: string[];                   // ← agrega esto
+        competencia?: string[] | CompetitiveRow[];
+        regulacion?: string[] | RegulationRow[];
+        model?: string;                       // opcional, si lo devuelves
+      };
 
   // Email
   const [emailSending, setEmailSending] = useState(false);
@@ -215,27 +288,59 @@ export default function AreteDemo() {
 
 
   async function sendReportEmail(args: {
-     to?: string;
-     reason?: string;
-     report?: any;
-     aiPlan?: any;
-     silent?: boolean;
-     user?: { projectName?: string; founderName?: string; email?: string; idea?: string; rubro?: string; ubicacion?: string; };
-  }) {
-     const res = await fetch('/api/email-report', {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify(args),
+  to?: string;
+  reason?: string;
+  report?: any;
+  aiPlan?: any;
+  silent?: boolean; // si true, no muestra alerts
+  user?: {
+    projectName?: string;
+    founderName?: string;
+    email?: string;
+    idea?: string;
+    rubro?: string;
+    ubicacion?: string;
+  };
+}) {
+  try {
+    const res = await fetch('/api/email-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
     });
-     const j = await res.json();
-     if (j.ok) {
-       alert(j.to && j.to !== args.to ? 'Enviado (modo test) al correo.' : 'Informe enviado.');
-     } else if (j.skipped) {
-       alert('Email desactivado (skipped). Revisa variables de entorno.');
-     } else {
-       alert('No se pudo enviar el email.');
+
+    // puede venir 500 con HTML si hay proxy; evita crash del JSON
+    let j: any = {};
+    try { j = await res.json(); } catch { /* noop */ }
+
+    const ok = res.ok && (j?.ok ?? true);
+
+    if (args.silent) {
+      // modo silencioso: no alerts
+      if (!ok) console.warn('[email-report] fallo (silencioso):', j);
+      else console.log('[email-report] enviado (silencioso):', j);
+      return ok;
     }
-   } 
+
+    // modo visible para el usuario (cuando él pulsa "Enviar a mi email")
+    if (ok) {
+      alert(j.to && j.to !== args.to
+        ? 'Enviado (modo test) al correo.'
+        : 'Informe enviado.');
+    } else if (j.preview) {
+      alert('Email en modo preview (dev).');
+    } else if (j.skipped) {
+      alert('Email desactivado (skipped). Revisa variables de entorno.');
+    } else {
+      alert('No se pudo enviar el email.');
+    }
+    return ok;
+  } catch (e) {
+    if (!args.silent) alert('No se pudo enviar el email.');
+    console.warn('[email-report] error de red:', e);
+    return false;
+  }
+}
   
   //Campos: Proyecto, Emprendedor y Email (obligatorio)
   const [projectName, setProjectName] = useState('');
@@ -371,6 +476,7 @@ const costoVariableMes =
          ? ventasAnual - costoVariableAnual - gastosFijosAnual - marketingAnual
          : NaN;
      
+         const [running, setRunning] = useState(false);
         
       
        
@@ -446,6 +552,8 @@ const costoVariableMes =
   };
 
   async function handleEvaluateAI() {
+    if (running) return;         // evita doble click
+   setRunning(true);
    setIaLoading(true);
    try {
      const input = baseOut.report.input;
@@ -461,27 +569,48 @@ const costoVariableMes =
     });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
+     console.log("[/api/evaluate] payload", data);
 
-    // guarda informe IA y dispara envío interno
-    setAiReport(data.standardReport ?? null);
+// 1) Soporta ambas formas: { data: {...} } ó { standardReport: {...} }
+const reportFromAPI =
+  (data && (data.data || data.standardReport)) || null;
+
+// 2) Guarda el informe IA para que se muestre el bloque “Evaluación (IA)”
+setAiReport(reportFromAPI);
+
+// 3) Si luego fusionas “scores/meta” con tu base, usa el payload interno si existe
+setIaData(data?.ia ?? data?.scores ? data : (data?.data ?? data));
 
     // ==== Extra: pedir plan competitivo / regulatorio a la IA ====
     try {
-     const resPlan = await fetch('/api/plan', {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({
-         input,                    // el mismo input que ya envías a /api/evaluate
-         meta: { rubro, ubicacion, idea }, // contexto útil
-       }),
-     });
+  const requestId = crypto.randomUUID(); // para trazas y potencial dedupe
 
-     const dataPlan = await resPlan.json();
-     if (dataPlan?.ok && dataPlan.plan) {
-       setAiPlan(dataPlan.plan);
-     } else {
-       console.warn('Plan IA no disponible:', dataPlan?.error || dataPlan);
-     }
+  const resPlan = await fetch('/api/plan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      input,                      // lo que ya envías a /api/evaluate
+      objetivo: '6w',             // 👈 forzamos 6 semanas
+      requestId,                  // 👈 útil para revisar en UsageEvent
+      meta: { rubro, ubicacion, idea }, // si ya lo estabas enviando, mantenlo
+    }),
+  });
+
+    const dataPlan = await resPlan.json();
+
+// Soportar todos los shapes que he visto en tus pruebas:
+// { ok:true, plan:{...} }  ó  { ok:true, data:{...} }  ó  { ok:true, plan100:'...', ... }
+const plan =
+  dataPlan?.plan ??
+  dataPlan?.data ??
+  (dataPlan?.ok && (dataPlan?.plan100 || dataPlan?.competencia || dataPlan?.regulacion) ? dataPlan : null);
+
+if (plan) {
+  setAiPlan(plan);
+} else {
+  console.warn("Plan IA no disponible:", dataPlan);
+}
+
 
    } catch (e) {
      console.error('No se pudo obtener plan IA:', e);
@@ -497,8 +626,31 @@ const costoVariableMes =
     alert('No se pudo usar IA. Revisa /api/evaluate y la API key.');
   } finally {
     setIaLoading(false);
+    setRunning(false);
   }
 }
+
+//------Estado + hydratación para conocer el sectorId del wizard (fallback a retail_local):
+
+   const [sectorId, setSectorId] = useState<SectorId>("retail_local");
+
+     useEffect(() => {
+       try {
+         const wraw = localStorage.getItem("wizard");
+         if (!wraw) return;
+         const w = JSON.parse(wraw);
+         const sid = w?.state?.data?.step2?.sectorId;
+         if (sid) setSectorId(sid as SectorId);
+       } catch {}
+    }, []);
+
+     const tpl = useMemo(() => getTemplateForSector(sectorId), [sectorId]);
+
+    const ventaAnualEERR =
+         Number.isFinite(ventaAnualNum) && ventaAnualNum > 0
+          ? Math.round(ventaAnualNum)
+          : Math.round((ventasAnual ?? 0));
+
 
 //----------------------FIN DE LOS USESTATE Y FUNCIONES----------------------
 // ——————————— Hidratación desde el Wizard (Formulario legacy) ———————————
@@ -758,6 +910,9 @@ const getS5 = (k: string) => {
 
   const isAIEnabled = canRunAI && !iaLoading;
 
+  // arriba en tu componente para alerta como check 
+  const [copied, setCopied] = useState(false);
+
   // -------------------- Render --------------------
   return (
    <div className="min-h-screen p-6" style={styleAccent}>
@@ -765,19 +920,18 @@ const getS5 = (k: string) => {
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-2xl shadow-sm" style={{ background: accent }}>
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
+          
         <div className="flex items-start justify-between gap-4">
           </div>
 
             <h1 className="text-2xl font-bold tracking-tight">
-             <span className="hidden sm:inline">Aret3 · Evalúa tu Idea de Negocio con IA</span>
-             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio</span>
-           </h1>
-           <p className="text-sm text-muted-foreground -mt-1">
+             <span className="hidden sm:inline"> Evalúa tu Idea de Negocio con IA</span>
+             <p className="text-sm text-muted-foreground -mt-1">
             Cumple tu propósito de la mejor manera
            </p>
+             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio con IA</span>
+           </h1>
+           
 
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -788,19 +942,10 @@ const getS5 = (k: string) => {
             >
                 ← Volver al paso 6
             </Link>
-             
-            <Button
-              onClick={handleEvaluateAI}
-              disabled={!isAIEnabled}
-              className={
-                isAIEnabled
-                 ? "bg-red-600 hover:bg-red-700 text-white"
-                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
-              }
-               title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
-              >
-               {iaLoading ? "Evaluando…" : "Evaluar con IA"}
-             </Button>
+             <p className="text-sm text-muted-foreground -mt-1">
+            <strong>En Informe podrás aplicar IA a tu idea y obtener un plan de negocio</strong>
+           </p>
+            
           </div>
         </div>
 
@@ -1252,12 +1397,12 @@ const getS5 = (k: string) => {
                    <Button onClick={() => printOnly('tablero')}>Imprimir tablero</Button>
                   
                   <Link
-    href="/informe"
-    className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-  >
-    Ir a informe
-  </Link>
-</div>
+                    href="/informe"
+                      className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                   Ir a informe
+                  </Link>
+                 </div>
                   <section id="tablero" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-3 -mt-2">
                   <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -1318,164 +1463,111 @@ const getS5 = (k: string) => {
                   </div>
                 </div>
 
+                
 
-            
-                <div className="space-y-4">
-                  <div className="rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
-                    <div className="text-sm text-muted-foreground">Punto de equilibrio</div>
-                    <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <div className="text-muted-foreground">Margen de Contribución Unitario</div>
-                        <div className="font-semibold">${fmtCL(outputs.pe.mcUnit)}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Clientes en equilibrio</div>
-                        <div className="font-semibold">{Number.isFinite(outputs.pe.clientsPE)? fmtNum(outputs.pe.clientsPE) : '—'}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Ventas en equilibrio</div>
-                        <div className="font-semibold">${fmtCL(outputs.pe.ventasPE)}</div>
-                      </div>
-                      <div>
-                        <div className="text-muted-foreground">Autonomía de caja</div>
-                        <div className="font-semibold">{Number.isFinite(outputs.pe.runwayMeses)? `${outputs.pe.runwayMeses.toFixed(1)} meses` : '—'}</div>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      <strong>Margen de contribución = Ventas − Costos de venta</strong>.<br/>
-                      <strong>Autonomía de caja</strong> = Meses sin venta para cubrir gastos fijos con capital de trabajo.
-                    </div>
-                    <div className="mt-2 text-sm">
-                      {(() => {
-                        const cap = outputs.report.input.capitalTrabajo || 0;
-                        const acu = outputs.peCurve.acumDeficitUsuario || 0;
-                        const cg = capitalGap(cap, acu);
-                        return (
-                          <>
-                            Capital actual: <strong>${fmtCL(cap)}</strong> · Déficit acumulado hasta P.E. (plan {mesesPE}m): <strong>${fmtCL(acu)}</strong><br/>
-                            {cg.suficiente
-                              ? <span className="text-green-700 font-medium">✔ Capital alcanza (superávit ${fmtCL(cg.gap)})</span>
-                              : <span className="text-red-700 font-medium">✖ Falta capital: ${fmtCL(cg.gap)}</span>}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                            {/* BOARD de EERR */}
+                          <div className="lg:col-span-1 space-y-4">
+  {/* BOARD de EERR */}
+  <div
+    className="rounded-xl border-2 p-4"
+    style={{ borderColor: accent, background: accentSoft }}
+  >
+    <EERRAnual ventaAnual={ventaAnualEERR} tpl={tpl} />
+  </div>
 
-                  <Card className="sm:col-span-2">
-                   <CardHeader>
-                      <CardTitle>Estado de resultado (12 meses)</CardTitle>
-                   </CardHeader>
-                     <CardContent>
-                       <div className="space-y-1">
-                         <Row k="Ventas primer año" v={fmtMaybeCL(ventasAnual)} strong />
-                         <Row k="Costo variable anual" v={fmtMaybeCL(costoVariableAnual)} neg />
-                         <Row k="Gastos fijos anual" v={fmtMaybeCL(gastosFijosAnual)} neg />
-                         <Row k="Gastos en Marketing" v={fmtMaybeCL(marketingAnual)} neg />
-                       <div className="mt-2 border-t pt-2">
-                         <Row k="Resultado anual" v={fmtMaybeCL(resultadoAnual)} strong large />
-                       </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                           Nota: Resultado anual <strong>Estimado</strong> antes de impuestos y devolución de inversiones.
-                        </p>
-                       </div>
-                     </CardContent>
-                   </Card>
+  
+<div className="rounded-xl border p-5">
+    <div className="text-muted-foreground"><strong>VEREDICTO</strong></div>
+    <div className="text-xl font-bold mt-1" style={{ color: accent }}>
+      {outputs.verdict.title}
+    </div>
+    <p className="text-sm mt-1 leading-relaxed">{outputs.verdict.subtitle}</p>
+    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
+      {(outputs.verdict?.actions ?? []).map((a: string, i: number) => (
+        <li key={i}>{a}</li>
+      ))}
+    </ul>
+  </div>
+<div className="rounded-xl border p-5">
+    <div className="text-muted-foreground"><strong>TOP RIESGOS</strong></div>
+    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
+      {(outputs.topRisks ?? []).map((r: string, i: number) => (
+        <li key={i}>{r}</li>
+      ))}
+    </ul>
+  </div>
+<div className="rounded-xl border p-5">
+    <div className="text-muted-foreground"><strong>Experimentos sugeridos (2 semanas)</strong></div>
+    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
+      {(outputs.experiments ?? []).map((r: string, i: number) => (
+        <li key={i}>{r}</li>
+      ))}
+    </ul>
+  </div>
+
+</div>
+<div className="lg:col-span-2 -mt-2">
+{/* Brújula menor (fusión P.E. + Marketing) */}
+  <div
+    className="rounded-xl border-2 p-4"
+    style={{ borderColor: accent, background: accentSoft }}
+  >
+    <div className="font-medium mb-2">BRUJULA MENOR</div>
+
+    {/* KPIs superiores */}
+    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+      
+      <div>
+        <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
+        <div className="font-semibold">
+          ${fmtCL((outputs?.peCurve?.acumDeficitUsuario ?? 0))}
+        </div>
+      </div>
+    </div>
+
+  {/* Métricas operativas */}
+  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+    <div className="flex items-center justify-between">
+      <span>Ventas para P.E.</span>
+      <span className="font-medium">${fmtCL(outputs.pe.ventasPE)}</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Clientes para tu P.E.</span>
+      <span className="font-medium">{fmtNum(outputs.pe.clientsPE)}</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Clientes objetivo (mes)</span>
+      <span className="font-medium">{fmtNum(N)}</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Tráfico requerido</span>
+      <span className="font-medium">{fmtNum(Q)}</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Costo unitario tráfico por cliente</span>
+      <span className="font-medium">
+        {fmtCL(
+          (mode === "budget")
+            ? CPL_implicito
+            : (Q > 0 ? Math.round(M_requerido / Q) : 0)
+        )}
+      </span>
+    </div>
+    <div className="flex items-center justify-between">
+      <span>Costo por cliente que compra</span>
+      <span className="font-medium">
+        {fmtCL(
+          (mode === "budget")
+            ? CAC_implicito
+            : (N > 0 ? Math.round(M_requerido / N) : 0)
+        )}
+      </span>
+    </div>
+  </div>
+</div>
+</div>
 
 
-                           {/* BOARD de MC */}
-                   <Card>
-                     <CardHeader>
-                       <CardTitle>Margen de contribución (post marketing)</CardTitle>
-                     </CardHeader>
-                     <CardContent>
-                      <div className="text-2xl font-bold">{fmtCL(margenContribucionMes)}</div>
-                      <div className="text-sm text-muted-foreground">
-                       {Number.isFinite(margenContribucionPct) ? (margenContribucionPct*100).toFixed(1) + "%" : "—"} sobre ventas
-                     </div>
-                     <div className="mt-2 text-xs text-muted-foreground">
-                       Considera: Ventas − Costos variables − <b>Marketing</b>.
-                     </div>
-                   </CardContent>
-                 </Card>
-                           {/* BOARD  de Marketing*/}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Marketing · métricas</CardTitle>
-                   </CardHeader>
-                   <CardContent className="space-y-2">
-                     <div className="flex items-center justify-between">
-                       <span className="text-sm text-muted-foreground">Clientes objetivo (mes)</span>
-                       <span className="font-medium">{fmtNum(N)}</span>
-                     </div>
-                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Tráfico requerido</span>
-                        <span className="font-medium">{fmtNum(Q)}</span>
-                     </div>
 
-                     {mode === 'budget' ? (
-                       <>
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Costo unitario por trafico de Cliente (CPL)</span>
-                            <span className="font-medium">{fmtCL(CPL_implicito)}</span>
-                         </div>
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Costo por Cliente que compra(CAC)</span>
-                            <span className="font-medium">{fmtCL(CAC_implicito)}</span>
-                         </div>
-                       </>
-                     ) : (
-                       <>
-                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Presupuesto de Marketing</span>
-                            <span className="font-medium">{fmtCL(M_requerido)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">CPL objetivo</span>
-                            <span className="font-medium">{fmtCL(CPL_objetivo)}</span>
-                        </div>
-                        {marketingMensual && (
-                          <div className={`rounded-md border text-xs px-2 py-1 ${Number.isFinite(gapM) ? (gapM >= 0 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200") : "bg-white"}`}>
-                            {Number.isFinite(gapM)
-                             ? gapM >= 0
-                               ? <>Con tu M actual ({fmtCL(M)}) sobran {fmtCL(gapM)}.</>
-                               : <>Con tu M actual ({fmtCL(M)}) faltan {fmtCL(Math.abs(gapM))}.</>
-                             : "Ingresa Marketing para comparar con el requerido."}
-                         </div>
-                        )}
-                      </>
-                     )}
-                   </CardContent>
-                </Card>
-
-                  <div className="rounded-xl border p-4">
-                    <div className="text-sm text-muted-foreground">Veredicto</div>
-                    <div className="text-xl font-bold mt-1" style={{ color: accent }}>{outputs.verdict.title}</div>
-                    <p className="text-sm mt-1">{outputs.verdict.subtitle}</p>
-                    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {(outputs.verdict?.actions ?? []).map((a: string, i: number) => (
-                        <li key={i}>{a}</li>
-                    ))}
-                    </ul>
-                  </div>
-                  <div className="rounded-xl border p-4">
-                    <div className="text-sm text-muted-foreground">Top riesgos</div>
-                    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {(outputs.topRisks ?? []).map((r: string, i: number) => (
-                        <li key={i}>{r}</li>
-                     ))}
-                    </ul>
-                  </div>
-                  <div className="rounded-xl border p-4">
-                    <div className="text-sm text-muted-foreground">Experimentos sugeridos (2 semanas)</div>
-                    <ul className="list-disc text-sm pl-5 mt-2 space-y-1">
-                      {(outputs.experiments ?? []).map((r: string, i: number) => (
-                        <li key={i}>{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
                </section> 
               </CardContent>
             </Card>
@@ -1486,38 +1578,66 @@ const getS5 = (k: string) => {
           </TabsList>
           
           </TabsContent>
-
+                    {/* ZONA DE BOTONES EN INFORME*/}
           {/* REPORT */}
           <TabsContent value="explain">
             <Card className="border-none shadow-sm">
               <CardHeader><CardTitle>Informe</CardTitle></CardHeader>
               <CardContent>
                <div className="no-print mb-4">
-                 <Button
-                   onClick={() => {
-                     printOnly('informe');
-                     void sendReportEmail({ silent: true, reason: 'print-informe' });
-                   }}
-                   disabled={emailSending}
-                 >
-                   Imprimir informe
-                 </Button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className={[
+                     "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm transition",
+                     "bg-white text-slate-900 border-2 border-blue-600",
+                     "hover:bg-blue-50 hover:border-blue-700 hover:shadow-md",
+                     "active:translate-y-[1px] active:shadow-none",
+                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400"
+                 ].join(" ")}
+                >
+                 Imprimir informe
+               </button>
 
                  <Button
-               onClick={() =>
-                  sendReportEmail({
-                   to: email,               // correo del usuario
-                   reason: 'user-asked',
-                   report: aiReport ?? nonAIReport, // prioriza IA si ya está
-                   aiPlan,                  // si ya generaste plan 100 palabras
-                   user: { projectName, founderName, email, idea, rubro, ubicacion },
-                })
-               }
-               disabled={!emailOK || emailSending}
-            >
-              Informe a mi email
-            </Button>
+  onClick={() =>
+    sendReportEmail({
+      to: email,                  // correo que escribió el usuario
+      reason: 'user-asked',       // etiqueta para server logs
+      // 👇 Mismo informe que ves en pantalla. Prioriza IA; si no hay, usa el base.
+      report: aiReport ?? nonAIReport,
+      // 👇 Tablas/plan de la IA para “Mapa competitivo” + “Checklist regulatorio” + Plan 100
+      aiPlan,
+      // 👇 Metadatos del usuario que usamos en el encabezado del email
+      user: {
+        projectName,
+        founderName,
+        email,
+        idea,        // tu idea actual (la de la pantalla)
+        rubro,       // rubro/sector
+        ubicacion,   // ubicación (país/ciudad)
+      },
+    })
+  }
+  disabled={!emailOK || emailSending}
+>
+  Informe a mi email
+</Button>
+<Button
+              onClick={handleEvaluateAI}
+              disabled={!isAIEnabled}
+              className={
+                isAIEnabled
+                 ? "bg-red-600 hover:bg-red-700 text-white"
+                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
+              }
+               title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
+              >
+               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
+             </Button>
                </div>
+
+
                <div className="rounded-md border bg-white p-4 text-sm">
                   <div><span className="font-semibold">Proyecto:</span> {projectName || '—'}</div>
                   <div><span className="font-semibold">Emprendedor/a:</span> {founderName || '—'}</div>
@@ -1541,45 +1661,90 @@ const getS5 = (k: string) => {
                       <ReportView report={aiReport} />
                    </div>
 
-                    {/* Plan 100 palabras */}
-                    {aiPlan && (
-                     <>
-                       <div className="mt-6 space-y-4">
-                         <h3 className="mt-6 text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-indigo-600">
-                              Plan de Acción — ¡Sigue con tu propósito!
-                         </h3>
-                         <div className="rounded-md border bg-white p-4 text-sm leading-relaxed avoid-break">
-                           {aiPlan.plan100}
-                         </div>
-                       </div>
+                  {/* Plan 100 palabras */}
+{aiPlan && (
+  <>
+    <div className="mt-6 space-y-4">
+      <h3 className="mt-6 text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-indigo-600">
+        Plan de Acción — ¡Sigue con tu propósito!
+      </h3>
 
-                       {/* Botón copiar plan – fuera de impresión */}
-                       <div className="no-print mt-3">
-                         <button
-                           className="mt-2 rounded-md border px-3 py-1 text-sm"
-                           onClick={() => {
-                             navigator.clipboard.writeText(aiPlan.plan100);
-                             alert('Plan copiado.');
-                           }}
-                         >
-                         Copiar plan
-                       </button>
-                     </div>
+      {(() => {
+        const { intro, steps } = splitPlan(aiPlan.plan100 ?? "");
 
-                    {/* Tablas IA */}
-                   <h3 className="text-lg font-bold mt-6">Mapa competitivo</h3>
-                   <div className="avoid-break">
-                     <CompetitiveTable rows={aiPlan.competencia} />
-                   </div>
+        return (
+          <div className="rounded-md border bg-white p-4 text-sm leading-relaxed avoid-break">
+  {/* Texto del plan (respeta saltos si vinieran) */}
+  {aiPlan?.plan100 ? (
+    <p className="whitespace-pre-line">{aiPlan.plan100}</p>
+  ) : (
+    <p className="opacity-70">Genera el plan con IA para ver recomendaciones.</p>
+  )}
 
-                   <h3 className="text-lg font-bold mt-6">Checklist regulatorio</h3>
-                   <div className="avoid-break">
-                      <RegulationTable rows={aiPlan.regulacion} />
-                   </div>
+  {/* Pasos si la IA los envió como bullets (igual que en el email) */}
+  {aiPlan?.bullets && aiPlan.bullets.length > 0 && (
+    <ol className="list-decimal pl-6 mt-3 space-y-1">
+      {aiPlan.bullets.map((b, i) => (
+        <li key={`plan-step-${i}`}>{b}</li>
+      ))}
+    </ol>
+  )}
+
+            {/* Lista de pasos si existen */}
+            {steps.length > 0 && (
+              <ol className="list-decimal pl-6 mt-3 space-y-1">
+                {steps.map((s, i) => (
+                  <li key={`step-${i}`}>{s}</li>
+                ))}
+              </ol>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+{/* Botón copiar plan (lo que ya tenías) */}
+    <div className="no-print mt-3">
+      <button
+        className="mt-2 rounded-md border px-3 py-1 text-sm"
+        onClick={async () => {
+          await navigator.clipboard.writeText(aiPlan?.plan100 ?? "");
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2500);
+        }}
+      >
+        Copiar plan
+      </button>
+      {copied && <span className="ml-2 text-xs text-green-700">Copiado ✅</span>}
+    </div>
+
+                    {/* IA – Mapa competitivo + Checklist (bullets como en el email) */}
+<h3 className="text-lg font-bold mt-6">Mapa competitivo</h3>
+<ul className="list-disc pl-6 space-y-1">
+  {normalizeBullets(aiPlan?.competencia, [
+    'Segmentos típicos en tu categoría: low-cost, estándar y premium.',
+    'Diferénciate por propuesta y experiencia (no solo precio).',
+    'Rango de precio de lista; destaca tu ticket y tiempos de entrega.',
+    'Ventajas defendibles: canal directo, servicio postventa, casos y reseñas.',
+    'Evita competir en todo: elige 2–3 atributos clave y sé n°1 allí.',
+  ]).map((b, i) => <li key={`comp-${i}`}>{b}</li>)}
+</ul>
+
+<h3 className="text-lg font-bold mt-6">Checklist regulatorio</h3>
+<ul className="list-disc pl-6 space-y-1">
+  {normalizeBullets(aiPlan?.regulacion, [
+    'Constitución / formalización (SpA o EIRL).',
+    'Inicio de actividades en SII y emisión electrónica.',
+    'Patente municipal (domicilio comercial).',
+    'Protección de datos si captas leads/clientes.',
+    'Prevención de riesgos / seguridad laboral según tamaño.',
+  ]).map((b, i) => <li key={`reg-${i}`}>{b}</li>)}
+</ul>
+
                  </>
                )}
             </>
       )}
+      
                </div>
               </CardContent>
             </Card>
@@ -2087,6 +2252,7 @@ function printOnly(target: 'tablero' | 'informe') {
 
 function ReportView({ report }:{ report: StandardReport }) {
   const s = report.sections;
+  const r = (report as any)?.ranking ?? { score: 0, constraintsOK: false };
   return (
     <div className="rounded-xl border p-4 bg-white/5">
       <Item t="Rubro">{s.industryBrief}</Item>
@@ -2094,7 +2260,8 @@ function ReportView({ report }:{ report: StandardReport }) {
       <Item t="FODA + Tamaño de Mercado">{s.swotAndMarket}</Item>
       <Item t="Veredicto con 3 proximos pasos">{s.finalVerdict}</Item>
       <div className="mt-3 text-xs text-muted-foreground">
-        Score: {report.ranking.score}/100 · {report.ranking.constraintsOK ? '✓ Consistente' : '⚠︎ Revisar campos'}
+        {/* usa r.*, no report.ranking.* */}
+        Score: {r.score}/100 · {r.constraintsOK ? "✓ Consistente" : "⚠︎ Revisar campos"}
       </div>
     </div>
   );

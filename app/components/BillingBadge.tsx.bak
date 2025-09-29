@@ -1,0 +1,46 @@
+"use client";
+import { useEffect, useState, useCallback } from "react";
+import { signOut } from "next-auth/react";
+
+export default function BillingBadge() {
+  const [count, setCount] = useState<number | null>(null);
+  const [plan, setPlan] = useState<string | null | undefined>(undefined);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch("/api/billing/me", { cache: "no-store" });
+      const j = await r.json();
+      if (j?.ok) {
+        setCount(j.creditsRemaining as number);
+        setPlan(j.plan ?? undefined);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    // 1) Carga inicial
+    load();
+
+    // 2) Escuchar evento global para refrescar cuando generamos informe
+    const onRefresh = () => load();
+    window.addEventListener("credits:refresh", onRefresh);
+    return () => window.removeEventListener("credits:refresh", onRefresh);
+  }, [load]);
+
+  if (count === null) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="rounded-full bg-slate-100 text-slate-700 text-xs px-3 py-1">
+        {plan ? `⭐ PRO · IA: ${count}` : <>IA disponibles: <strong>{count}</strong></>}
+      </div>
+      <button
+        onClick={() => signOut({ callbackUrl: "https://aret3.cl" })}
+        className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+        title="Cerrar sesión"
+      >
+        Salir
+      </button>
+    </div>
+  );
+}

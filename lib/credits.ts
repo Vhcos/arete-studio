@@ -1,0 +1,69 @@
+/**
+ * apps/app/lib/credits.ts
+ * Manejo de créditos con cantidad variable y whitelist de admins.
+ * Mantiene tu esquema: CreditWallet + UsageEvent.
+ */
+import { prisma } from "@/lib/prisma";
+
+/** Admins con crédito ilimitado (no se debita) */
+function getAdminEmails(): Set<string> {
+  const raw = process.env.ADMIN_EMAILS || "";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+async function getUserEmail(userId: string): Promise<string | null> {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  return u?.email ?? null;
+}
+
+/**
+ * Debita 'qty' créditos (default 1).
+ * Idempotencia: si usas requestId único en UsageEvent, puedes chequear antes.
+ */
+export async function tryDebitCredit(userId: string, requestId: string, qty: number = 1) {
+  // Admin: no debita
+  const email = await getUserEmail(userId);
+  if (email && getAdminEmails().has(email.toLowerCase())) return { ok: true, skipped: true };
+
+  return await prisma.$transaction(async (tx) => {
+    const w = await tx.creditWallet.findUnique({ where: { userId } });
+    if (!w || w.creditsRemaining < qty) return { ok: false, error: "no_credits" as const };
+
+    await tx.creditWallet.update({
+      where: { userId },
+      data: { creditsRemaining: { decrement: qty } },
+    });
+
+    await tx.usageEvent.create({
+      data: { userId, qty, kind: "ai", requestId },
+    });
+
+    return { ok: true };
+  });
+}
+
+/**
+ * Reembolsa 'qty' créditos (default 1).
+ * Si no quieres duplicar reembolsos, puedes guardar y revisar un requestId:refund.
+ */
+export async function refundCredit(userId: string, requestId: string, qty: number = 1) {
+  return await prisma.$transaction(async (tx) => {
+    await tx.creditWallet.upsert({
+      where: { userId },
+      create: { userId, creditsRemaining: qty },
+      update: { creditsRemaining: { increment: qty } },
+    });
+    await tx.usageEvent.create({
+      data: { userId, qty, kind: "refund", requestId: `${requestId}:refund` },
+    });
+    return { ok: true };
+  });
+}

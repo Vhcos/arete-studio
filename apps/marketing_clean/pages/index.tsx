@@ -42,9 +42,20 @@ export default function Home() {
         <section id="precios" className="mx-auto max-w-6xl px-4 py-12">
           <h2 className="text-xl font-semibold text-slate-900">Precios</h2>
           <hr className="my-4 border-slate-200" />
-          <p className="text-slate-700">
-            Comienza gratis. Pro desde US$5/mes con 100 consultas a la IA.
-          </p>
+        <p className="text-slate-700">
+          Comienza gratis. con 10 consultas a la IA. Incluye tu guia para el plan financiero.
+        </p>
+        <p className="text-slate-700">
+          Luego plan Proposito desde $4.000 (USD$5) dolares mensuales.
+        </p>
+        <p className="text-slate-700">
+          Si quieres agendar una reunion online conmigo desde los $29.000 (USD$30) para que te ayude a evaluar tu idea, puedes hacerlo{" "}
+          <a href="https://calendly.com/arete-studio/30min" className="text-blue-600 hover:underline">aquí</a>.
+        </p>
+        <p className="text-slate-700">
+          Si tienes una idea de negocio que quieres evaluar, pero no tienes claro si es viable o no, 
+          puedes escribirme a <a href="mailto:vhc@aret3.cl" className="text-blue-600 hover:underline">vhc@aret3.cl</a>.
+        </p>
         </section>
 
         {/* Newsletter */}

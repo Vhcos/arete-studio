@@ -104,8 +104,8 @@ export function toLegacyForm(input: unknown): LegacyForm {
     ventajaTexto: s2?.ventajaTexto ?? "",
     sectorId: s2?.sectorId ?? "",
     rubro: s2?.rubro ?? "",
-    ubicacion: s2?.ubicacion ?? "",
-
+    ubicacion: (s2 as any)?.ubicacion ?? (s2 as any)?.region ?? "",
+    
     // Cualitativos (opcional)
     urgencia: s5?.urgencia,
     accesibilidad: s5?.accesibilidad,

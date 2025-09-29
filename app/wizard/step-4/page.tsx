@@ -66,7 +66,7 @@ function onNext() {
 
   async function onIA() {
     try {
-      const res = await fetch("/api/plan", {
+      /*const res = await fetch("/api/plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -85,6 +85,7 @@ function onNext() {
       const j = await res.json();
       console.log("[preview IA]", j);
       alert("Generación IA (preview): revisa consola del navegador");
+      */
     } catch (e:any) {
       alert("No se pudo generar el plan (preview)");
     }
@@ -107,7 +108,7 @@ function onNext() {
         {SHOW_IA && (
           <button onClick={onIA} className="rounded-lg bg-slate-900 text-white px-4 py-2">Generar plan (IA)</button>
         )}
-        <button onClick={onNext} className="rounded-lg bg-blue-600 text-white px-4 py-2">Ir al Formulario</button>
+        <button onClick={onNext} className="rounded-lg bg-blue-600 text-white px-4 py-2">Ir al Tablero </button>
       </div>
 
       {!SHOW_IA && (

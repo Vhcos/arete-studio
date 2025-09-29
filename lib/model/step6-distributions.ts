@@ -1,4 +1,6 @@
 // lib/model/step6-distributions.ts
+// Definiciones de plantillas de distribución de costos y gastos (step 6)
+// y mapeo rubro → plantilla
 import type { SectorId } from "@/lib/model/sectors";
 
 export type Step6TemplateId = "A" | "B" | "C" | "D" | "E";

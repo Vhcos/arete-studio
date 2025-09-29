@@ -1,7 +1,12 @@
-import NextAuth, { type NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import EmailProvider from "next-auth/providers/email";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+
+import type { NextAuthOptions, Session, User } from "next-auth";
+import type { AdapterUser } from "next-auth/adapters";
+import type { JWT } from "next-auth/jwt";
+
 
 /**
  * EmailProvider: soporta dos modos
@@ -70,9 +75,9 @@ function buildEmailProvider() {
   );
 }
 
-export const authOptions: NextAuthOptions = {
+  const authOptions: NextAuthOptions = {
   // ⚠️ Fuerza JWT para que el middleware pueda autorizar leyendo el token
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 }, // 30 días
   secret: process.env.NEXTAUTH_SECRET,
 
   adapter: PrismaAdapter(prisma),
@@ -88,7 +93,7 @@ export const authOptions: NextAuthOptions = {
      * Respeta siempre callbackUrl relativo del mismo origen
      * (p.ej. /bienvenido?next=/wizard/step-1)
      */
-    async redirect({ url, baseUrl }) {
+    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       try {
         const target = new URL(url, baseUrl);
         const sameOrigin = target.origin === baseUrl;
@@ -106,11 +111,11 @@ export const authOptions: NextAuthOptions = {
     },
 
     // Propaga id de usuario en el token/session (opcional pero útil)
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: JWT; user?: User | AdapterUser }) {
       if (user?.id) (token as any).uid = (user as any).id;
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user && (token as any)?.uid) {
         (session.user as any).id = (token as any).uid;
       }

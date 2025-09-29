@@ -1,26 +1,19 @@
 // app/auth/sign-in/page.tsx
+"use client";
+
+import { use } from "react";
+import { useSearchParams } from "next/navigation";
 import SignInClient from "./SignInClient";
 
-export const dynamic = "force-dynamic";
-
-export const metadata = {
-  title: "Acceder — ARET3",
-  description: "Inicia sesión con un enlace mágico por email.",
-};
-
-export default function Page({
-  searchParams,
-}: {
-  searchParams?: { email?: string };
-}) {
-  const initialEmail = searchParams?.email ?? "";
+export default function Page() {
+  const sp = useSearchParams();
+  const initialEmail = sp?.get("email") ?? "";
 
   return (
     <main className="mx-auto w-full max-w-md px-6 py-10">
       <h1 className="text-2xl font-semibold">Solo necesitamos confirmar que existes</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Llegará un enlace a tu email no se te pedirá contraseña 
-        NI ningun tipo de PAGO.
+        Llegará un enlace a tu email, no se te pedirá contraseña ni ningún tipo de PAGO.
       </p>
 
       <div className="mt-6 rounded-2xl border p-6 shadow-sm">
