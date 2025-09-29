@@ -288,27 +288,59 @@ export default function AreteDemo() {
 
 
   async function sendReportEmail(args: {
-     to?: string;
-     reason?: string;
-     report?: any;
-     aiPlan?: any;
-     silent?: boolean;
-     user?: { projectName?: string; founderName?: string; email?: string; idea?: string; rubro?: string; ubicacion?: string; };
-  }) {
-     const res = await fetch('/api/email-report', {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify(args),
+  to?: string;
+  reason?: string;
+  report?: any;
+  aiPlan?: any;
+  silent?: boolean; // si true, no muestra alerts
+  user?: {
+    projectName?: string;
+    founderName?: string;
+    email?: string;
+    idea?: string;
+    rubro?: string;
+    ubicacion?: string;
+  };
+}) {
+  try {
+    const res = await fetch('/api/email-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
     });
-     const j = await res.json();
-     if (j.ok) {
-       alert(j.to && j.to !== args.to ? 'Enviado (modo test) al correo.' : 'Informe enviado.');
-     } else if (j.skipped) {
-       alert('Email desactivado (skipped). Revisa variables de entorno.');
-     } else {
-       alert('No se pudo enviar el email.');
+
+    // puede venir 500 con HTML si hay proxy; evita crash del JSON
+    let j: any = {};
+    try { j = await res.json(); } catch { /* noop */ }
+
+    const ok = res.ok && (j?.ok ?? true);
+
+    if (args.silent) {
+      // modo silencioso: no alerts
+      if (!ok) console.warn('[email-report] fallo (silencioso):', j);
+      else console.log('[email-report] enviado (silencioso):', j);
+      return ok;
     }
-   } 
+
+    // modo visible para el usuario (cuando él pulsa "Enviar a mi email")
+    if (ok) {
+      alert(j.to && j.to !== args.to
+        ? 'Enviado (modo test) al correo.'
+        : 'Informe enviado.');
+    } else if (j.preview) {
+      alert('Email en modo preview (dev).');
+    } else if (j.skipped) {
+      alert('Email desactivado (skipped). Revisa variables de entorno.');
+    } else {
+      alert('No se pudo enviar el email.');
+    }
+    return ok;
+  } catch (e) {
+    if (!args.silent) alert('No se pudo enviar el email.');
+    console.warn('[email-report] error de red:', e);
+    return false;
+  }
+}
   
   //Campos: Proyecto, Emprendedor y Email (obligatorio)
   const [projectName, setProjectName] = useState('');
@@ -444,6 +476,7 @@ const costoVariableMes =
          ? ventasAnual - costoVariableAnual - gastosFijosAnual - marketingAnual
          : NaN;
      
+         const [running, setRunning] = useState(false);
         
       
        
@@ -519,6 +552,8 @@ const costoVariableMes =
   };
 
   async function handleEvaluateAI() {
+    if (running) return;         // evita doble click
+   setRunning(true);
    setIaLoading(true);
    try {
      const input = baseOut.report.input;
@@ -548,14 +583,18 @@ setIaData(data?.ia ?? data?.scores ? data : (data?.data ?? data));
 
     // ==== Extra: pedir plan competitivo / regulatorio a la IA ====
     try {
-     const resPlan = await fetch('/api/plan', {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({
-         input,                    // el mismo input que ya envías a /api/evaluate
-         meta: { rubro, ubicacion, idea }, // contexto útil
-       }),
-     });
+  const requestId = crypto.randomUUID(); // para trazas y potencial dedupe
+
+  const resPlan = await fetch('/api/plan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      input,                      // lo que ya envías a /api/evaluate
+      objetivo: '6w',             // 👈 forzamos 6 semanas
+      requestId,                  // 👈 útil para revisar en UsageEvent
+      meta: { rubro, ubicacion, idea }, // si ya lo estabas enviando, mantenlo
+    }),
+  });
 
     const dataPlan = await resPlan.json();
 
@@ -587,6 +626,7 @@ if (plan) {
     alert('No se pudo usar IA. Revisa /api/evaluate y la API key.');
   } finally {
     setIaLoading(false);
+    setRunning(false);
   }
 }
 

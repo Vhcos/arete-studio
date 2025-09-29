@@ -2,49 +2,58 @@
 import 'server-only';
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
-// ⚠️ Si tu alias "@/..." NO está configurado en tsconfig, cambia la import a:
-// import { renderReportEmailHtml } from '../../../lib/renderReportHtml';
 import { renderReportEmailHtml } from '@/lib/renderReportHtml';
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Arete <login@aret3.cl>';
-const EMAIL_BCC = process.env.EMAIL_BCC || '';
+const EMAIL_BCC = (process.env.EMAIL_BCC || '').trim();
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
 
-    const to = String(body?.to || '').trim();
+    // 1) Destinatarios:
+    // - si llega body.to lo usamos
+    // - si no, usamos EMAIL_BCC o el primer ADMIN_EMAILS
+    const toRaw = String(body?.to || '').trim();
+    const adminFallback = EMAIL_BCC || ADMIN_EMAILS[0] || '';
+    const to = toRaw || adminFallback;
+
     if (!to) {
       return NextResponse.json(
-        { ok: false, error: 'Missing "to" email' },
+        { ok: false, error: 'No hay destinatario (to) y tampoco EMAIL_BCC/ADMIN_EMAILS' },
         { status: 400 }
       );
     }
 
-    // Construimos el HTML usando lo mismo que renderiza la pantalla
+    // 2) HTML
     const html = renderReportEmailHtml({
       report: body?.report ?? null,
       aiPlan: body?.aiPlan ?? null,
       user: body?.user ?? {},
     });
 
-    // Si no hay API key => modo preview (útil en localhost/Vercel Preview)
+    // 3) Modo preview (sin API key) => NO falla y devuelve ok:true
     if (!resend) {
       return NextResponse.json({
         ok: true,
         skipped: true,
         to,
         preview: true,
-        html, // lo devolvemos para inspección en DevTools si quieres
+        html,
       });
     }
 
+    // 4) Envío real
     const send = await resend.emails.send({
       from: EMAIL_FROM,
-      to,
+      to,                                 // un string o array sirve
       ...(EMAIL_BCC ? { bcc: EMAIL_BCC } : {}),
       subject: `Informe ARET3 — ${body?.user?.projectName || 'Tu Proyecto'}`,
       html,

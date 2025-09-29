@@ -66,7 +66,7 @@ function onNext() {
 
   async function onIA() {
     try {
-      const res = await fetch("/api/plan", {
+      /*const res = await fetch("/api/plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -85,6 +85,7 @@ function onNext() {
       const j = await res.json();
       console.log("[preview IA]", j);
       alert("Generación IA (preview): revisa consola del navegador");
+      */
     } catch (e:any) {
       alert("No se pudo generar el plan (preview)");
     }

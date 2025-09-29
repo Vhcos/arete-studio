@@ -65,8 +65,8 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const requestId = body?.requestId || crypto.randomUUID();
 
-  // Debitar 2 créditos (o DEBIT_PER_REPORT)
-  const DEBIT = Number(process.env.DEBIT_PER_REPORT ?? "2") || 2;
+  // Debitar 2 créditos (o DEBIT_PER_EVALUATE)
+  const DEBIT = Number(process.env.DEBIT_PER_EVALUATE ?? "1") || 1;
   const debit = await tryDebitCredit(userId, requestId, DEBIT);
   if (!(debit as any)?.ok) {
     return NextResponse.json({ ok: false, error: "no_credits" }, { status: 402 });

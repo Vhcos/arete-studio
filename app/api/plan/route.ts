@@ -20,7 +20,7 @@ function toJson<T>(s: string | null | undefined): T {
 
 /**
  * Espera algo como:
- * { input: { ... }, objetivo: "6m" }
+ * { input: { ... }, objetivo: "6w" }
  * Devuelve plan en JSON (100 palabras) + bullets.
  */
 export async function POST(req: Request) {
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 
   // 3) llamar a OpenAI
   try {
-    const { input, objetivo = "6m" } = body;
+    const { input, objetivo = "6w" } = body;
 
     const system = [
       "Eres un asesor que arma un plan de acción conciso.",
