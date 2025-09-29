@@ -2,10 +2,13 @@
 import Image from "next/image";
 import Link from "next/link";
 
+const HOME = process.env.NEXT_PUBLIC_MARKETING_URL || "https://aret3.cl";
+
 export default function Logo({ className = "" }: { className?: string }) {
   return (
     <Link
-      href="/"
+      href={HOME}
+      prefetch={false}
       aria-label="ARET3"
       className={`inline-flex items-center gap-2 shrink-0 ${className}`}
     >
@@ -17,7 +20,6 @@ export default function Logo({ className = "" }: { className?: string }) {
         priority
         className="h-20 w-20 shrink-0"
       />
-      {/* Mantiene el ícono, oculta SOLO el texto en móviles */}
       <span className="hidden sm:inline font-semibold tracking-tight">
         ARET3
       </span>

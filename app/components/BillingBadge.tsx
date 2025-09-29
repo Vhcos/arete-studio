@@ -1,7 +1,11 @@
+// app/components/BillingBadge.tsx
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { signOut } from "next-auth/react";
 import { usePathname, useSearchParams } from "next/navigation";
+
+const MARKETING_URL =
+  process.env.NEXT_PUBLIC_MARKETING_URL || "https://aret3.cl";
 
 export default function BillingBadge() {
   const [count, setCount] = useState<number | null>(null);
@@ -21,25 +25,29 @@ export default function BillingBadge() {
   }, []);
 
   useEffect(() => {
-    // 1) Carga inicial
     load();
-
-    // 2) Refresh cuando la pestaña vuelve a estar visible o gana foco
     const onVisible = () => { if (document.visibilityState === "visible") load(); };
     const onFocus = () => load();
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
-
-    // 3) Refresh cuando cambia la ruta o query
-    load(); // también al primer render de ruta
+    load();
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, pathname, search?.toString()]);
 
   if (count === null) return null;
+
+  const handleSignOut = async () => {
+    try {
+      // Evita la redirección de NextAuth (que te manda a app.aret3.cl)
+      await signOut({ redirect: false });
+    } finally {
+      // Y redirige manualmente al sitio público
+      window.location.replace(MARKETING_URL);
+    }
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -47,7 +55,7 @@ export default function BillingBadge() {
         {plan ? `⭐ PRO · IA: ${count}` : <>IA disponibles: <strong>{count}</strong></>}
       </div>
       <button
-        onClick={() => signOut({ callbackUrl: "https://aret3.cl" })}
+        onClick={handleSignOut}
         className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
         title="Cerrar sesión"
       >
