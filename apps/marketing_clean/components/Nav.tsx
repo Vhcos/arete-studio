@@ -1,3 +1,4 @@
+//apps/marketing_clean/components/Nav.tsx
 import React from "react";
 import Logo from "./Logo";
 
@@ -16,12 +17,13 @@ export default function Nav() {
         <nav className="flex items-center gap-2">
           {/* Links secundarios: ocultos en móvil */}
           <div className="hidden sm:flex items-center gap-4 text-sm">
-            <a href="#producto" className="text-slate-700 hover:text-slate-900">Producto</a>
-            <a href="#precios" className="text-slate-700 hover:text-slate-900">Precios</a>
+            <a href="https://youtube.com/shorts/jwvs4DB22ug?feature=share" target="_blank" rel="noreferrer"  className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90">Tutorial</a>
+            <a href={`${APP}/billing`}  className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90">Precios</a>
+
 
             <a
               href={`${APP}/auth/sign-in?callbackUrl=/`}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+               className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
             >
               Acceder
             </a>

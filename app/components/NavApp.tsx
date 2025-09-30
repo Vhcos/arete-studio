@@ -1,3 +1,4 @@
+// app/components/NavApp.tsx
 "use client";
 
 import Link from "next/link";
@@ -32,7 +33,8 @@ export default function NavApp() {
         <Link href="/tablero" className={`${baseItem} ${isActiveTab(pathname, tabParam, "board") ? active : idle}`}>
           Tablero
         </Link>
-        <Link href="/informe" className={`${baseItem} ${isActiveTab(pathname, tabParam, "explain") ? active : idle}`}>
+        <Link href={{ pathname: "/informe", query: { ia_hint: "1" } }}
+        className={`${baseItem} ${isActiveTab(pathname, tabParam, "explain") ? active : idle}`}>
           Informe
         </Link>
         <Link href="/formulario" className={`${baseItem} ${isActiveTab(pathname, tabParam, "form") ? active : idle}`}>

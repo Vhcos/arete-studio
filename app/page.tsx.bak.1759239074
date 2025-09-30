@@ -906,26 +906,6 @@ const getS5 = (k: string) => {
 
    useEffect(() => { setTab(initialTab); }, [initialTab]);
 
-   // Popup recordatorio al entrar a "Informe"
-const [showIAHint, setShowIAHint] = useState(false);
-
-// Muestra el popup solo si la URL trae ?ia_hint=1 y luego limpia el parámetro
-useEffect(() => {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  const p = url.searchParams;
-  if (p.get("ia_hint") === "1") {
-    setShowIAHint(true);
-    const t = setTimeout(() => setShowIAHint(false), 3000);
-    // limpia el parámetro para que no se repita
-    p.delete("ia_hint");
-    url.search = p.toString();
-    window.history.replaceState({}, "", url.toString());
-    return () => clearTimeout(t);
-  }
-}, []);
-
-
    // ------ Botón “Evaluar con IA” rojo con letras blancas
 
   const isAIEnabled = canRunAI && !iaLoading;
@@ -934,7 +914,6 @@ useEffect(() => {
   const [copied, setCopied] = useState(false);
 
   // -------------------- Render --------------------
-
   return (
    <div className="min-h-screen p-6" style={styleAccent}>
       <div className="mx-auto max-w-7xl space-y-6">
@@ -1526,8 +1505,6 @@ useEffect(() => {
   </div>
 
 </div>
-
-                
 <div className="lg:col-span-2 -mt-2">
 {/* Brújula menor (fusión P.E. + Marketing) */}
   <div
@@ -1607,26 +1584,12 @@ useEffect(() => {
             <Card className="border-none shadow-sm">
               <CardHeader><CardTitle>Informe</CardTitle></CardHeader>
               <CardContent>
-                 <div className="no-print mb-4 flex w-full items-center justify-between gap-3">
-                <Button
-              onClick={handleEvaluateAI}
-              disabled={!isAIEnabled}
-              className={
-                isAIEnabled
-                 ? "bg-red-600 hover:bg-red-700 text-white"
-                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
-              }
-               title={!isAIEnabled ? "Agrega al menos 5 caracteres en ‘Idea’ para habilitar la IA" : undefined}
-              >
-               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
-               </Button>
-
-             <div className="ml-auto flex items-center gap-2"></div>
+               <div className="no-print mb-4">
                 <button
                   type="button"
                   onClick={() => window.print()}
                   className={[
-                     "inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm transition",
+                     "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm transition",
                      "bg-white text-slate-900 border-2 border-blue-600",
                      "hover:bg-blue-50 hover:border-blue-700 hover:shadow-md",
                      "active:translate-y-[1px] active:shadow-none",
@@ -1637,29 +1600,41 @@ useEffect(() => {
                </button>
 
                  <Button
-               onClick={() =>
-                 sendReportEmail({
-                   to: email,                  // correo que escribió el usuario
-                   reason: 'user-asked',       // etiqueta para server logs
-            // 👇 Mismo informe que ves en pantalla. Prioriza IA; si no hay, usa el base.
-                   report: aiReport ?? nonAIReport,
-            // 👇 Tablas/plan de la IA para “Mapa competitivo” + “Checklist regulatorio” + Plan 100
-                   aiPlan,
-            // 👇 Metadatos del usuario que usamos en el encabezado del email
-                     user: {
-                     projectName,
-                     founderName,
-                     email,
-                     idea,        // tu idea actual (la de la pantalla)
-                     rubro,       // rubro/sector
-                     ubicacion,   // ubicación (país/ciudad)
-                   },
-                 })
+  onClick={() =>
+    sendReportEmail({
+      to: email,                  // correo que escribió el usuario
+      reason: 'user-asked',       // etiqueta para server logs
+      // 👇 Mismo informe que ves en pantalla. Prioriza IA; si no hay, usa el base.
+      report: aiReport ?? nonAIReport,
+      // 👇 Tablas/plan de la IA para “Mapa competitivo” + “Checklist regulatorio” + Plan 100
+      aiPlan,
+      // 👇 Metadatos del usuario que usamos en el encabezado del email
+      user: {
+        projectName,
+        founderName,
+        email,
+        idea,        // tu idea actual (la de la pantalla)
+        rubro,       // rubro/sector
+        ubicacion,   // ubicación (país/ciudad)
+      },
+    })
+  }
+  disabled={!emailOK || emailSending}
+>
+  Informe a mi email
+</Button>
+<Button
+              onClick={handleEvaluateAI}
+              disabled={!isAIEnabled}
+              className={
+                isAIEnabled
+                 ? "bg-red-600 hover:bg-red-700 text-white"
+                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
               }
-                  disabled={!emailOK || emailSending}
-                 >
-                 Informe a mi email
-               </Button>
+               title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
+              >
+               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
+             </Button>
                </div>
 
 
