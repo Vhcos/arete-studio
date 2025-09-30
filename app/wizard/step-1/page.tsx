@@ -47,14 +47,30 @@ export default function Step1Page() {
       />
       {errors.projectName && <p className="mt-1 text-xs text-red-600">{errors.projectName}</p>}
 
-      <label className="block text-sm font-medium mt-4">¿Cuál es tu Idea que te Inspira?</label>
-      <textarea
-        className="mt-1 w-full rounded-lg border px-3 py-2"
-        placeholder="Describe brevemente tu maravillosa idea eso ayudara a la IA."
-        rows={3}
-        value={local.idea}
-        onChange={(e) => setLocal((s) => ({ ...s, idea: e.target.value }))}
-      />
+      <label className="text-xl font-semibold mb-1">
+  ¿Cuál es tu Idea que te Inspira? Necesitas escribir tu idea para{" "}
+  <span className="text-red-600 font-bold"> activar el Informe con IA</span>
+</label>
+<textarea
+  className="mt-1 w-full rounded-lg border px-3 py-2"
+  placeholder="Describe brevemente tu maravillosa idea eso ayudara a la IA. Con al menos 5 caracteres podrás activar el Informe con IA."
+  rows={3}
+  value={local.idea}
+  onChange={(e) => setLocal((s) => ({ ...s, idea: e.target.value }))}
+  onBlur={() => {
+    if ((local.idea ?? "").trim().length < 5) {
+      setErrors((prev) => ({ ...prev, idea: "Escribe al menos 5 caracteres para activar el Informe con IA" }));
+    } else {
+      setErrors((prev) => {
+        const { idea, ...rest } = prev;
+        return rest;
+      });
+    }
+  }}
+/>
+{errors.idea && <p className="mt-1 text-xs text-red-600">{errors.idea}</p>}
+
+      
         {/* NUEVO: Ubicación (mismo patrón que founderName) */}
       <label className="block text-sm font-medium mt-4">Ubicación</label>
       <input

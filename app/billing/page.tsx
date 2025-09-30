@@ -1,3 +1,4 @@
+//app/billing/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -58,7 +59,7 @@ export default function BillingPage() {
           <div className="rounded-2xl border border-gray-200 p-6 shadow-sm">
             <div className="flex items-baseline justify-between">
               <h2 className="text-xl font-semibold">200 Créditos</h2>
-              <span className="text-2xl font-bold">$5.000</span>
+              <span className="text-2xl font-bold">$5.000 (usd $5)</span>
               <span className="ml-1 text-gray-500">CLP</span>
             </div>
             <p className="mt-1 text-sm text-gray-500">Compra única. Ideal para validar varias ideas.</p>
@@ -84,7 +85,7 @@ export default function BillingPage() {
           <div className="rounded-2xl border border-gray-200 p-6 shadow-sm">
             <div className="flex items-baseline justify-between">
               <h2 className="text-xl font-semibold">Asesoría 1:1 (30 min)</h2>
-              <span className="text-2xl font-bold">$30.000</span>
+              <span className="text-2xl font-bold">$30.000 (usd $30)</span>
               <span className="ml-1 text-gray-500">CLP</span>
             </div>
             <p className="mt-1 text-sm text-gray-500">Compra única. Acompañamiento experto para tu idea.</p>
@@ -118,26 +119,29 @@ export default function BillingPage() {
           </a>
         </div>
 
-        {/* Bloque seguridad y TOS */}
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-gray-200 p-6">
-            <h4 className="font-semibold">Tu idea está segura con nosotros</h4>
-            <ul className="mt-3 space-y-2 text-sm text-gray-700">
-              <li>• Cifrado en tránsito (HTTPS)</li>
-              <li>• Informes privados: no vendemos ni compartimos tus datos</li>
-              <li>• Borrado bajo solicitud del usuario</li>
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-gray-200 p-6">
-            <h4 className="font-semibold">Términos del servicio</h4>
-            <p className="mt-3 text-sm text-gray-600">
-              Consulta las condiciones de uso, créditos y reembolsos.
-            </p>
-            <a href="/terms" className="mt-3 inline-block text-blue-700 underline">
-              Ver Términos y Condiciones
-            </a>
-          </div>
-        </div>
+       {/* Bloque seguridad y legal */}
+<div className="mt-6 grid gap-6 md:grid-cols-2">
+  <div className="rounded-2xl border border-gray-200 p-6">
+    <h4 className="font-semibold">Tu idea, bajo llave 🔐</h4>
+    <ul className="mt-3 space-y-2 text-sm text-gray-700">
+      <li>• <strong>Privada por diseño</strong>: tus informes no se comparten ni se venden.</li>
+      <li>• <strong>Cifrada en tránsito</strong> (HTTPS).</li>
+      <li>• <strong>Control total</strong>: puedes solicitar el borrado de tus datos cuando quieras.</li>
+      <li>• <strong>Solo para ayudarte</strong>: usamos tus entradas para generar tu informe y mejorar la experiencia.</li>
+    </ul>
+  </div>
+  <div className="rounded-2xl border border-gray-200 p-6">
+    <h4 className="font-semibold">Información legal y contacto</h4>
+    <p className="mt-3 text-sm text-gray-600">
+      Revisa nuestros documentos y escríbenos si necesitas algo.
+    </p>
+    <div className="mt-3 space-y-2 text-sm">
+      <a href="/terms" className="text-blue-700 underline">Ver Términos y Condiciones</a><br/>
+      <a href="/privacy" className="text-blue-700 underline">Ver Política de Privacidad</a><br/>
+      <a href="mailto:vhc@aret3.cl?subject=Contacto%20ARET3" className="text-blue-700 underline">Contacto</a>
+    </div>
+  </div>
+</div>
       </div>
     </div>
   );

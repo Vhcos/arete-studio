@@ -38,6 +38,23 @@ export default function Home() {
           </ol>
         </section>
 
+{/* Tutorial en video */}
+<section className="mx-auto max-w-6xl px-4 py-12">
+  <h2 className="text-xl font-semibold text-slate-900">Aprende a usar Aret3</h2>
+  <hr className="my-4 border-slate-200" />
+  <div className="aspect-video w-full overflow-hidden rounded-2xl border border-slate-200">
+    <iframe
+      className="h-full w-full"
+      src="https://www.youtube.com/embed/jwvs4DB22ug"
+      title="Tutorial Aret3"
+      frameBorder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowFullScreen
+    />
+  </div>
+</section>
+
+
         {/* Precios (placeholder) */}
         <section id="precios" className="mx-auto max-w-6xl px-4 py-12">
           <h2 className="text-xl font-semibold text-slate-900">Precios</h2>
@@ -46,17 +63,40 @@ export default function Home() {
           Comienza gratis. con 10 consultas a la IA. Incluye tu guia para el plan financiero.
         </p>
         <p className="text-slate-700">
-          Luego plan Proposito desde $4.000 (USD$5) dolares mensuales.
+          Luego plan Proposito desde $5.000 (USD$5) dolares mensuales.
         </p>
         <p className="text-slate-700">
-          Si quieres agendar una reunion online conmigo desde los $29.000 (USD$30) para que te ayude a evaluar tu idea, puedes hacerlo{" "}
-          <a href="https://calendly.com/arete-studio/30min" className="text-blue-600 hover:underline">aquí</a>.
+          Si quieres agendar una reunion online conmigo desde los $30.000 (USD$30) para que te ayude a evaluar tu idea, puedes hacerlo{" "}
+          <a href="/billing" className="text-blue-600 hover:underline">aquí</a>.
         </p>
         <p className="text-slate-700">
           Si tienes una idea de negocio que quieres evaluar, pero no tienes claro si es viable o no, 
           puedes escribirme a <a href="mailto:vhc@aret3.cl" className="text-blue-600 hover:underline">vhc@aret3.cl</a>.
         </p>
         </section>
+
+        {/* Para instituciones */}
+<section id="instituciones" className="mx-auto max-w-6xl px-4 py-12">
+  <div className="mt-6 rounded-xl border border-amber-500 bg-amber-50 p-4">
+    <h2 className="text-xl font-semibold text-slate-900">¿Eres una universidad, incubadora o cowork?</h2>
+    <p className="mt-2 text-slate-700">
+      Cultive la innovación y fomente el espíritu emprendedor con nuestra plataforma de desarrollo de ideas sencilla e intuitiva.
+    </p>
+    <p className="mt-2 text-slate-700">
+      Enseñe a sus estudiantes a dominar la planificación empresarial y financiera paso a paso con una guía divertida y práctica.
+    </p>
+    <p className="mt-2 text-slate-700">
+     Si estás generando un impacto positivo, nos gustaría apoyarte. Ofrecemos un descuento especial 
+     para escuelas de negocios, universidades, empresas B y organizaciones sin fines de lucro.
+    </p>
+    <a
+      href="mailto:vhc@aret3.cl?subject=Licencia%20ARET3%20para%20institución"
+      className="mt-4 inline-block rounded-xl border border-blue-600 px-4 py-2 font-medium text-blue-700 hover:bg-blue-50"
+    >
+      Contáctanos
+    </a>
+  </div>
+</section>
 
         {/* Newsletter */}
         <section className="mx-auto max-w-6xl px-4 py-12">
@@ -85,7 +125,7 @@ export default function Home() {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">¿Listo para empezar?</h3>
                 <p className="text-slate-600">
-                  Te toma 2 minutos crear tu acceso y comenzar el wizard.
+                  Te toma 2 minutos crear tu acceso y comenzar el recorrido.
                 </p>
               </div>
               <div className="flex gap-3">

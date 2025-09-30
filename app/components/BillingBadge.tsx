@@ -10,6 +10,7 @@ const MARKETING_URL =
 export default function BillingBadge() {
   const [count, setCount] = useState<number | null>(null);
   const [plan, setPlan] = useState<string | null | undefined>(undefined);
+  const [showUpsell, setShowUpsell] = useState(false);
   const pathname = usePathname();
   const search = useSearchParams();
 
@@ -49,28 +50,84 @@ export default function BillingBadge() {
     }
   };
 
-  return (
-  <div className="flex items-center gap-2">
-    <div className="rounded-full bg-slate-100 text-slate-700 text-xs px-3 py-1">
-      {plan ? `⭐ PRO · IA: ${count}` : <>IA disponibles: <strong>{count}</strong></>}
-    </div>
+  const goAdvisory = async () => {
+    try {
+      const r = await fetch("/api/billing/me", { cache: "no-store" });
+      const j = await r.json();
+      const sc = Number(j?.sessionCredits ?? 0);
+      if (j?.ok && sc > 0) {
+        window.location.href = "/advisory";
+      } else {
+        setShowUpsell(true); // <- muestra popup en vez de redirigir directo
+      }
+    } catch {
+      setShowUpsell(true);
+    }
+  };
+  
+    return (
+    <>
+      <div className="flex items-center gap-2">
+        <div className="rounded-full bg-slate-100 text-slate-700 text-xs px-3 py-1">
+          {plan ? `⭐ PRO · IA: ${count}` : <>IA disponibles: <strong>{count}</strong></>}
+        </div>
 
-    {/* CTA: Mejora tu plan */}
-    <a
-      href="/billing"
-      className="text-xs px-2 py-1 rounded border border-red-600 text-blue-700 hover:bg-blue-50"
-      title="Mejorar plan"
-    >
-      Mejora tu plan
-    </a>
+        {/* CTA asesoría */}
+        <button
+          onClick={goAdvisory}
+          className="text-xs px-2 py-1 rounded border border-blue-600 text-blue-700 hover:bg-blue-50"
+          title="Asesoría 30 min"
+        >
+          Asesoría 30 min
+        </button>
 
-    <button
-      onClick={handleSignOut}
-      className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
-      title="Cerrar sesión"
-    >
-      Salir
-    </button>
-  </div>
-);
+        {/* CTA: Mejora tu plan */}
+        <a
+          href="/billing"
+          className="text-xs px-2 py-1 rounded border border-red-600 text-blue-700 hover:bg-blue-50"
+          title="Mejorar plan"
+        >
+          Mejora tu plan
+        </a>
+
+        <button
+          onClick={handleSignOut}
+          className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+          title="Cerrar sesión"
+        >
+          Salir
+        </button>
+      </div>
+
+      {/* Popup Upsell (simple, sin dependencias) */}
+      {showUpsell && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-sm font-semibold text-slate-900">Asesoría 30 min</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Aún no tienes asesorías disponibles. Contrata para habilitar la agenda.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowUpsell(false)}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                Ahora no
+              </button>
+              <a
+                href="/billing?upsell=advisory"
+                className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Contratar asesoría
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

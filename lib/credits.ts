@@ -104,3 +104,31 @@ export async function incrementSessionEntitlement(userId: string, requestId: str
     return { ok: true };
   });
 }
+
+/**
+ * Consume 1 sesión de asesoría (o la cantidad indicada).
+ * Idempotente por requestId (no duplica consumos).
+ * Para "refund" usar qty negativa (p.ej., -1) con el mismo requestId o sufijo distinto.
+ */
+export async function consumeSessionEntitlement(
+  userId: string,
+  requestId: string,
+  qty: number = 1
+) {
+  if (qty === 0) return { ok: true, skipped: true as const };
+
+  return await prisma.$transaction(async (tx) => {
+    // Idempotencia: si ya existe exacto ese requestId, no repetir
+    const existing = await tx.usageEvent.findFirst({
+      where: { requestId },
+      select: { id: true },
+    }).catch(() => null);
+    if (existing) return { ok: true, skipped: true as const };
+
+    await tx.usageEvent.create({
+      data: { userId, qty, kind: "session_use", requestId },
+    });
+
+    return { ok: true };
+  });
+}

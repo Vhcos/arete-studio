@@ -1,3 +1,4 @@
+//apps/marketing_clean/components/sections/Hero.tsx
 import React from "react";
 
 export default function Hero() {
@@ -19,10 +20,11 @@ export default function Hero() {
           Empieza gratis
         </a>
         <a
-          href="#como-funciona"
-          className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          href="https://youtube.com/shorts/jwvs4DB22ug?feature=share"
+          className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          target="_blank" rel="noreferrer"
         >
-          Ver cómo funciona
+          Aprende a usar Aret3
         </a>
       </div>
     </section>
