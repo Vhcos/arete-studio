@@ -1,0 +1,87 @@
+diff --git a/app/page.tsx b/app/page.tsx
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@
+-  // -------------------- Render --------------------
++  // -------------------- Render --------------------
++  // Popup recordatorio al entrar a "Informe"
++  const [showIAHint, setShowIAHint] = useState(false);
++  const [hasShownIAHint, setHasShownIAHint] = useState(false);
++  useEffect(() => {
++    if (tab === "explain" && !hasShownIAHint) {
++      // pequeño delay para que cargue el DOM y luego mostrar 3s
++      const t1 = setTimeout(() => setShowIAHint(true), 250);
++      const t2 = setTimeout(() => setShowIAHint(false), 3250);
++      setHasShownIAHint(true);
++      return () => { clearTimeout(t1); clearTimeout(t2); };
++    }
++  }, [tab, hasShownIAHint]);
+@@
+-              <CardContent>
+--               <div className="no-print mb-4">
+-+              <CardContent>
+++               <div className="no-print mb-4 flex items-center justify-between gap-3">
+++                 {/* Izquierda: CTA principal */}
++                  <Button
+-              onClick={handleEvaluateAI}
+-              disabled={!isAIEnabled}
+-              className={
+-                isAIEnabled
+-                 ? "bg-red-600 hover:bg-red-700 text-white"
+-                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
+-              }
+-               title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
+-              >
+-               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
+-             </Button>
+-               </div>
++                    onClick={handleEvaluateAI}
++                    disabled={!isAIEnabled}
++                    className={
++                      isAIEnabled
++                        ? "bg-red-600 hover:bg-red-700 text-white"
++                        : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
++                    }
++                    title={!isAIEnabled ? "Agrega al menos 24 caracteres en ‘Idea’ para habilitar la IA" : undefined}
++                  >
++                    {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
++                  </Button>
++
++                  {/* Derecha: acciones secundarias como calugas pequeñas */}
++                  <div className="flex items-center gap-2">
++                    <button
++                      type="button"
++                      onClick={() => window.print()}
++                      className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs transition
++                                 bg-white text-slate-900 border border-blue-600
++                                 hover:bg-blue-50 hover:border-blue-700"
++                    >
++                      Imprimir informe
++                    </button>
++                    <button
++                      type="button"
++                      onClick={() =>
++                        sendReportEmail({
++                          to: email,
++                          reason: "user-asked",
++                          report: aiReport ?? nonAIReport,
++                          aiPlan,
++                          user: { projectName, founderName, email, idea, rubro, ubicacion },
++                        })
++                      }
++                      disabled={!emailOK || emailSending}
++                      className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs transition
++                                 bg-white text-slate-900 border border-blue-600
++                                 hover:bg-blue-50 hover:border-blue-700 disabled:opacity-60"
++                    >
++                      Informe a mi email
++                    </button>
++                  </div>
++                </div>
++
++                {/* Popup recordatorio 3s */}
++                {showIAHint && (
++                  <div className="no-print fixed top-20 right-4 z-50 rounded-lg bg-black/80 text-white px-4 py-2 shadow-lg">
++                    Genera tu informe con IA
++                  </div>
++                )}
