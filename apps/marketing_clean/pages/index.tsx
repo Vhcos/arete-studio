@@ -26,20 +26,8 @@ export default function Home() {
 
       <main>
         <Hero />
-
-        {/* ¿Cómo funciona? */}
-        <section id="como-funciona" className="mx-auto max-w-6xl px-4 py-12">
-          <h2 className="text-xl font-semibold text-slate-900">¿Cómo funciona?</h2>
-          <hr className="my-4 border-slate-200" />
-          <ol className="list-decimal space-y-2 pl-6 text-slate-700">
-            <li>Describe tu idea</li>
-            <li>Completa 5 pasos</li>
-            <li>Obtén tu informe</li>
-          </ol>
-        </section>
-
 {/* Tutorial en video */}
-<section className="mx-auto max-w-6xl px-4 py-12">
+<section className="mx-auto max-w-2xl px-4 py-12">
   <h2 className="text-xl font-semibold text-slate-900">Aprende a usar Aret3</h2>
   <hr className="my-4 border-slate-200" />
   <div className="aspect-video w-full overflow-hidden rounded-2xl border border-slate-200">
@@ -54,26 +42,38 @@ export default function Home() {
   </div>
 </section>
 
+        {/* ¿Cómo funciona? */}
+        <section id="como-funciona" className="mx-auto max-w-3xl px-4 py-12 text-center">
+          <h2 className="text-xl font-semibold italic text-sky-700 tracking-wide">¿Tienes una idea? aquí te explico cómo funciona Aret3 </h2>
+          <hr className="my-4 border-slate-300" />
+          <ol className="list-decimal space-y-2 pl-6 text-slate-700">
+            <p>Responde 8 simples pasos con preguntas claras y directas</p>
+            <p>Recibe un informe visual y claro para decidir</p>
+            <p>Usa la IA para mejorar tu idea y obtener sugerencias</p>
+            <p>Comparte tu informe con socios, mentores o inversores</p>
+            <p>Revisa y actualiza tu idea cuando quieras</p>
+            <p>Todo esto en menos de 15 minutos</p> 
+            <p></p> 
 
-        {/* Precios (placeholder) */}
-        <section id="precios" className="mx-auto max-w-6xl px-4 py-12">
-          <h2 className="text-xl font-semibold text-slate-900">Precios</h2>
-          <hr className="my-4 border-slate-200" />
-        <p className="text-slate-700">
-          Comienza gratis. con 10 consultas a la IA. Incluye tu guia para el plan financiero.
-        </p>
-        <p className="text-slate-700">
-          Luego plan Proposito desde $5.000 (USD$5) dolares mensuales.
-        </p>
-        <p className="text-slate-700">
-          Si quieres agendar una reunion online conmigo desde los $30.000 (USD$30) para que te ayude a evaluar tu idea, puedes hacerlo{" "}
-          <a href="/billing" className="text-blue-600 hover:underline">aquí</a>.
-        </p>
-        <p className="text-slate-700">
-          Si tienes una idea de negocio que quieres evaluar, pero no tienes claro si es viable o no, 
-          puedes escribirme a <a href="mailto:vhc@aret3.cl" className="text-blue-600 hover:underline">vhc@aret3.cl</a>.
-        </p>
+          </ol>
         </section>
+
+                  {/* ¿Cómo funciona? */}
+        <section id="como-funciona" className="mx-auto max-w-3xl px-4 py-12 text-center">
+          <h2 className="text-xl font-semibold text-sky-700 tracking-wide">La Regla del 8 % para la sección económica </h2>
+          <hr className="my-4 border-slate-300" />
+          <ol className="list-decimal space-y-2 pl-6 text-slate-700">
+            <p>Una característica distintiva de ARET3 es la Regla del 8 % como base para el</p>
+            <p>presupuesto del negocio. La idea es que un emprendimiento debe proyectar al menos </p>
+            <p>un 8 % de utilidad neta anual, lo que equivale aproximadamente a un mes de ventas </p>
+            <p>(100 % ÷ 12 meses ≈ 8 %). Este criterio sirve como piso de rentabilidad: si el modelo no</p>
+            <p>alcanza el 8 %, se considera riesgoso y se deben ajustar precios, costes variables o </p>
+            <p>gastos fijos antes de lanzarlo.</p> 
+            <p></p> 
+
+          </ol>
+        </section>    
+
 
         {/* Para instituciones */}
 <section id="instituciones" className="mx-auto max-w-6xl px-4 py-12">

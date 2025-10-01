@@ -1663,7 +1663,7 @@ useEffect(() => {
                </div>
 
 
-               <div className="rounded-md border bg-white p-4 text-sm">
+               <div className="rounded-lg border bg-white p-5 md:p-6 shadow-sm space-y-4 text-[15px] leading-relaxed">
                   <div><span className="font-semibold">Proyecto:</span> {projectName || '—'}</div>
                   <div><span className="font-semibold">Emprendedor/a:</span> {founderName || '—'}</div>
                   <div><span className="font-semibold">Email:</span> {email || '—'}</div>

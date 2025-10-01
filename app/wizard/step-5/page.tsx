@@ -7,20 +7,22 @@ import { Step5Schema } from "@/lib/validation/wizard-extra";
 type S = { key: keyof ReturnType<typeof getDefault>; label: string };
 function getDefault() {
   return {
-    urgencia: 5, accesibilidad: 5, competencia: 5, experiencia: 5,
-    pasion: 5, planesAlternativos: 5, toleranciaRiesgo: 5, testeoPrevio: 5, redApoyo: 5
+    urgencia: 0, accesibilidad: 0, competencia: 0, experiencia: 0,
+    pasion: 0, planesAlternativos: 0, toleranciaRiesgo: 0, testeoPrevio: 0, redApoyo: 0
   };
 }
 const FIELDS: S[] = [
-  { key:"urgencia", label:"Tu idea resuelve un urgencia" },
-  { key:"accesibilidad", label:"Accesibilidad al cliente" },
-  { key:"competencia", label:"Competencia (0=alta, 10=baja)" },
-  { key:"experiencia", label:"Tu experiencia en el rubro" },
-  { key:"pasion", label:"Tu pasión/compromiso con la idea" },
-  { key:"planesAlternativos", label:"Planes alternativos a las dificultades" },
-  { key:"toleranciaRiesgo", label:"Tolerancia al Riesgo" },
+  { key:"urgencia", label:"1.Tu idea resuelve un problema" },
+  { key:"experiencia", label:"2.Tu experiencia en el rubro" },
+  { key:"competencia", label:"3.Competencia (0=alta, 10=baja)" },
+  { key:"toleranciaRiesgo", label:"4.Tolerancia al Riesgo" },
+  { key:"accesibilidad", label:"5.Accesibilidad al cliente" },
+  { key:"pasion", label:"6.Tu pasión/compromiso con la idea" },
+  
+  
   { key:"testeoPrevio", label:"Testeo previo" },
   { key:"redApoyo", label:"Red de apoyo" },
+  { key:"planesAlternativos", label:"Planes alternativos a las dificultades" },
 ];
 
 export default function Step5Page() {
@@ -45,19 +47,20 @@ export default function Step5Page() {
   return (
     
     <div>
-      <h1 className="text-xl font-semibold mb-1">Paso 5 ·  Emocional Aquí tienes los datos blandos de tu idea aspectos cualitativos y emocionales que impactarán tu negocio</h1>
+      <h1 className="text-xl font-semibold mb-1">Paso 5 ·  Emocional: <span className="text-red-600 font-bold">Debes detenerte un minuto y poner TU nota de 0-10</span> a cada una de estas características 
+        que te harán pensar y profundizar en tu negocio en los aspectos blandos o cualitativos </h1>
       <p className="text-sm text-slate-600 mb-6">Evalúa cada ítem (0 a 10).</p>
       <div className="md:col-span-3 rounded-xl border-2 p-4 border-blue-600/30 bg-blue-50 dark:border-blue-400/30 dark:bg-blue-400/10">
   <div className="font-medium">
-    Califica de <strong>0 a 10</strong> cada ítem
+    Califica de <strong>0 (nada)a 10(todo)</strong> cada ítem
   </div>
   <ul className="text-sm text-muted-foreground list-disc pl-5 mt-1 space-y-1">
-    <li><strong>Tu idea resuelve un problema</strong>: 0 = poco, 10 = mucho.</li>
-    <li><strong>Competencia</strong>: cantidad/calidad de competidores (alto = mucha competencia).</li>
-    <li><strong>Tu tolerancia al riesgo</strong>: cuánta volatilidad soportas.</li>
-    <li><strong>Testeo previo</strong>: entrevistas, lista de espera, reuniones, respuestas positivas, seguidores.</li>
-    <li><strong>Red de apoyo</strong>: mentores, socios, partners, contactos.</li>
-    <li><strong>Planes alternativos a las dificultades</strong>: mitigaciones listas si algo sale mal.</li>
+    <li><strong>1.Tu idea resuelve un problema</strong> Piensa si viene de la observación de tu cliente</li>
+    <li><strong>2.Tu experiencia en el rubro</strong> Trabajaste en este negocio o lo estas intentando de nuevo</li>
+    <li><strong>3.Competencia</strong>: cantidad/calidad de competidores menos es mejor.</li>
+    <li><strong>4.Tu tolerancia al riesgo</strong>: como soportas las perdidas o problemas.</li>
+    <li><strong>5.Accesibilidad del cliente</strong>: tienes buena ubicación? puedes llegar facilmente a tu cliente?</li>
+    <li><strong>6.Tu pasión/compromiso con la idea</strong>: estas dispuesto a dejarlo todo por tu idea o no</li>
   </ul>
 </div>
 
