@@ -1,3 +1,4 @@
+//apps/marketing_clean/components/sections/Footer.tsx
 import React from "react";
 
 export default function Footer() {
@@ -6,8 +7,8 @@ export default function Footer() {
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
         <p>© 2025 ARET3. Todos los derechos reservados.</p>
         <nav className="flex gap-6">
-          <a href="/recursos/centro-de-ayuda" className="hover:text-slate-700">Centro de ayuda</a>
-          <a href="/recursos/asesorias" className="hover:text-slate-700">Asesorías</a>
+          <a href="https://app.aret3.cl/privacy" className="hover:text-slate-700">Privacidad</a>
+          <a href="https://app.aret3.cl/terms" className="hover:text-slate-700">Términos</a>
         </nav>
       </div>
     </footer>

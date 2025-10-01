@@ -1,0 +1,14 @@
+*** Begin Patch
+*** Update File: apps/marketing_clean/components/sections/Footer.tsx
+@@
+         <nav className="flex gap-6">
+           <a href="/recursos/centro-de-ayuda" className="hover:text-slate-700">Centro de ayuda</a>
+           <a href="/recursos/asesorias" className="hover:text-slate-700">Asesorías</a>
++          <a href="https://app.aret3.cl/privacy" className="hover:text-slate-700">Privacidad</a>
++          <a href="https://app.aret3.cl/terms" className="hover:text-slate-700">Términos</a>
+         </nav>
+       </div>
+     </footer>
+   );
+ }
+*** End Patch
