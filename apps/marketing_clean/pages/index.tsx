@@ -37,14 +37,14 @@ export default function Home() {
               <h2 className="text-2xl font-semibold italic text-blue-900 text-center">
                 ¿Tienes una idea? Aquí te explico cómo funciona Aret3
               </h2>
-              <p className="mt-4 italic text-slate-700 text-center">
+              <div className="mt-4 italic text-slate-700 text-center">
             <p>Responde 8 simples pasos con preguntas claras y directas</p>
             <p>Recibe un informe visual y claro para decidir</p>
             <p>Usa la IA para mejorar tu idea y obtener sugerencias</p>
             <p>Comparte tu informe con socios, mentores o inversores</p>
             <p>Revisa y actualiza tu idea cuando quieras</p>
             <p>Todo esto en menos de 15 minutos</p> 
-              </p>
+              </div>
             </div>
             {/* Derecha: video con “blob” suave detrás */}
             <div className="relative isolate">
@@ -108,6 +108,28 @@ export default function Home() {
         {/* 3) Universidades / Incubadoras / Cowork (imagen izq SVG, texto der) - NUEVO */}
         <section id="instituciones-2col" className="mx-auto max-w-6xl px-4 py-16">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            
+            <div>
+              <h2 className="text-2xl font-semibold italic text-blue-900 text-center">
+                ¿Eres una universidad, incubadora o cowork?
+              </h2>
+             <p className="mt-2 italic text-blue-700 text-center">
+                 Cultive la innovación y fomente el espíritu emprendedor con nuestra plataforma de desarrollo de ideas sencilla e intuitiva.
+             </p>
+             <p className="mt-2 italic text-blue-700 text-center">
+                 Enseñe a sus estudiantes a dominar la planificación empresarial y financiera paso a paso con una guía divertida y práctica.
+             </p>
+             <p className="mt-2 italic text-blue-700 text-center">
+                 Si estás generando un impacto positivo, nos gustaría apoyarte. Ofrecemos un descuento especial 
+                 para escuelas de negocios, universidades, empresas B y organizaciones sin fines de lucro.
+             </p>
+              <a
+                href="mailto:vhc@aret3.cl?subject=Licencia%20ARET3%20para%20instituci%C3%B3n"
+                className="mt-6 inline-block rounded-xl  border border-yellow-600 px-8 py-2 font-medium text-blue-900 hover:bg-blue-50 text-center"
+              >
+                Contáctanos
+              </a>
+            </div>
             <div className="relative isolate">
               <div
                 aria-hidden="true"
@@ -124,21 +146,8 @@ export default function Home() {
                 loading="lazy"
               />
             </div>
-            <div>
-              <h2 className="text-2xl font-semibold text-slate-900">
-                ¿Eres una universidad, incubadora o cowork?
-              </h2>
-              <p className="mt-4 text-slate-700">
-                Integración simple para talleres y programas. Marca blanca y reportes personalizados.
-              </p>
-              <a
-                href="mailto:vhc@aret3.cl?subject=Licencia%20ARET3%20para%20instituci%C3%B3n"
-                className="mt-6 inline-block rounded-xl border border-blue-600 px-4 py-2 font-medium text-blue-700 hover:bg-blue-50"
-              >
-                Contáctanos
-              </a>
-            </div>
-          </div>
+            
+                      </div>
         </section>
 
 {/* Tutorial en video */}
