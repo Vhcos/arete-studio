@@ -1,0 +1,196 @@
+*** Begin Patch
+*** Update File: apps/marketing_clean/pages/index.tsx
+@@
+       <main>
+         <Hero />
+ 
+-        {/* ¿Cómo funciona? */}
+-        <section id="como-funciona" className="mx-auto max-w-6xl px-4 py-12">
+-          <h2 className="text-xl font-semibold text-slate-900">¿Cómo funciona?</h2>
+-          <hr className="my-4 border-slate-200" />
+-          <ol className="list-decimal space-y-2 pl-6 text-slate-700">
+-            <li>Describe tu idea</li>
+-            <li>Completa 5 pasos</li>
+-            <li>Obtén tu informe</li>
+-          </ol>
+-        </section>
+-
+-{/* Tutorial en video */}
+-<section className="mx-auto max-w-6xl px-4 py-12">
+-  <h2 className="text-xl font-semibold text-slate-900">Aprende a usar Aret3</h2>
+-  <hr className="my-4 border-slate-200" />
+-  <div className="aspect-video w-full overflow-hidden rounded-2xl border border-slate-200">
+-    <iframe
+-      className="h-full w-full"
+-      src="https://www.youtube.com/embed/jwvs4DB22ug"
+-      title="Tutorial Aret3"
+-      frameBorder="0"
+-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+-      allowFullScreen
+-    />
+-  </div>
+-</section>
++        {/* ¿Tienes una idea? Así funciona Aret3 (2 columnas) */}
++        <section id="como-funciona" className="mx-auto max-w-6xl px-4 py-16">
++          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
++            {/* Columna izquierda: texto */}
++            <div>
++              <h2 className="text-2xl font-semibold text-slate-900">
++                ¿Tienes una idea? <span className="italic">Así funciona Aret3</span>
++              </h2>
++              <p className="mt-4 text-slate-700">
++                En minutos, pasas de la idea a un <strong>informe claro</strong> con viabilidad,
++                finanzas y próximos pasos. Simple y visual.
++              </p>
++              <ol className="mt-6 list-decimal space-y-2 pl-6 text-slate-700">
++                <li>Describe tu idea (cliente, propuesta, canal).</li>
++                <li>Completa los 5 pasos del asistente.</li>
++                <li>Genera el informe con IA y envíalo por email.</li>
++              </ol>
++            </div>
++
++            {/* Columna derecha: video con “blob” de fondo */}
++            <div className="relative isolate">
++              <div
++                aria-hidden="true"
++                className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-40 blur-2xl"
++                style={{
++                  background:
++                    "radial-gradient(40% 40% at 20% 30%, #c7d2fe 0%, rgba(199,210,254,0) 70%), radial-gradient(40% 40% at 80% 70%, #fde68a 0%, rgba(253,230,138,0) 70%)",
++                }}
++              />
++              <div className="aspect-video w-full overflow-hidden rounded-2xl ring-1 ring-black/5 shadow-xl">
++                <iframe
++                  className="h-full w-full"
++                  src="https://www.youtube.com/embed/jwvs4DB22ug"
++                  title="Tutorial Aret3"
++                  frameBorder="0"
++                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++                  allowFullScreen
++                />
++              </div>
++            </div>
++          </div>
++        </section>
+@@
+         {/* Precios (placeholder) */}
+         <section id="precios" className="mx-auto max-w-6xl px-4 py-12">
+           <h2 className="text-xl font-semibold text-slate-900">Precios</h2>
+           <hr className="my-4 border-slate-200" />
+         <p className="text-slate-700">
+           Comienza gratis. con 10 consultas a la IA. Incluye tu guia para el plan financiero.
+         </p>
+         <p className="text-slate-700">
+           Luego plan Proposito desde $5.000 (USD$5) dolares mensuales.
+         </p>
+         <p className="text-slate-700">
+           Si quieres agendar una reunion online conmigo desde los $30.000 (USD$30) para que te ayude a evaluar tu idea, puedes hacerlo{" "}
+           <a href="/billing" className="text-blue-600 hover:underline">aquí</a>.
+         </p>
+         <p className="text-slate-700">
+           Si tienes una idea de negocio que quieres evaluar, pero no tienes claro si es viable o no, 
+           puedes escribirme a <a href="mailto:vhc@aret3.cl" className="text-blue-600 hover:underline">vhc@aret3.cl</a>.
+         </p>
+         </section>
+ 
+-        {/* Para instituciones */}
+-<section id="instituciones" className="mx-auto max-w-6xl px-4 py-12">
+-  <div className="mt-6 rounded-xl border border-amber-500 bg-amber-50 p-4">
+-    <h2 className="text-xl font-semibold text-slate-900">¿Eres una universidad, incubadora o cowork?</h2>
+-    <p className="mt-2 text-slate-700">
+-      Cultive la innovación y fomente el espíritu emprendedor con nuestra plataforma de desarrollo de ideas sencilla e intuitiva.
+-    </p>
+-    <p className="mt-2 text-slate-700">
+-      Enseñe a sus estudiantes a dominar la planificación empresarial y financiera paso a paso con una guía divertida y práctica.
+-    </p>
+-    <p className="mt-2 text-slate-700">
+-     Si estás generando un impacto positivo, nos gustaría apoyarte. Ofrecemos un descuento especial 
+-     para escuelas de negocios, universidades, empresas B y organizaciones sin fines de lucro.
+-    </p>
+-    <a
+-      href="mailto:vhc@aret3.cl?subject=Licencia%20ARET3%20para%20institución"
+-      className="mt-4 inline-block rounded-xl border border-blue-600 px-4 py-2 font-medium text-blue-700 hover:bg-blue-50"
+-    >
+-      Contáctanos
+-    </a>
+-  </div>
+-</section>
++        {/* La Regla del 8% (2 columnas con imagen a la izquierda) */}
++        <section id="regla-8" className="mx-auto max-w-6xl px-4 py-16">
++          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
++            {/* Imagen con blob */}
++            <div className="relative isolate">
++              <div
++                aria-hidden="true"
++                className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-40 blur-2xl"
++                style={{
++                  background:
++                    "radial-gradient(45% 45% at 25% 30%, #c7d2fe 0%, rgba(199,210,254,0) 70%), radial-gradient(45% 45% at 80% 70%, #a7f3d0 0%, rgba(167,243,208,0) 70%)",
++                }}
++              />
++              <img
++                src="/images/regla-8.png"
++                alt="Visual de la Regla del 8% para finanzas"
++                className="w-full rounded-2xl object-cover shadow-2xl ring-1 ring-black/5"
++                loading="lazy"
++              />
++            </div>
++            {/* Texto a la derecha */}
++            <div>
++              <h2 className="text-2xl font-semibold text-slate-900">La Regla del 8&nbsp;%</h2>
++              <p className="mt-4 text-slate-700">
++                En la sección económica usamos una regla práctica: si tus <strong>ingresos</strong> cubren
++                con holgura los <strong>costos variables</strong> y tus <strong>costos fijos</strong> equivalen
++                a ~8&nbsp;% de las ventas objetivo, el modelo es saludable. Aret3 te guía con escenarios
++                y márgenes para ajustar tu plan.
++              </p>
++              <ul className="mt-6 list-disc space-y-2 pl-6 text-slate-700">
++                <li>Calcula ticket, volumen y ventas objetivo.</li>
++                <li>Chequea margen de contribución y punto de equilibrio.</li>
++                <li>Ajusta costos fijos hasta ~8&nbsp;% como referencia.</li>
++              </ul>
++            </div>
++          </div>
++        </section>
++
++        {/* Para instituciones (2 columnas, imagen a la izquierda) */}
++        <section id="instituciones" className="mx-auto max-w-6xl px-4 py-16">
++          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
++            {/* Imagen con blob */}
++            <div className="relative isolate">
++              <div
++                aria-hidden="true"
++                className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-40 blur-2xl"
++                style={{
++                  background:
++                    "radial-gradient(45% 45% at 20% 30%, #c7d2fe 0%, rgba(199,210,254,0) 70%), radial-gradient(45% 45% at 80% 70%, #fde68a 0%, rgba(253,230,138,0) 70%)",
++                }}
++              />
++              <img
++                src="/images/partners.png"
++                alt="Universidades, incubadoras y coworks usan Aret3"
++                className="w-full rounded-2xl object-cover shadow-2xl ring-1 ring-black/5"
++                loading="lazy"
++              />
++            </div>
++            {/* Texto a la derecha */}
++            <div>
++              <h2 className="text-2xl font-semibold text-slate-900">¿Eres una universidad, incubadora o cowork?</h2>
++              <p className="mt-4 text-slate-700">
++                Fomenta el emprendimiento con una herramienta que enseña <strong>planificación de negocios</strong>
++                y <strong>finanzas</strong> paso a paso. Ideal para talleres, electivos y programas de incubación.
++              </p>
++              <p className="mt-4 text-slate-700">
++                Ofrecemos licencias con <strong>marca blanca</strong>, reportes PDF personalizados y panel de clases.
++                Descuentos para escuelas de negocios, universidades, empresas B y fundaciones.
++              </p>
++              <a
++                href="mailto:vhc@aret3.cl?subject=Licencia%20ARET3%20para%20instituci%C3%B3n"
++                className="mt-6 inline-block rounded-xl border border-blue-600 px-4 py-2 font-medium text-blue-700 hover:bg-blue-50"
++              >
++                Contáctanos
++              </a>
++            </div>
++          </div>
++        </section>
+*** End Patch

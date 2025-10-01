@@ -1,8 +1,12 @@
+// apps/marketing_clean/components/Logo.tsx
 import React from "react";
 
 export default function Logo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
+       <span className="text-lg font-semibold italic tracking-tight text-blue-700">
+        Aret3
+      </span>
       <img
         src="/aret3-logo.svg"
         alt="Aret3"
@@ -10,9 +14,7 @@ export default function Logo({ className = "" }: { className?: string }) {
         width={70}
         height={70}
       />
-      <span className="text-lg font-semibold tracking-tight text-slate-900">
-        ARET3
-      </span>
+     
     </div>
   );
 }

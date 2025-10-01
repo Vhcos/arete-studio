@@ -75,14 +75,22 @@ export default function Home() {
         {/* 2) La Regla del 8% (imagen izq SVG, texto der) - NUEVO */}
         <section id="regla-8" className="mx-auto max-w-6xl px-4 py-16">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
-            <div className="flex justify-center">
-  <img
-    src="/regla-8.svg"
-    alt="La Regla del 8 % (visual)"
-    className="mx-auto w-3/4 md:w-2/3 lg:w-1/2 h-auto"
-    loading="lazy"
-  />
-</div>
+            <div className="relative isolate">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-40 blur-2xl"
+                style={{
+                  background:
+                    "radial-gradient(45% 45% at 25% 30%, #c7d2fe 0%, rgba(199,210,254,0) 70%), radial-gradient(45% 45% at 80% 70%, #a7f3d0 0%, rgba(167,243,208,0) 70%)",
+                }}
+              />
+              <img
+                src="/regla-8.svg"
+                alt="La Regla del 8% (visual)"
+                className="w-full rounded-2xl object-cover shadow-2xl ring-1 ring-black/5"
+                loading="lazy"
+              />
+            </div>
             <div>
               <h2 className="text-2xl font-semibold italic text-blue-900 text-center">La Regla del 8&nbsp;%</h2>
             <div className="mt-4 italic text-slate-700 text-center">
@@ -105,13 +113,13 @@ export default function Home() {
               <h2 className="text-2xl font-semibold italic text-blue-900 text-center">
                 ¿Eres una universidad, incubadora o cowork?
               </h2>
-             <p className="mt-2 italic text-slate-700 text-center">
+             <p className="mt-2 italic text-blue-700 text-center">
                  Cultive la innovación y fomente el espíritu emprendedor con nuestra plataforma de desarrollo de ideas sencilla e intuitiva.
              </p>
-             <p className="mt-2 italic text-slate-700 text-center">
+             <p className="mt-2 italic text-blue-700 text-center">
                  Enseñe a sus estudiantes a dominar la planificación empresarial y financiera paso a paso con una guía divertida y práctica.
              </p>
-             <p className="mt-2 italic text-slate-700 text-center">
+             <p className="mt-2 italic text-blue-700 text-center">
                  Si estás generando un impacto positivo, nos gustaría apoyarte. Ofrecemos un descuento especial 
                  para escuelas de negocios, universidades, empresas B y organizaciones sin fines de lucro.
              </p>
@@ -122,15 +130,22 @@ export default function Home() {
                 Contáctanos
               </a>
             </div>
-            {/* Imagen: limpia, centrada y pequeña */}
-<div className="flex justify-center">
-  <img
-    src="/universidad.svg"
-    alt="Universidades, incubadoras y coworks"
-    className="mx-auto w-3/4 md:w-2/3 lg:w-1/2 h-auto"
-    loading="lazy"
-  />
-</div>
+            <div className="relative isolate">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-40 blur-2xl"
+                style={{
+                  background:
+                    "radial-gradient(45% 45% at 20% 30%, #c7d2fe 0%, rgba(199,210,254,0) 70%), radial-gradient(45% 45% at 80% 70%, #fde68a 0%, rgba(253,230,138,0) 70%)",
+                }}
+              />
+              <img
+                src="/universidad.svg"
+                alt="Universidades, incubadoras y coworks"
+                className="w-full rounded-2xl object-cover shadow-2xl ring-1 ring-black/5"
+                loading="lazy"
+              />
+            </div>
             
                       </div>
         </section>
@@ -158,18 +173,22 @@ export default function Home() {
         {/* Politica de Privacidad */}
 <section id="instituciones" className="mx-auto max-w-6xl px-4 py-16">
   <div className="mt-6 rounded-xl border border-amber-500 bg-amber-50 p-4">
-    <h2 className="text-xl font-semibold text-blue-900">Tu idea, segura con ARET3</h2>
-    <div className="mt-2 text-slate-700">
-     <p> Privacidad primero: tus ideas y datos son confidenciales; no los vendemos ni los compartimos sin tu permiso.</p>
-     <p> Seguridad real: cifrado en tránsito (HTTPS) y base de datos protegida; puedes borrar tu información cuando quieras</p>
-     <p> Confianza humana + IA: nuestra IA te asiste y tú mantienes el control; mentoría 1:1 opcional y los informes sólo llegan a tu correo.</p>
-    </div>
-    
+    <h2 className="text-xl font-semibold text-slate-900">¿Eres una universidad, incubadora o cowork?</h2>
+    <p className="mt-2 text-slate-700">
+      Cultive la innovación y fomente el espíritu emprendedor con nuestra plataforma de desarrollo de ideas sencilla e intuitiva.
+    </p>
+    <p className="mt-2 text-slate-700">
+      Enseñe a sus estudiantes a dominar la planificación empresarial y financiera paso a paso con una guía divertida y práctica.
+    </p>
+    <p className="mt-2 text-slate-700">
+     Si estás generando un impacto positivo, nos gustaría apoyarte. Ofrecemos un descuento especial 
+     para escuelas de negocios, universidades, empresas B y organizaciones sin fines de lucro.
+    </p>
     <a
-      href="https://app.aret3.cl/privacy" 
+      href="mailto:vhc@aret3.cl?subject=Licencia%20ARET3%20para%20institución"
       className="mt-4 inline-block rounded-xl border border-blue-600 px-4 py-2 font-medium text-blue-700 hover:bg-blue-50"
     >
-      Terminos y Privacidad
+      Contáctanos
     </a>
   </div>
 </section>

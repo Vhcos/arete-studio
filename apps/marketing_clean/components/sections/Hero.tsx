@@ -3,7 +3,7 @@ import React from "react";
 export default function Hero() {
   return (
     <section id="producto" className="mx-auto max-w-6xl px-4 pt-12 pb-10 text-center">
-      <p className="text-xs font-semibold tracking-wider text-slate-400">ARET3</p>
+      <p className="text-xs font-semibold tracking-wider text-slate-400">#1 software de negocios en Chile para evaluar ideas</p>
       <h1 className="mt-2 mx-auto max-w-3xl text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
         Evalúa tu idea de negocio sigue tu sueño
       </h1>
