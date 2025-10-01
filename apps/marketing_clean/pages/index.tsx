@@ -1,8 +1,10 @@
+//apps/marketing_clean/pages/index.tsx 
 import Head from "next/head";
 import dynamic from "next/dynamic";
 import Nav from "../components/Nav";
 import Hero from "../components/sections/Hero";
 import Footer from "../components/sections/Footer";
+import React from "react";
 
 const NewsletterForm = dynamic(() => import("../components/NewsletterForm"), {
   ssr: false,
@@ -26,6 +28,119 @@ export default function Home() {
 
       <main>
         <Hero />
+
+        {/* 1) ¿Tienes una idea? (texto izq, video der) - NUEVO */}
+        <section id="idea-video" className="mx-auto max-w-6xl px-4 py-16">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            {/* Izquierda: usa tu copy libremente (no tocamos lo existente) */}
+            <div>
+              <h2 className="text-2xl font-semibold italic text-blue-900 text-center">
+                ¿Tienes una idea? Aquí te explico cómo funciona Aret3
+              </h2>
+              <p className="mt-4 italic text-slate-700 text-center">
+            <p>Responde 8 simples pasos con preguntas claras y directas</p>
+            <p>Recibe un informe visual y claro para decidir</p>
+            <p>Usa la IA para mejorar tu idea y obtener sugerencias</p>
+            <p>Comparte tu informe con socios, mentores o inversores</p>
+            <p>Revisa y actualiza tu idea cuando quieras</p>
+            <p>Todo esto en menos de 15 minutos</p> 
+              </p>
+            </div>
+            {/* Derecha: video con “blob” suave detrás */}
+            <div className="relative isolate">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-40 blur-2xl"
+                style={{
+                  background:
+                    "radial-gradient(40% 40% at 20% 30%, #c7d2fe 0%, rgba(199,210,254,0) 70%), radial-gradient(40% 40% at 80% 70%, #fde68a 0%, rgba(253,230,138,0) 70%)",
+                }}
+              />
+              {/* Opción A (recomendada): YouTube embebido liviano */}
+              <div className="aspect-video w-full overflow-hidden rounded-2xl ring-1 ring-black/5 shadow-xl">
+                <iframe
+                  className="h-full w-full"
+                  src="https://www.youtube-nocookie.com/embed/MF9b8ChhaXA"
+                  title="Video: cómo funciona Aret3"
+                  loading="lazy"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 2) La Regla del 8% (imagen izq SVG, texto der) - NUEVO */}
+        <section id="regla-8" className="mx-auto max-w-6xl px-4 py-16">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <div className="relative isolate">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-40 blur-2xl"
+                style={{
+                  background:
+                    "radial-gradient(45% 45% at 25% 30%, #c7d2fe 0%, rgba(199,210,254,0) 70%), radial-gradient(45% 45% at 80% 70%, #a7f3d0 0%, rgba(167,243,208,0) 70%)",
+                }}
+              />
+              <img
+                src="/regla-8.svg"
+                alt="La Regla del 8% (visual)"
+                className="w-full rounded-2xl object-cover shadow-2xl ring-1 ring-black/5"
+                loading="lazy"
+              />
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold italic text-blue-900 text-center">La Regla del 8&nbsp;%</h2>
+            <div className="mt-4 italic text-slate-700 text-center">
+              <p>Una característica distintiva de ARET3 es la Regla del 8 % </p>
+              <p>como base para el presupuesto del negocio. </p>
+              <p> La idea es que un emprendimiento debe proyectar <strong>al menos</strong> </p>
+              <p>un 8 % de utilidad neta anual, lo que equivale a un mes de ventas </p>
+              <p>(100 % ÷ 12 meses ≈ 8 %). Este criterio sirve como piso de rentabilidad</p>
+              <p><strong>NO</strong> alcanzar el 8 %, se considera riesgoso y se debes ajustar</p>
+            </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 3) Universidades / Incubadoras / Cowork (imagen izq SVG, texto der) - NUEVO */}
+        <section id="instituciones-2col" className="mx-auto max-w-6xl px-4 py-16">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <div className="relative isolate">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-40 blur-2xl"
+                style={{
+                  background:
+                    "radial-gradient(45% 45% at 20% 30%, #c7d2fe 0%, rgba(199,210,254,0) 70%), radial-gradient(45% 45% at 80% 70%, #fde68a 0%, rgba(253,230,138,0) 70%)",
+                }}
+              />
+              <img
+                src="/universidad.svg"
+                alt="Universidades, incubadoras y coworks"
+                className="w-full rounded-2xl object-cover shadow-2xl ring-1 ring-black/5"
+                loading="lazy"
+              />
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-900">
+                ¿Eres una universidad, incubadora o cowork?
+              </h2>
+              <p className="mt-4 text-slate-700">
+                Integración simple para talleres y programas. Marca blanca y reportes personalizados.
+              </p>
+              <a
+                href="mailto:vhc@aret3.cl?subject=Licencia%20ARET3%20para%20instituci%C3%B3n"
+                className="mt-6 inline-block rounded-xl border border-blue-600 px-4 py-2 font-medium text-blue-700 hover:bg-blue-50"
+              >
+                Contáctanos
+              </a>
+            </div>
+          </div>
+        </section>
+
 {/* Tutorial en video */}
 <section className="mx-auto max-w-2xl px-4 py-12">
   <h2 className="text-xl font-semibold text-slate-900">Aprende a usar Aret3</h2>
@@ -76,7 +191,7 @@ export default function Home() {
 
 
         {/* Para instituciones */}
-<section id="instituciones" className="mx-auto max-w-6xl px-4 py-12">
+<section id="instituciones" className="mx-auto max-w-6xl px-4 py-16">
   <div className="mt-6 rounded-xl border border-amber-500 bg-amber-50 p-4">
     <h2 className="text-xl font-semibold text-slate-900">¿Eres una universidad, incubadora o cowork?</h2>
     <p className="mt-2 text-slate-700">
