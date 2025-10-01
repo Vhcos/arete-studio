@@ -11,17 +11,16 @@ export default function Nav() {
         {/* Logo: que no se achique ni empuje el resto */}
         <div className="shrink-0">
           <Logo />
+          <a href="https://youtube.com/shorts/jwvs4DB22ug?feature=share" target="_blank" rel="noreferrer"  className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90">Tutorial</a>
+            <a href={`${APP}/billing`}  className="rounded-lg bg-white-600 px-3 py-1.5 text-sm font-medium text-black hover:opacity-90">Precios</a>
+
         </div>
 
         {/* Navegación */}
         <nav className="flex items-center gap-2">
           {/* Links secundarios: ocultos en móvil */}
           <div className="hidden sm:flex items-center gap-4 text-sm">
-            <a href="https://youtube.com/shorts/jwvs4DB22ug?feature=share" target="_blank" rel="noreferrer"  className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90">Tutorial</a>
-            <a href={`${APP}/billing`}  className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90">Precios</a>
-
-
-            <a
+                        <a
               href={`${APP}/auth/sign-in?callbackUrl=/`}
                className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
             >
