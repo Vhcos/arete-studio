@@ -132,7 +132,7 @@ const DISPLAY_RENAME: Record<string, string> = {
   'Clientes P.E': 'Clientes en equilibrio',
   'Ventas P.E': 'Ventas en equilibrio',
   'Runway estimado': 'Autonomía de caja',
-  'SAM12': 'Tamaño de mercado anual (SAM)',
+  'SAM12': 'Proyección de clientes (12 meses)',
   'CAC': 'Costo de marketing por cliente',
 };
 
@@ -142,7 +142,7 @@ const DISPLAY_HINTS: Record<string, string> = {
   'Clientes P.E': 'Clientes mínimos para llegar al punto de equilibrio.',
   'Ventas P.E': 'Ventas mínimas para llegar al punto de equilibrio.',
   'Runway estimado': 'Meses que puedes operar con la caja disponible.',
-  'SAM12': 'Tamaño de mercado atendible en 12 meses.',
+  'SAM12': 'Proyección de clientes en 12 meses.',
   'CAC': 'Costo promedio para adquirir un cliente.',
 };
 
@@ -1675,7 +1675,7 @@ useEffect(() => {
                      <div className="rounded-xl border p-4 bg-white/60 text-sm leading-6">
                         {buildInvestorNarrative(baseOut.report.input, outputs?.report?.meta || {})}
                      </div>
-                   <ReportView report={nonAIReport} />
+                   <PreAIReportView outputs={outputs} />
                  </div>
 
                  {aiReport && (
@@ -2017,14 +2017,13 @@ function computeScores(input: any) {
   const items = [
     { key: "problema", title: "Problema y urgencia", hint: "Tu idea resuelve un problema: 0 = poco, 10 = mucho", score: problemaScore, reason: reasonProblema(input) },
     { key: "segmento", title: "Segmento beachhead", hint: "Qué tan alcanzable es tu cliente inicial", score: segmentoScore, reason: reasonSegmento(input) },
-    { key: "valor", title: "Propuesta de valor (ventaja)", hint: "Evaluación de tu ventaja diferenciadora (IA puede ajustar)", score: valorScore, reason: reasonValor(input.ventajaTexto) },
+    { key: "valor", title: "Propuesta de valor (ventaja)", hint: "Evalúa tu propuesta tal como la describes", score: valorScore, reason: reasonValor(input.ventajaTexto) },
     { key: "modelo", title: "Modelo de negocio (margen)", hint: "Margen bruto estimado con tu precio y costo", score: marginScore, reason: reasonModelo(price, cost, margin) },
     { key: "economia", title: "Economía unitaria (LTV/CAC)", hint: "LTV ≈ frecuencia anual × margen unitario; se divide por CAC", score: unitScore, reason: reasonEconomia(ltv, cac, ltvCacRatio) },
-    { key: "mercado", title: "Tamaño de mercado (SAM)", hint: "Usuario: Clientes/mes (venta ÷ ticket). IA puede estimar y ajustar.", score: mercadoScore_user, reason: reasonMercadoWithBreakdown({ sam12_user, ingresosMeta: input.ingresosMeta, ticket: input.ticket, clientsUsed, clientsCalc, clientsManual }) },
+    { key: "mercado", title: "Proyección de clientes (12 meses)", hint: "Usuario: Clientes/mes (venta ÷ ticket). IA puede estimar y ajustar.", score: mercadoScore_user, reason: reasonMercadoWithBreakdown({ sam12_user, ingresosMeta: input.ingresosMeta, ticket: input.ticket, clientsUsed, clientsCalc, clientsManual }) },
     { key: "competencia", title: "Competencia (intensidad)", hint: "Cantidad/calidad de competidores en tu zona/canal", score: compScore, reason: reasonCompetencia(compIntensity, base['notaCompetencia']) },
     { key: "riesgos", title: "Planes alternativos a dificultades", hint: "Mitigaciones listas si algo sale mal", score: riesgosScore, reason: reasonRiesgos(input) },
-    { key: "founderFit", title: "Founder–Idea fit", hint: "Tu experiencia + tu pasión/compromiso", score: founderFit, reason: reasonFounder(input) },
-    { key: "tolerancia", title: "Tolerancia al riesgo / runway", hint: "Tu tolerancia + meses que puedes operar (capital / gastos fijos)", score: tolerancia, reason: reasonToleranciaCalc(runwayMeses) },
+    { key: "founderFit", title: "Experiencia del fundador", hint: "Tu experiencia + tu pasión/compromiso", score: founderFit, reason: reasonFounder(input) },
     { key: "sentimiento", title: "Testeo previo (señales)", hint: "Señales tempranas de interés (entrevistas, lista de espera)", score: sentimiento, reason: reasonSentimiento({ traccionCualitativa: input.testeoPrevio }) },
     { key: "red", title: "Red de apoyo", hint: "Mentores, socios y contactos útiles", score: red, reason: reasonRed(input) },
   ];
@@ -2052,7 +2051,7 @@ function computeScores(input: any) {
     `Mercado: venta mensual $${fmtCL(input.ingresosMeta)} ÷ ticket $${fmtCL(input.ticket)} ⇒ ${fmtNum(clientsCalc)}/mes ${clientsManual?`(ajuste ${fmtNum(clientsManual)}/mes) `:''}→ SAM12 ${fmtNum(sam12_user)}.`,
   ].join("\n");
 
-  const topRisks = deriveTopRisks({ ...input, riesgoControlado: input.planesAlternativos }, { mcUnit, runwayMeses, clientsCalc });
+  const topRisks = items.filter(it => (it.score ?? 0) < 7).map(it => `${it.title} (${(it.score ?? 0).toFixed(1)}/10) – ${it.reason ?? ""}`);
   const experiments = suggestExperiments({ ...input, traccionCualitativa: input.testeoPrevio });
 
   return { totalScore, items, chartData, verdict, report, explainer, topRisks, experiments, pe: { mcUnit, clientsPE, ventasPE, runwayMeses }, peCurve };
@@ -2075,7 +2074,7 @@ function reasonEconomia(ltv: number, cac: number, ratio: number) { if (cac === 0
 function reasonMercadoWithBreakdown({ sam12_user, ingresosMeta, ticket, clientsUsed, clientsCalc, clientsManual }:{ sam12_user:number; ingresosMeta:number; ticket:number; clientsUsed:number; clientsCalc:number; clientsManual?:number; }){
   const a = `Usuario: Venta ${fmtCL(ingresosMeta)} / Ticket ${fmtCL(ticket)} ⇒ ${fmtNum(clientsCalc)}/mes`;
   const b = clientsManual? ` (ajuste manual: ${fmtNum(clientsManual)}/mes)` : '';
-  return `${a}${b} · SAM12 ≈ ${fmtNum(sam12_user)}`;
+  return `${a}${b} · Proyección 12m ≈ ${fmtNum(sam12_user)}`;
 }
 function reasonCompetencia(intensity: number, base: number) { if (intensity >= 8) return "Mercado muy competitivo; refuerza ventaja"; if (intensity <= 3) return "Baja competencia; valida demanda"; return "Competencia moderada"; }
 function reasonRiesgos(i: any) { return i.planesAlternativos >= 7 ? "Planes alternativos claros" : i.planesAlternativos >= 4 ? "Mitigación parcial" : "Fortalece planes alternativos"; }
@@ -2309,6 +2308,106 @@ function Row({ k, v, strong=false, neg=false, large=false }:{
       <span className={`${large ? "text-xl" : "text-sm"} ${neg ? "text-red-600" : "text-foreground"} ${strong ? "font-semibold" : ""}`}>
         {v}
       </span>
+    </div>
+  );
+}
+// ===== Pre-IA: Resumen + EERR + Brújula + Curva PE =====
+function PreAIReportView({ outputs }:{ outputs:any }) {
+  const items = (outputs?.items ?? []) as {title:string; score?:number; reason?:string}[];
+  const peData = outputs?.peCurve?.data ?? [];
+  const acumDef = outputs?.peCurve?.acumDeficitUsuario ?? 0;
+  const ventasPE = outputs?.pe?.ventasPE ?? 0;
+  const clientsPE = outputs?.pe?.clientsPE ?? 0;
+  const runway  = outputs?.pe?.runwayMeses;
+
+  // EERR simple (si no existen campos, usamos 0)
+  const ventas    = outputs?.eerr?.ventasAnual ?? outputs?.ventasAnual ?? 0;
+  const cv        = outputs?.eerr?.costoVentasAnual ?? outputs?.costoVariableAnual ?? 0;
+  const mc        = Math.max(0, ventas - cv);
+  const gf        = outputs?.eerr?.gastosFijosAnual ?? outputs?.gastosFijosAnual ?? 0;
+  const mkt       = outputs?.eerr?.marketingAnual ?? outputs?.marketingAnual ?? 0;
+  const rai       = Math.round(ventas - cv - gf - mkt);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border p-4 bg-white/5">
+        <div className="text-lg font-semibold mb-2">Resumen del tablero</div>
+        <ul className="list-disc pl-5 space-y-1 text-sm">
+          {items.map((it, i) => (
+            <li key={i}><span className="font-medium">{it.title}:</span> {it.reason ?? ''} <span className="opacity-60">({((it.score ?? 0)).toFixed(1)}/10)</span></li>
+          ))}
+        </ul>
+        {items.some(it => (it.score ?? 0) < 7) && (
+          <div className="mt-3">
+            <div className="font-medium">Top riesgos (amarillo/rojo)</div>
+            <ul className="list-disc pl-5 space-y-1 text-sm">
+              {items.filter(it => (it.score ?? 0) < 7).map((it, i) => <li key={i}>{it.title} ({((it.score ?? 0)).toFixed(1)}/10) – {it.reason ?? ''}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border p-4">
+        <div className="text-lg font-semibold mb-2">Estado de Resultados anual (simple)</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <tbody>
+              <tr><td className="py-1 pr-4">Ventas</td><td className="py-1 font-semibold">${fmtCL(ventas)}</td></tr>
+              <tr><td className="py-1 pr-4">Costo de ventas</td><td className="py-1 font-semibold">${fmtCL(cv)}</td></tr>
+              <tr className="border-t"><td className="py-1 pr-4">Margen de contribución</td><td className="py-1 font-semibold">${fmtCL(mc)}</td></tr>
+              <tr><td className="py-1 pr-4">Gastos fijos</td><td className="py-1 font-semibold">${fmtCL(gf)}</td></tr>
+              <tr><td className="py-1 pr-4">Gastos de marketing</td><td className="py-1 font-semibold">${fmtCL(mkt)}</td></tr>
+              <tr className="border-t"><td className="py-1 pr-4">Resultado antes de impuestos</td><td className="py-1 font-semibold">${fmtCL(rai)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border p-4">
+        <div className="font-medium mb-2">Brújula menor</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mt-2">
+          <div>
+            <div className="text-muted-foreground">Capital de trabajo necesario (plan usuario)</div>
+            <div className="font-semibold">${fmtCL(acumDef)}</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground">Runway estimado</div>
+            <div className="font-semibold">{Number.isFinite(runway) ? `${fmtNum(Math.round(runway as number))} meses` : '∞'}</div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Ventas para P.E.</span><span className="font-medium">${fmtCL(ventasPE)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Clientes para P.E.</span><span className="font-medium">{fmtNum(clientsPE)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border p-4">
+        <div className="text-lg font-semibold mb-2">Curva hacia el punto de equilibrio</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left">
+                <th className="py-1 pr-2">Mes</th>
+                <th className="py-1 pr-2">% P.E. (usuario)</th>
+                <th className="py-1 pr-2">Clientes/mes</th>
+                <th className="py-1 pr-2">Déficit del mes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {peData.map((r:any, i:number) => (
+                <tr key={i} className="border-t">
+                  <td className="py-1 pr-2">{r.mes}</td>
+                  <td className="py-1 pr-2">{r['%PE_usuario']}%</td>
+                  <td className="py-1 pr-2">{fmtNum(Math.round(r.clientes_usuario || 0))}</td>
+                  <td className="py-1 pr-2">${fmtCL(Math.round(r.deficit || 0))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
