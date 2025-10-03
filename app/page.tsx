@@ -2311,25 +2311,61 @@ function Row({ k, v, strong=false, neg=false, large=false }:{
     </div>
   );
 }
-// ===== Pre-IA: Resumen + EERR + Brújula + Curva PE =====
+
+// ===== Pre-IA: Resumen + EERR + Brújula (sin runway) + Curva P.E. =====
 function PreAIReportView({ outputs }:{ outputs:any }) {
   const items = (outputs?.items ?? []) as {title:string; score?:number; reason?:string}[];
-  const peData = outputs?.peCurve?.data ?? [];
-  const acumDef = outputs?.peCurve?.acumDeficitUsuario ?? 0;
-  const ventasPE = outputs?.pe?.ventasPE ?? 0;
-  const clientsPE = outputs?.pe?.clientsPE ?? 0;
-  const runway  = outputs?.pe?.runwayMeses;
+  const meta  = (outputs?.report?.meta  ?? {}) as any;
+  const inp   = (outputs?.report?.input ?? {}) as any;
 
-  // EERR simple (si no existen campos, usamos 0)
-  const ventas    = outputs?.eerr?.ventasAnual ?? outputs?.ventasAnual ?? 0;
-  const cv        = outputs?.eerr?.costoVentasAnual ?? outputs?.costoVariableAnual ?? 0;
-  const mc        = Math.max(0, ventas - cv);
-  const gf        = outputs?.eerr?.gastosFijosAnual ?? outputs?.gastosFijosAnual ?? 0;
-  const mkt       = outputs?.eerr?.marketingAnual ?? outputs?.marketingAnual ?? 0;
-  const rai       = Math.round(ventas - cv - gf - mkt);
+  // --- Derivaciones FINANZAS (desde inputs) ---
+  const mesesPE = (meta.mesesPE ?? inp.mesesPE ?? 6) as number;
+
+  const ingresosMeta       = Number(inp.ingresosMeta)      || 0;   // venta mensual objetivo
+  const ticket             = Number(inp.ticket)            || 0;
+  const costoPct           = Number(inp.costoPct)          || 0;   // %
+  const costoUnit          = Number(inp.costoUnit)         || 0;   // CLP/ud
+  const gastosFijosMes     = Number(inp.gastosFijos)       || 0;   // CLP/mes
+  const marketingMensual   = Number(inp.marketingMensual)  || 0;   // CLP/mes
+  const convPct            = Number(inp.convPct)           || 0;   // %
+  const conv               = Math.max(0, Math.min(1, convPct / 100));
+
+  // Ventas mes: usamos la meta mensual (la UI del tablero también parte de aquí)
+  const ventasMes          = ingresosMeta > 0 ? ingresosMeta : 0;
+  const ventas             = Math.round(ventasMes * 12);
+
+  // Costo variable mensual: usa % si existe; si no, usa unitario
+  const unidadesMes        = (ticket > 0 && ventasMes > 0) ? (ventasMes / ticket) : 0;
+  const costoDesdePct      = (ventasMes > 0 && costoPct > 0) ? (ventasMes * (costoPct / 100)) : 0;
+  const costoDesdeUnit     = (unidadesMes > 0 && costoUnit > 0) ? (unidadesMes * costoUnit) : 0;
+  const costoVariableMes   = (costoDesdeUnit + costoDesdePct);
+  const cv                 = Math.round(costoVariableMes * 12);
+
+
+  const gf                 = Math.round(gastosFijosMes * 12);
+
+  // Derivaciones marketing/CAC para Brújula
+  const N                  = Math.round(meta.clientsUsed ?? (unidadesMes > 0 ? unidadesMes : 0));     // clientes objetivo/mes
+  const Q                  = (N > 0 && conv > 0) ? Math.ceil(N / conv) : 0;                           // tráfico requerido
+  const CAC_target         = Number(inp.cac) || 0;                                                     // CAC que ingresó el usuario
+  const M_requerido        = (N > 0 && CAC_target > 0) ? Math.round(N * CAC_target) : 0;              // presupuesto requerido si usa CAC
+  const M_util             = marketingMensual > 0 ? marketingMensual : M_requerido;                    // el que se usa
+  const CPL_implicito      = (Q > 0 && marketingMensual > 0) ? Math.round(marketingMensual / Q) : 0;  // solo cuando hay presupuesto
+  const CAC_implicito      = (N > 0 && marketingMensual > 0) ? Math.round(marketingMensual / N) : 0;
+  const mode               = marketingMensual > 0 ? 'budget' : 'cac';                                  // igual que en tablero
+
+  const mkt                = Math.round((M_util || 0) * 12);
+  const rai                = ventas - cv - gf - mkt;
+
+  // PE + curva PE
+  const peData   = outputs?.peCurve?.data ?? [];
+  const acumDef  = outputs?.peCurve?.acumDeficitUsuario ?? 0;
+  const ventasPE = outputs?.pe?.ventasPE ?? 0;
+  const clientsPE= outputs?.pe?.clientsPE ?? 0;
 
   return (
     <div className="space-y-4">
+      {/* Resumen del tablero */}
       <div className="rounded-xl border p-4 bg-white/5">
         <div className="text-lg font-semibold mb-2">Resumen del tablero</div>
         <ul className="list-disc pl-5 space-y-1 text-sm">
@@ -2347,42 +2383,52 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
         )}
       </div>
 
+      {/* EERR anual */}
       <div className="rounded-xl border p-4">
-        <div className="text-lg font-semibold mb-2">Estado de Resultados anual (simple)</div>
+        <div className="text-lg font-semibold mb-2">Estado de Resultados anual (1º proyección para flujos)</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <tbody>
               <tr><td className="py-1 pr-4">Ventas</td><td className="py-1 font-semibold">${fmtCL(ventas)}</td></tr>
-              <tr><td className="py-1 pr-4">Costo de ventas</td><td className="py-1 font-semibold">${fmtCL(cv)}</td></tr>
-              <tr className="border-t"><td className="py-1 pr-4">Margen de contribución</td><td className="py-1 font-semibold">${fmtCL(mc)}</td></tr>
-              <tr><td className="py-1 pr-4">Gastos fijos</td><td className="py-1 font-semibold">${fmtCL(gf)}</td></tr>
-              <tr><td className="py-1 pr-4">Gastos de marketing</td><td className="py-1 font-semibold">${fmtCL(mkt)}</td></tr>
+              <tr><td className="py-1 pr-4">Costo de ventas</td><td className="py-1 font-semibold text-red-600">${fmtCL(cv)}</td></tr>
+              <tr className="border-t"><td className="py-1 pr-4">Margen de contribución</td><td className="py-1 font-semibold">${fmtCL(ventas - cv)}</td></tr>
+              <tr><td className="py-1 pr-4">Gastos fijos</td><td className="py-1 font-semibold text-red-600">${fmtCL(gf)}</td></tr>
+              <tr><td className="py-1 pr-4">Gastos de marketing</td><td className="py-1 font-semibold text-red-600">${fmtCL(mkt)}</td></tr>
               <tr className="border-t"><td className="py-1 pr-4">Resultado antes de impuestos</td><td className="py-1 font-semibold">${fmtCL(rai)}</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Brújula menor (sin runway) */}
       <div className="rounded-xl border p-4">
         <div className="font-medium mb-2">Brújula menor</div>
+        {/* KPIs superiores */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mt-2">
           <div>
-            <div className="text-muted-foreground">Capital de trabajo necesario (plan usuario)</div>
+            <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
             <div className="font-semibold">${fmtCL(acumDef)}</div>
           </div>
-          <div>
-            <div className="text-muted-foreground">Runway estimado</div>
-            <div className="font-semibold">{Number.isFinite(runway) ? `${fmtNum(Math.round(runway as number))} meses` : '∞'}</div>
+        </div>
+        {/* Métricas operativas (copia del tablero) */}
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+          <div className="flex items-center justify-between"><span>Ventas para P.E.</span><span className="font-medium">${fmtCL(ventasPE)}</span></div>
+          <div className="flex items-center justify-between"><span>Clientes para tu P.E.</span><span className="font-medium">{fmtNum(clientsPE)}</span></div>
+          <div className="flex items-center justify-between"><span>Clientes objetivo (mes)</span><span className="font-medium">{fmtNum(N)}</span></div>
+          <div className="flex items-center justify-between"><span>Tráfico requerido</span><span className="font-medium">{fmtNum(Q)}</span></div>
+          <div className="flex items-center justify-between">
+            <span>Costo unitario tráfico por cliente</span>
+            <span className="font-medium">{fmtCL(mode === 'budget' ? CPL_implicito : (Q > 0 ? Math.round((M_requerido || 0) / Q) : 0))}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Ventas para P.E.</span><span className="font-medium">${fmtCL(ventasPE)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Clientes para P.E.</span><span className="font-medium">{fmtNum(clientsPE)}</span>
+            <span>Costo por cliente que compra</span>
+            <span className="font-medium">{fmtCL(mode === 'budget' ? CAC_implicito : CAC_target)}</span>
           </div>
         </div>
       </div>
 
+      
+      {/* Curva hacia el P.E. (corte por meses del plan) */}
       <div className="rounded-xl border p-4">
         <div className="text-lg font-semibold mb-2">Curva hacia el punto de equilibrio</div>
         <div className="overflow-x-auto">
@@ -2396,7 +2442,7 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
               </tr>
             </thead>
             <tbody>
-              {peData.map((r:any, i:number) => (
+              {(peData ?? []).slice(0, mesesPE).map((r:any, i:number) => (
                 <tr key={i} className="border-t">
                   <td className="py-1 pr-2">{r.mes}</td>
                   <td className="py-1 pr-2">{r['%PE_usuario']}%</td>
@@ -2411,3 +2457,4 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
     </div>
   );
 }
+
