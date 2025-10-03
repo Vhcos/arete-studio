@@ -11,7 +11,7 @@ export default function Nav() {
         {/* Logo: que no se achique ni empuje el resto */}
         <div className="shrink-0">
           <Logo />
-          <a href="https://youtube.com/shorts/jwvs4DB22ug?feature=share" target="_blank" rel="noreferrer"  className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90">Tutorial</a>
+          <a href="https://www.youtube-nocookie.com/embed/MF9b8ChhaXA" target="_blank" rel="noreferrer"  className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90">Tutorial</a>
             <a href={`${APP}/billing`}  className="rounded-lg bg-white-600 px-3 py-1.5 text-sm font-medium text-black hover:opacity-90">Precios</a>
 
         </div>

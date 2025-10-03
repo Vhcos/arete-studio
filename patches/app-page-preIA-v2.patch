@@ -1,0 +1,116 @@
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -134,3 +134,3 @@
+   'Runway estimado': 'Autonomía de caja',
+-  'SAM12': 'Tamaño de mercado anual (SAM)',
++  'SAM12': 'Proyección de clientes (12 meses)',
+   'CAC': 'Costo de marketing por cliente',
+@@ -144,3 +144,3 @@
+   'Runway estimado': 'Meses que puedes operar con la caja disponible.',
+-  'SAM12': 'Tamaño de mercado atendible en 12 meses.',
++  'SAM12': 'Proyección de clientes en 12 meses.',
+   'CAC': 'Costo promedio para adquirir un cliente.',
+@@ -1652,3 +1652,3 @@
+                      </div>
+-                   <ReportView report={nonAIReport} />
++                   <PreAIReportView outputs={outputs} ventaAnualEERR={ventaAnualEERR} tpl={tpl} mesesPE={mesesPE} />
+                  </div>
+ 
+                  {aiReport && (
++// —— Informe Pre-IA (resumen del tablero + EERR + brújula + curva P.E.) ——
++function PreAIReportView({ outputs, ventaAnualEERR, tpl, mesesPE }:{ outputs:any; ventaAnualEERR:number; tpl:any; mesesPE:number }){
++  const items = (outputs?.items ?? []) as {title:string; score:number; reason?:string}[];
++  const peData = outputs?.peCurve?.data ?? [];
++  const acumDef = outputs?.peCurve?.acumDeficitUsuario ?? 0;
++  const ventasPE = outputs?.pe?.ventasPE ?? 0;
++  const clientsPE = outputs?.pe?.clientsPE ?? 0;
++  const runway = outputs?.pe?.runwayMeses;
++  return (
++    <div className="space-y-4">
++      <div className="rounded-xl border p-4 bg-white/5">
++        <div className="text-lg font-semibold mb-2">Resumen del tablero</div>
++        <ul className="list-disc pl-5 space-y-1 text-sm">
++          {items.map((it, i) => (
++            <li key={i}><span className="font-medium">{it.title}:</span> {it.reason ?? ''} <span className="opacity-60">({(it.score ?? 0).toFixed(1)}/10)</span></li>
++          ))}
++        </ul>
++        {items.filter(it => (it.score ?? 0) < 7).length > 0 && (
++          <div className="mt-3">
++            <div className="font-medium">Top riesgos (amarillo/rojo)</div>
++            <ul className="list-disc pl-5 space-y-1 text-sm">
++              {items.filter(it => (it.score ?? 0) < 7).map((it, i) => <li key={i}>{it.title} ({(it.score ?? 0).toFixed(1)}/10) – {it.reason ?? ''}</li>)}
++            </ul>
++          </div>
++        )}
++      </div>
++      <div className="rounded-xl border p-4">
++        <div className="text-lg font-semibold mb-2">Estado de Resultados anual (simple)</div>
++        <EERRAnual ventaAnual={ventaAnualEERR} tpl={tpl} />
++      </div>
++      <div className="rounded-xl border p-4">
++        <div className="font-medium mb-2">Brújula menor</div>
++        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mt-2">
++          <div>
++            <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
++            <div className="font-semibold">${fmtCL(acumDef)}</div>
++          </div>
++          <div>
++            <div className="text-muted-foreground">Runway estimado</div>
++            <div className="font-semibold">{Number.isFinite(runway) ? `${fmtNum(Math.round(runway as number))} meses` : '∞'}</div>
++          </div>
++          <div className="flex items-center justify-between">
++            <span>Ventas para P.E.</span>
++            <span className="font-medium">${fmtCL(ventasPE)}</span>
++          </div>
++          <div className="flex items-center justify-between">
++            <span>Clientes para tu P.E.</span>
++            <span className="font-medium">{fmtNum(clientsPE)}</span>
++          </div>
++        </div>
++      </div>
++      <div className="rounded-xl border p-4">
++        <div className="text-lg font-semibold mb-2">Curva hacia el punto de equilibrio</div>
++        <div className="overflow-x-auto">
++          <table className="w-full text-sm">
++            <thead>
++              <tr className="text-left">
++                <th className="py-1 pr-2">Mes</th>
++                <th className="py-1 pr-2">% P.E. (plan usuario)</th>
++                <th className="py-1 pr-2">Clientes/mes (usuario)</th>
++                <th className="py-1 pr-2">Déficit del mes</th>
++              </tr>
++            </thead>
++            <tbody>
++              {peData.map((r:any, i:number) => (
++                <tr key={i} className="border-t">
++                  <td className="py-1 pr-2">{r.mes}</td>
++                  <td className="py-1 pr-2">{r['%PE_usuario']}%</td>
++                  <td className="py-1 pr-2">{fmtNum(Math.round(r.clientes_usuario || 0))}</td>
++                  <td className="py-1 pr-2">${fmtCL(Math.round(r.deficit || 0))}</td>
++                </tr>
++              ))}
++            </tbody>
++          </table>
++        </div>
++      </div>
++    </div>
++  );
++}
+@@ -2026,6 +2105,6 @@
+     `\nP.E.: GF ${fmtCL(burnMensual)} / MC_unit ${fmtCL(mcUnit)...E)? fmtNum(clientsPE):'—'} · Venta P.E. ≈ $${fmtCL(ventasPE)}.`,
+-    `Mercado: venta mensual $${fmtCL(input.ingresosMeta)} ÷ tic...mtNum(clientsManual)}/mes) `:''}→ SAM12 ${fmtNum(sam12_user)}.`,
++    `Mercado: venta mensual $${fmtCL(input.ingresosMeta)} ÷ tic...entsManual)}/mes) `:''}→ Proyección 12m ${fmtNum(sam12_user)}.`,
+   ].join("\n");
+ 
+-  const topRisks = deriveTopRisks({ ...input, riesgoControlado:...put.planesAlternativos }, { mcUnit, runwayMeses, clientsCalc });
++  const topRisks = items.filter(it => it.score < 7).map(it => `${it.title} (${(it.score).toFixed(1)}/10) – ${it.reason ?? ''}`);
+   const experiments = suggestExperiments({ ...input, traccionCualitativa: input.testeoPrevio });
+@@ -2052,3 +2131,3 @@
+   const b = clientsManual? ` (ajuste manual: ${fmtNum(clientsManual)}/mes)` : '';
+-  return `${a}${b} · SAM12 ≈ ${fmtNum(sam12_user)}`;
++  return `${a}${b} · Proyección 12m ≈ ${fmtNum(sam12_user)}`;
+ }
+@@ -2009,3 +2088,3 @@
+-    { key: "tolerancia", title: "Tolerancia al riesgo / runway",... score: tolerancia, reason: reasonToleranciaCalc(runwayMeses) },
++    /* tolerancia eliminada del tablero */
+     { key: "sentimiento", title: "Testeo previo (señales)", h

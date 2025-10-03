@@ -1,0 +1,142 @@
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -132,7 +132,7 @@
+   'Clientes P.E': 'Clientes en equilibrio',
+   'Ventas P.E': 'Ventas en equilibrio',
+   'Runway estimado': 'Autonomía de caja',
+-  'SAM12': 'Tamaño de mercado anual (SAM)',
++  'SAM12': 'Proyección de clientes (12 meses)',
+   'CAC': 'Costo de marketing por cliente',
+ };
+ 
+@@ -1650,7 +1650,8 @@
+                      <div className="rounded-xl border p-4 bg-white/60 text-sm leading-6">
+                         {buildInvestorNarrative(baseOut.report.input, outputs?.report?.meta || {})}
+                      </div>
+-                   <ReportView report={nonAIReport} />
++                   {/* Informe pre-IA sin rubro ni FODA */}
++                  <PreAIReportView outputs={outputs} ventaAnualEERR={ventaAnualEERR} tpl={tpl} mesesPE={mesesPE} />
+                  </div>
+ 
+                  {aiReport && (
+@@ -186,0 +186,93 @@
++function PreAIReportView({ outputs, ventaAnualEERR, tpl, mesesPE }:{ outputs:any; ventaAnualEERR:number; tpl:any; mesesPE:number }){
++  const items = outputs.items as {title:string; score:number; reason?:string}[];
++  const peData = outputs.peCurve?.data ?? [];
++  return (
++    <div className="space-y-4">
++      <div className="rounded-xl border p-4 bg-white/5">
++        <div className="text-lg font-semibold mb-2">Resumen del Tablero</div>
++        <ul className="list-disc pl-5 space-y-1 text-sm">
++          {items.map((it, i) => (
++            <li key={i}><span className="font-medium">{it.title}:</span> {it.reason ?? ''} <span className="opacity-60">({it.score.toFixed(1)}/10)</span></li>
++          ))}
++        </ul>
++        {(outputs.topRisks?.length ?? 0) > 0 && (
++          <div className="mt-3">
++            <div className="font-medium">Top riesgos (ámbito amarillo/rojo)</div>
++            <ul className="list-disc pl-5 space-y-1 text-sm">
++              {outputs.topRisks.map((r:string, i:number) => <li key={i}>{r}</li>)}
++            </ul>
++          </div>
++        )}
++      </div>
++
++      <div className="rounded-xl border-2 p-4" style={{ borderColor: 'var(--accent)', background: 'rgba(0,0,0,0.03)' }}>
++        <div className="text-lg font-semibold mb-2">Estado de Resultados anual (simple)</div>
++        <EERRAnual ventaAnual={ventaAnualEERR} tpl={tpl} />
++      </div>
++
++      <div className="rounded-xl border-2 p-4" style={{ borderColor: 'var(--accent)', background: 'rgba(0,0,0,0.03)' }}>
++        <div className="font-medium mb-2">Brújula menor</div>
++        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mt-2">
++          <div>
++            <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
++            <div className="font-semibold">${fmtCL(outputs?.peCurve?.acumDeficitUsuario ?? 0)}</div>
++          </div>
++          <div>
++            <div className="text-muted-foreground">Runway estimado</div>
++            <div className="font-semibold">{Number.isFinite(outputs?.pe?.runwayMeses) ? `${fmtNum(Math.round(outputs.pe.runwayMeses))} meses` : '∞'}</div>
++          </div>
++          <div className="flex items-center justify-between">
++            <span>Ventas para P.E.</span>
++            <span className="font-medium">${fmtCL(outputs.pe.ventasPE)}</span>
++          </div>
++          <div className="flex items-center justify-between">
++            <span>Clientes para tu P.E.</span>
++            <span className="font-medium">{fmtNum(outputs.pe.clientsPE)}</span>
++          </div>
++        </div>
++      </div>
++
++      <div className="rounded-xl border p-4">
++        <div className="text-lg font-semibold mb-2">Curva hacia el punto de equilibrio</div>
++        <div className="overflow-x-auto">
++          <table className="w-full text-sm">
++            <thead>
++              <tr className="text-left">
++                <th className="py-1 pr-2">Mes</th>
++                <th className="py-1 pr-2">% PE (plan usuario)</th>
++                <th className="py-1 pr-2">Clientes/mes (usuario)</th>
++                <th className="py-1 pr-2">Déficit del mes</th>
++              </tr>
++            </thead>
++            <tbody>
++              {peData.map((r:any, i:number) => (
++                <tr key={i} className="border-t">
++                  <td className="py-1 pr-2">{r.mes}</td>
++                  <td className="py-1 pr-2">{r['%PE_usuario']}%</td>
++                  <td className="py-1 pr-2">{fmtNum(Math.round(r.clientes_usuario || 0))}</td>
++                  <td className="py-1 pr-2">${fmtCL(Math.round(r.deficit || 0))}</td>
++                </tr>
++              ))}
++            </tbody>
++          </table>
++        </div>
++      </div>
++    </div>
++  );
++}
+@@ -1992,14 +2085,13 @@
+   const items = [
+     { key: "problema", title: "Problema y urgencia", hint: "Tu ...= mucho", score: problemaScore, reason: reasonProblema(input) },
+     { key: "segmento", title: "Segmento beachhead", hint: "Qué ...inicial", score: segmentoScore, reason: reasonSegmento(input) },
+-    { key: "valor", title: "Propuesta de valor (ventaja)", hint...", score: valorScore, reason: reasonValor(input.ventajaTexto) },
++    { key: "valor", title: "Propuesta de valor (ventaja)", hint: "Evalúa tu propuesta tal como la describes", score: valorScore, reason: reasonValor(input.ventajaTexto) },
+     { key: "modelo", title: "Modelo de negocio (margen)", hint: ...score: marginScore, reason: reasonModelo(price, cost, margin) },
+     { key: "economia", title: "Economía unitaria (LTV/CAC)", hin...ore: unitScore, reason: reasonEconomia(ltv, cac, ltvCacRatio) },
+-    { key: "mercado", title: "Tamaño de mercado (SAM)", hint: "U...ket: input.ticket, clientsUsed, clientsCalc, clientsManual }) },
++    { key: "mercado", title: "Proyección de clientes (12 meses)", hint: "Usa tu meta mensual y ticket; puedes ajustar clientes/mes de forma manual", score: mercadoScore_user, reason: reasonMercadoWithBreakdown({ sam12_user, ingresosMeta: input.ingresosMeta, ticket: input.ticket, clientsUsed, clientsCalc, clientsManual }) },
+     { key: "competencia", title: "Competencia (intensidad)", hin...on: reasonCompetencia(compIntensity, base['notaCompetencia']) },
+     { key: "riesgos", title: "Planes alternativos a dificultades", hint: "Mitigaciones listas si algo sale mal", score: riesgosScore, reason: reasonRiesgos(input) },
+     { key: "founderFit", title: "Founder–Idea fit", hint: "Tu experiencia y compromiso", score: founderFit, reason: reasonFounder(input) },
+-    { key: "tolerancia", title: "Tolerancia al riesgo / runway",... score: tolerancia, reason: reasonToleranciaCalc(runwayMeses) },
+     { key: "sentimiento", title: "Testeo previo (señales)", hint: "Señales tempranas de interés (entrevistas, lista de espera)", score: sentimiento, reason: reasonSentimiento({ traccionCualitativa: input.testeoPrevio }) },
+     { key: "red", title: "Red de apoyo", hint: "Mentores, socios y contactos útiles", score: red, reason: reasonRed(input) },
+   ];
+@@ -2009,7 +2101,7 @@
+   const chartData: ChartPoint[] = items.map((it: any) => ({
+      name: it.title.split(' ')[0],
+      value: it.score,
+   }));
+-  const meta = {
++  const meta = {
+   clientsCalc, clientsManual: clientsManual ?? null, clientsUsed,
+   clientsFromMkt, trafico, convPct: input.convPct,
+   ingresosMeta: input.ingresosMeta, ticket: input.ticket,
+@@ -2030,7 +2122,7 @@
+-  const topRisks = deriveTopRisks({ ...input, riesgoControlado: ...put.planesAlternativos }, { mcUnit, runwayMeses, clientsCalc });
++  const topRisks = items.filter(it => it.score < 7).map(it => `${it.title} (${(it.score).toFixed(1)}/10) – ${it.reason ?? ''}`);
+   const experiments = suggestExperiments({ ...input, traccionCualitativa: input.testeoPrevio });
+ 
+   return { totalScore, items, chartData, verdict, report, explai...ts, pe: { mcUnit, clientsPE, ventasPE, runwayMeses }, peCurve };
+@@ -2074,7 +2166,7 @@
+ function reasonMercadoWithBreakdown({ sam12_user, ingresosMeta, ticket, clientsUsed, clientsCalc, clientsManual }:{
+   sam12_user:number; ingresosMeta:number; ticket:number; clientsUsed:number; clientsCalc:number; clientsManual?:number; }){
+   const a = `Usuario: Venta ${fmtCL(ingresosMeta)} / Ticket ${fmtCL(ticket)} ⇒ ${fmtNum(clientsCalc)}/mes`;
+-  const b = clientsManual? ` (ajuste manual: ${fmtNum(clientsManual)}/mes)` : '';
+-  return `${a}${b} · SAM12 ≈ ${fmtNum(sam12_user)}`;
++  const b = clientsManual? ` (ajuste manual: ${fmtNum(clientsManual)}/mes)` : '';
++  return `${a}${b} · Proyección 12m ≈ ${fmtNum(sam12_user)}`;
+ }
+ PATCH

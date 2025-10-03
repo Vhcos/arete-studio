@@ -1,3 +1,4 @@
+//app/ayuda/page.tsx
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Link from "next/link";
 
