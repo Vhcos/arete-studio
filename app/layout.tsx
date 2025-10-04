@@ -38,6 +38,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Suspense fallback={<div className="h-9 w-40" />}>
             <NavApp />
           </Suspense>
+          <Script id="gtm-base" strategy="afterInteractive">
+          {`
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','GTM-WN7QD875');
+          `}
+        </Script>
         </header>
 
         <main className="mx-auto max-w-6xl px-4">
@@ -46,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </Suspense>
         </main>
+
          
 
         <footer className="mx-auto max-w-6xl px-4 py-10 text-sm text-slate-500">
