@@ -1,4 +1,3 @@
-// app/lib/renderReportHtml.ts
 /* Render común (email) para que el informe sea idéntico al de la pantalla */
 
 type AnyObj = Record<string, any>;
@@ -9,11 +8,22 @@ export type EmailUser = {
   email?: string;
 };
 
-export type RenderEmailArgs = {
-  user?: EmailUser;
-  report?: AnyObj;     // tu objeto StandardReport / nonAI-report
-  aiPlan?: AnyObj;     // { plan100?: string, plan6m?: string[] | string, competencia?: string[] | AnyObj[], regulacion?: string[] | AnyObj[] }
-  summary?: string;    // resumen ejecutivo tal como lo ves en pantalla (opcional)
+// ===== Tipos del renderer =====
+type PreAIBlock = {
+  items: any[];
+  meta: any; // traerá mesesPE, N, etc.
+  pe?: { ventasPE?: number; clientsPE?: number } | null;
+  peCurve?: { data?: any[]; acumDeficitUsuario?: number } | null;
+  mkt?: { mode?: 'budget'|'cac'; N?:number; Q?:number; M_requerido?:number; CPL?:number; CAC?:number } | null;
+  eerr?: { ventas?:number; costoVariable?:number; gastosFijos?:number; marketing?:number; rai?:number } | null;
+};
+
+type RenderEmailArgs = {
+  report: any | null;                  // informe IA/No-IA (legacy)
+  summary?: string;                    // resumen ejecutivo (texto)
+  preAI?: PreAIBlock | null;           // bloque Pre-IA para clonar lo de la pantalla
+  aiPlan?: any | null;                 // plan IA (si existe)
+  user?: { projectName?:string; founderName?:string; email?:string; idea?:string; rubro?:string; ubicacion?:string } | null;
 };
 
 const css = `
@@ -42,14 +52,12 @@ function normalizeBullets(src: any, fallback: string[] = []): string[] {
     return src.map((row: any) => {
       if (typeof row === "string") return row;
       if (row && typeof row === "object") {
-        // intenta atributos comunes como "text" o "label"
         return row.text ?? row.label ?? JSON.stringify(row);
       }
       return String(row ?? "");
     });
   }
   if (typeof src === "string" && src.trim()) {
-    // separa por saltos de línea
     return src.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   }
   return fallback;
@@ -80,7 +88,6 @@ function defaultPlan6m(): string[] {
 
 function getExecutiveSummary(args: RenderEmailArgs): string {
   const r = args.report || {};
-  // Prioridades: summary explícito → summary del report → brief de industria
   return (
     (args.summary ?? "").trim() ||
     (r.summary ?? r.execSummary ?? r.sections?.execSummary ?? "").trim() ||
@@ -88,27 +95,105 @@ function getExecutiveSummary(args: RenderEmailArgs): string {
   );
 }
 
+/** Renderiza el bloque Pre-IA (Resumen tablero + EERR + Brújula + Curva) */
+function renderPreAIHtml(preAI: PreAIBlock | null | undefined): string {
+  if (!preAI) return "";
+
+  const fmtCL = (n:number)=> new Intl.NumberFormat('es-CL',{maximumFractionDigits:0}).format(Math.max(0, Math.round(n||0)));
+  const fmtN  = (n:number)=> new Intl.NumberFormat('es-CL',{maximumFractionDigits:2}).format(Math.max(0, Number(n||0)));
+
+  const mesesPE = Number(preAI.meta?.mesesPE ?? 6);
+
+  // EERR
+  const ventas     = Math.round(Number(preAI.eerr?.ventas ?? 0));
+  const cv         = Math.round(Number(preAI.eerr?.costoVariable ?? 0));
+  const gf         = Math.round(Number(preAI.eerr?.gastosFijos ?? 0));
+  const mkt        = Math.round(Number(preAI.eerr?.marketing ?? 0));
+  const rai        = Math.round(Number(preAI.eerr?.rai ?? (ventas - cv - gf - mkt)));
+
+  // Brújula
+  const ventasPE   = Math.round(Number(preAI.pe?.ventasPE ?? 0));
+  const clientsPE  = Number(preAI.pe?.clientsPE ?? 0);
+  const capital    = Math.round(Number(preAI.peCurve?.acumDeficitUsuario ?? 0));
+  const N          = Number(preAI.mkt?.N ?? 0);
+  const Q          = Number(preAI.mkt?.Q ?? 0);
+  const CPL        = Math.round(Number(preAI.mkt?.CPL ?? 0));
+  const CAC        = Math.round(Number(preAI.mkt?.CAC ?? 0));
+  const mode       = (preAI.mkt?.mode ?? 'budget') as ('budget'|'cac');
+
+  // Curva (recorta)
+  const rows = (preAI.peCurve?.data ?? []).slice(0, mesesPE);
+
+  return `
+    <h3>Resumen del tablero</h3>
+    <div class="card"><ul style="margin:0;padding-left:18px">
+      ${(preAI.items || []).map((it:any)=>`<li><b>${escapeHtml(it.title)}:</b> ${escapeHtml(it.reason ?? "")} <span style="opacity:.6">(${((it.score ?? 0)).toFixed(1)}/10)</span></li>`).join("")}
+    </ul></div>
+
+    <h3>Estado de Resultados anual (1º proyección para flujos)</h3>
+    <div class="card"><table style="width:100%;font-size:14px">
+      <tbody>
+        <tr><td>Ventas</td><td style="text-align:right"><b>$${fmtCL(ventas)}</b></td></tr>
+        <tr><td>Costo de ventas</td><td style="text-align:right;color:#dc2626"><b>$${fmtCL(cv)}</b></td></tr>
+        <tr><td>Gastos fijos</td><td style="text-align:right;color:#dc2626"><b>$${fmtCL(gf)}</b></td></tr>
+        <tr><td>Gastos de marketing</td><td style="text-align:right;color:#dc2626"><b>$${fmtCL(mkt)}</b></td></tr>
+        <tr><td><b>Resultado antes de impuestos</b></td><td style="text-align:right"><b>$${fmtCL(rai)}</b></td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Brújula menor</h3>
+    <div class="card">
+      <p style="margin:4px 0">Capital de trabajo necesario (plan ${mesesPE}m): <b>$${fmtCL(capital)}</b></p>
+      <p style="margin:4px 0">Ventas para P.E.: <b>$${fmtCL(ventasPE)}</b></p>
+      <p style="margin:4px 0">Clientes para tu P.E.: <b>${fmtN(clientsPE)}</b></p>
+      <p style="margin:4px 0">Clientes objetivo (mes): <b>${fmtN(N)}</b></p>
+      <p style="margin:4px 0">Tráfico requerido: <b>${fmtN(Q)}</b></p>
+      <p style="margin:4px 0">Costo unitario tráfico por cliente: <b>$${fmtCL(CPL)}</b></p>
+      <p style="margin:4px 0">Costo por cliente que compra (${mode === 'budget' ? 'implícito' : 'objetivo'}): <b>$${fmtCL(CAC)}</b></p>
+    </div>
+
+    <h3>Curva hacia el punto de equilibrio (primeros ${mesesPE} meses)</h3>
+    <div class="card"><table style="width:100%;font-size:13px;border-collapse:collapse">
+      <thead><tr>
+        <th style="text-align:left;border-bottom:1px solid #e2e8f0">Mes</th>
+        <th style="text-align:left;border-bottom:1px solid #e2e8f0">% P.E. (usuario)</th>
+        <th style="text-align:left;border-bottom:1px solid #e2e8f0">Clientes/mes</th>
+        <th style="text-align:left;border-bottom:1px solid #e2e8f0">Déficit del mes</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r:any)=>`
+          <tr>
+            <td>${escapeHtml(r.mes)}</td>
+            <td>${escapeHtml(r['%PE_usuario'])}%</td>
+            <td>${fmtN(Math.round(r.clientes_usuario || 0))}</td>
+            <td>$${fmtCL(Math.round(r.deficit || 0))}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table></div>
+  `;
+}
+
+/** Fallback de Plan 6 meses */
 function getPlan6m(aiPlan: AnyObj | undefined): string[] {
   if (!aiPlan) return defaultPlan6m();
   const fromArray = normalizeBullets(aiPlan.plan6m);
   if (fromArray.length) return fromArray;
-  // Algunas implementaciones lo devuelven como string con saltos de línea
   const fromText = normalizeBullets(aiPlan.plan6mText);
   if (fromText.length) return fromText;
-  // Compat: a veces viene como "bullets" específicos del plan
   const fromBullets = normalizeBullets(aiPlan.bullets);
   if (fromBullets.length) return fromBullets;
   return defaultPlan6m();
 }
 
+// ===== Export ÚNICA =====
 export function renderReportEmailHtml(args: RenderEmailArgs): string {
   const { user, report = {}, aiPlan } = args;
 
-  const executive = getExecutiveSummary(args);
+  const executive = (args?.summary ?? getExecutiveSummary(args));
+  const preAIHtml = renderPreAIHtml(args?.preAI ?? null);
 
   // “Evaluación (IA)” – usa los pasos del report si existen, si no usa default
-  const iaSteps: string[] =
-    normalizeBullets(report.iaSteps || report.evaluacionIa?.pasos) ?? [];
+  const iaSteps: string[] = normalizeBullets(report.iaSteps || report.evaluacionIa?.pasos) ?? [];
   const iaList = iaSteps.length ? iaSteps : defaultIaSteps();
 
   // Plan de acción
@@ -133,6 +218,9 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
     "Prevención de riesgos / seguridad laboral según tamaño.",
   ]);
 
+  // Flag para ocultar secciones legacy si así lo pides desde page.tsx
+  const hideAllLegacy = !!report?.hideLegacySections; const hideSwotVerdict = !!report?.hideSwotVerdict;
+
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -155,50 +243,57 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
     <div class="card">
       <p style="margin:0">${escapeHtml(executive)}</p>
     </div>
+     <!-- Bloque Pre-IA (si viene) -->
+    ${preAIHtml}
+  </div>
 
-    <h3>Rubro</h3>
-    <div class="card"><p style="margin:0">${escapeHtml(report.sections?.industryBrief ?? "")}</p></div>
+    ${!hideAllLegacy ? `
+      <h3>Rubro</h3>
+      <div class="card"><p style="margin:0">${escapeHtml(report.sections?.industryBrief ?? "")}</p></div>
 
-    <h3>Competencia local ($)</h3>
-    <div class="card"><p style="margin:0">${escapeHtml(report.sections?.competitionLocal ?? "")}</p></div>
+      <h3>Competencia local ($)</h3>
+      <div class="card"><p style="margin:0">${escapeHtml(report.sections?.competitionLocal ?? "")}</p></div>
 
-    <h3>FODA + Tamaño de Mercado</h3>
-    <div class="card"><p style="margin:0">${escapeHtml(report.sections?.swotAndMarket ?? "")}</p></div>
-
-    <h3>Veredicto con 3 próximos pasos</h3>
-    <div class="card"><p style="margin:0">${escapeHtml(report.sections?.finalVerdict ?? "")}</p></div>
-
-    ${report?.ranking?.score != null ? `
-      <div class="muted">Score: ${escapeHtml(report.ranking.score)} / 100 · ${report.ranking.constraintsOK ? "✓ Consistente" : "△ Revisar campos"}</div>
+      <h3>FODA + Tamaño de Mercado</h3>
+      <div class="card"><p style="margin:0">${escapeHtml(report.sections?.swotAndMarket ?? "")}</p></div>
+      ${!hideSwotVerdict ? `
+        <h3>Veredicto con 3 próximos pasos</h3>
+        <div class="card"><p style="margin:0">${escapeHtml(report.sections?.finalVerdict ?? "")}</p></div>
+      ` : ""}
+      ${report?.ranking?.score != null ? `
+        <div class="muted">Score: ${escapeHtml(report.ranking.score)} / 100 · ${report.ranking.constraintsOK ? "✓ Consistente" : "△ Revisar campos"}</div>
+      ` : ""}
     ` : ""}
 
     <!-- Evaluación (IA) -->
-    <h3>Evaluación (IA)</h3>
-    <div class="card">
-      <p class="muted" style="margin:0 0 8px">Impulsa tu negocio hacia el éxito</p>
-      ${ul(iaList)}
-    </div>
+    ${!hideAllLegacy ? `
+      <h3>Evaluación (IA)</h3>
+      <div class="card">
+        <p class="muted" style="margin:0 0 8px">Impulsa tu negocio hacia el éxito</p>
+        ${ul(iaList)}
+      </div>
 
-    <!-- Plan de acción -->
-    <h3>Plan de Acción — ¡Sigue con tu propósito!</h3>
-    <div class="card">
-      ${plan100 ? `<p style="margin:0 0 8px">${escapeHtml(plan100)}</p>` : ""}
-      ${plan6m.length ? ul(plan6m) : ""}
-    </div>
+      <!-- Plan de acción -->
+      <h3>Plan de Acción — ¡Sigue con tu propósito!</h3>
+      <div class="card">
+        ${plan100 ? `<p style="margin:0 0 8px">${escapeHtml(plan100)}</p>` : ""}
+        ${plan6m.length ? ul(plan6m) : ""}
+      </div>
 
-    <!-- Mapa competitivo -->
-    <h3>Mapa competitivo</h3>
-    <div class="card">
-      ${ul(compBullets)}
-    </div>
+      <!-- Mapa competitivo -->
+      <h3>Mapa competitivo</h3>
+      <div class="card">
+        ${ul(compBullets)}
+      </div>
 
-    <!-- Checklist regulatorio -->
-    <h3>Checklist regulatorio</h3>
-    <div class="card">
-      ${ul(regBullets)}
-    </div>
+      <!-- Checklist regulatorio -->
+      <h3>Checklist regulatorio</h3>
+      <div class="card">
+        ${ul(regBullets)}
+      </div>
+    ` : ""}
 
-  </div>
+   
 </body>
 </html>`;
 }
