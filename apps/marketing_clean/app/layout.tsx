@@ -3,7 +3,6 @@ import "../styles/globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Nav from "../components/Nav";
-import Footer from "../components/Footer";
 import Script from "next/script";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -18,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
-        {/* Google Tag Manager (HEAD) */}
+        {/* Google Tag Manager */}
         <Script id="gtm-base" strategy="afterInteractive">
           {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -30,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body className="min-h-screen bg-white text-slate-900 antialiased">
-        {/* Google Tag Manager (noscript) — opcional pero recomendado */}
+        {/* noscript recomendado */}
         <noscript>
           <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-WN7QD875"
@@ -57,3 +56,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
