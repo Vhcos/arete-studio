@@ -1,4 +1,4 @@
-// lib/gtm.ts
+// apps/marketing_clean/lib/gtm.ts
 export function gtmPush(event: string, params: Record<string, any> = {}) {
   if (typeof window === "undefined") return;
   (window as any).dataLayer = (window as any).dataLayer || [];
