@@ -15,6 +15,16 @@ class MyDocument extends Document {
           <link rel="canonical" href="https://www.aret3.cl/" />
         </Head>
         <body>
+          {/* GTM noscript */}
+          <noscript>
+            <iframe
+              src="https://www.googletagmanager.com/ns.html?id=GTM-WN7QD875"
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+
           <Main />
           <NextScript />
         </body>

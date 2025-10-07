@@ -284,13 +284,7 @@ export default function AreteDemo() {
 
   // Email
   const [emailSending, setEmailSending] = useState(false);
-  type SendOpts = { 
-    to?: string; 
-    silent?: boolean; 
-    reason?: string; 
-    summary?: string; // <-- add this line
-    preAI?: any;      // <-- add this line to allow preAI property
-  };
+  type SendOpts = { to?: string; silent?: boolean; reason?: string };
 
 
   async function sendReportEmail(args: {
@@ -299,8 +293,6 @@ export default function AreteDemo() {
   report?: any;
   aiPlan?: any;
   silent?: boolean; // si true, no muestra alerts
-  summary?: string; // <-- add this line
-  preAI?: any;      // <-- add this line to allow preAI property
   user?: {
     projectName?: string;
     founderName?: string;
@@ -1647,41 +1639,10 @@ useEffect(() => {
                  <Button
                onClick={() =>
                  sendReportEmail({
-  to: email,
-  reason: 'user-asked',
-  // El mismo informe que ves: prioriza IA; si no, el base
-      report: aiReport ? { ...(aiReport||{}), hideSwotVerdict: true } : { hideLegacySections: true },
-
-  // Resumen narrativo (ya con datos de P.E. y curva)
-  summary: buildInvestorNarrative(
-    baseOut.report.input,
-    { ...(outputs?.report?.meta || {}), peCurve: outputs?.peCurve, pe: outputs?.pe }
-  ),
-
-  // Bloque “pre-AI” para renderizar en el correo lo mismo que el tablero
-  preAI: {
-    items: outputs?.items || [],
-    meta:  { ...(outputs?.report?.meta || {}), mesesPE, N: (outputs?.report?.meta?.clientsUsed ?? 0) },
-    pe:    outputs?.pe,
-    peCurve: outputs?.peCurve,
-    // métricas de marketing usadas en la Brújula
-    mkt: {
-      mode,
-      N, Q,
-      M_requerido: Number.isFinite(M_requerido) ? Math.round(M_requerido) : 0,
-      CPL: Number.isFinite(CPL_implicito) ? Math.round(CPL_implicito) : (Number.isFinite(CPL_objetivo) ? Math.round(CPL_objetivo) : 0),
-      CAC: Number.isFinite(CAC_implicito) ? Math.round(CAC_implicito) : (Number.isFinite(CAC_target) ? Math.round(CAC_target) : 0),
-    },
-    // EERR anual (los mismos que ves en el panel)
-    eerr: {
-      ventas:          Number.isFinite(ventasAnual) ? Math.round(ventasAnual) : 0,
-      costoVariable:   Number.isFinite(costoVariableAnual) ? Math.round(costoVariableAnual) : 0,
-      gastosFijos:     Number.isFinite(gastosFijosAnual) ? Math.round(gastosFijosAnual) : 0,
-      marketing:       Number.isFinite(marketingAnual) ? Math.round(marketingAnual) : 0,
-      rai:             Number.isFinite(resultadoAnual) ? Math.round(resultadoAnual) : 0,
-    },
-  },
-
+                   to: email,                  // correo que escribió el usuario
+                   reason: 'user-asked',       // etiqueta para server logs
+            // 👇 Mismo informe que ves en pantalla. Prioriza IA; si no hay, usa el base.
+                   report: aiReport ?? nonAIReport,
             // 👇 Tablas/plan de la IA para “Mapa competitivo” + “Checklist regulatorio” + Plan 100
                    aiPlan,
             // 👇 Metadatos del usuario que usamos en el encabezado del email

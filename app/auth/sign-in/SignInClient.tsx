@@ -12,6 +12,8 @@ import {
   CardDescription,
   CardContent,
 } from "@arete-studio/ui";
+import { gtmPush } from "@/app/lib/gtm";
+
 
 function mapError(code?: string) {
   switch (code) {
@@ -37,7 +39,16 @@ export default function SignInClient({ initialEmail = "" }: { initialEmail?: str
     setLoading(true);
     setError(null);
 
-    
+    // 🚫 No envíes PII a GA4. Deriva solo el dominio del correo.
+    const email_domain = (email.split("@")[1] || "").toLowerCase();
+
+    // ✅ Evento GA4 vía GTM
+    gtmPush("lead_email", {
+      source: "app_login_form",
+      email_domain, // útil para segmentar B2B vs B2C (opcional)
+    });
+   
+
     // La pantalla de bienvenida guardará token/email y auto-redirigirá
     const callbackUrl = "/bienvenido?next=/wizard/step-1";
 

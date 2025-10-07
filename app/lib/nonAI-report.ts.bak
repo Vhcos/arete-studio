@@ -54,11 +54,8 @@ export function buildInvestorNarrative(input: any, meta: any): string {
   const CAC      = (M > 0 && N > 0) ? Math.round(M / N) : CAC_goal;
 
   // Datos de Brújula (para el resumen narrativo)
-  const mesesPlan       = Number(input?.mesesPE ?? meta?.mesesPE ?? meta?.pe?.mesesPE ?? 6);
-  const capitalTrabajo  = Number(meta?.capitalTrabajo ?? meta?.peCurve?.acumDeficitUsuario ?? meta?.peCurve?.acumDeficit
-    ?? meta?.acumDeficitUsuario
-    ?? 0
-  );
+  const mesesPlan       = Number(input?.mesesPE ?? meta?.mesesPE ?? 6);
+  const capitalTrabajo  = Number(meta?.acumDeficitUsuario ?? meta?.capitalTrabajo ?? 0);
   const ventasPE        = Number(meta?.ventasPE ?? 0);
   const clientsPE       = Number(meta?.clientsPE ?? 0);
   return [
@@ -74,7 +71,6 @@ export function buildInvestorNarrative(input: any, meta: any): string {
     // Reemplazo de “LTV/CAC ≥ 3” por lenguaje simple
     `Regla práctica: procura que el valor total que te deja o renta  cada cliente a lo largo del tiempo sea al menos tres veces lo que te cuesta conseguirlo (relación 3 a 1).`,
     `Para iniciar tu negocio con tranquilidad y considerando que tu plan es en ${mesesPlan} meses estar en punto de equilibrio, necesitarás al menos un capital de trabajo de $${fCL(capitalTrabajo)}; es tu colchón para ejecutar sin apuros. Tu punto de equilibrio está en $${fCL(ventasPE)} de venta mensual que lo alcanzarás en el periodo de ${mesesPlan} meses, lo que implica ${fN(Math.round(clientsPE))} clientes al mes. Con estas metas a la vista, cada campaña y mejora del producto puede medirse contra ellas: si nos acercamos a esta meta mes a mes, vamos en ruta; si no, ajustamos rápido. El objetivo es simple: enfocarse en cumplir el plan, crecer y mucha disciplina, evitando la ansiedad de caja y que el proyecto no llegue a puerto, mientras conviertes este periodo de aprendizaje en un negocio exitoso.`,
-  ,
   ].filter(Boolean).join(' ');
 }
 export function buildNonAIReport(input: any, meta: any): StandardReport {

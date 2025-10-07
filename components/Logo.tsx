@@ -12,6 +12,9 @@ export default function Logo({ className = "" }: { className?: string }) {
       aria-label="ARET3"
       className={`inline-flex items-center gap-2 shrink-0 ${className}`}
     >
+      <span className="text-lg font-semibold italic tracking-tight text-blue-700">
+        Aret3
+      </span>
       <Image
         src="/aret3-logo.svg"
         alt="ARET3"
@@ -20,9 +23,7 @@ export default function Logo({ className = "" }: { className?: string }) {
         priority
         className="h-20 w-20 shrink-0"
       />
-      <span className="hidden sm:inline font-semibold tracking-tight">
-        ARET3
-      </span>
+      
     </Link>
   );
 }

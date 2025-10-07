@@ -1,3 +1,4 @@
+// apps/marketing_clean/components/sections/Hero.tsx
 import React from "react";
 
 export default function Hero() {
