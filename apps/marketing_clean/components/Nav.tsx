@@ -7,8 +7,8 @@ const APP = process.env.NEXT_PUBLIC_APP_ORIGIN || "https://app.aret3.cl";
 
 export default function Nav() {
   useEffect(() => {
-    gtmPush("view_content", { page_type: "landing", path: "/" });
-  }, []);
+  gtmPush("view_content", { page_type: "landing", path: window.location.pathname });
+}, []);
 
   return (
     <header className="mx-auto max-w-6xl px-4 py-4">
