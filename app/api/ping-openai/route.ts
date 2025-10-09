@@ -1,3 +1,4 @@
+// app/api/ping-openai/route.ts
 export const runtime = 'edge';
 import OpenAI from 'openai';
 
@@ -22,14 +23,14 @@ export async function GET() {
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const r = await client.responses.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      model: process.env.OPENAI_MODEL || 'gpt-4.1',
       input: [{ role: 'user', content: 'Devuelve exactamente {"ping": true} en json.' }],
       text: { format: { type: 'json_object' } },
       max_output_tokens: 50
     });
 
     const text = extractText(r);
-    return Response.json({ ok: true, modelo: process.env.OPENAI_MODEL || 'gpt-4o-mini', texto: text });
+    return Response.json({ ok: true, modelo: process.env.OPENAI_MODEL || 'gpt-4.1', texto: text });
   } catch (e: any) {
     return Response.json(
       { ok: false, error: String(e?.message || e), status: e?.status, type: e?.error?.type },
