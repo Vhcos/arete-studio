@@ -1,0 +1,41 @@
+*** Begin Patch
+*** Update File: app/page.tsx
+@@
+-function splitPlan(plan: string) {
++function splitPlan(plan: string) {
+@@
+-    if (/^(mes(es)?\s*\d+:|paso\s*\d+:|\d+\.\s+)/i.test(line)) {
++    // Soporta también encabezados "Semana X:"
++    if (/^(semana\s*\d+:|mes(es)?\s*\d+:|paso\s*\d+:|\d+\.\s+)/i.test(line)) {
+@@
+-        .replace(/^(mes(es)?)\s*\d+:\s*/i, "")
++        .replace(/^semana\s*\d+:\s*/i, "")
++        .replace(/^(mes(es)?)\s*\d+:\s*/i, "")
+         .replace(/^paso\s*\d+:\s*/i, "")
+         .replace(/^\d+\.\s*/, "")
+@@
+ }
+ 
++// Normaliza claves ES para que Mapa/Checklist no caigan al fallback cuando IA responde en EN
++function normalizeAiPlanES(plan: any) {
++  return {
++    ...plan,
++    competencia: Array.isArray(plan?.competencia)
++      ? plan.competencia
++      : (Array.isArray(plan?.competition) ? plan.competition : (plan?.mapaCompetitivo ?? [])),
++    regulacion: Array.isArray(plan?.regulacion)
++      ? plan.regulacion
++      : (Array.isArray(plan?.regulation) ? plan.regulation : (plan?.checklist ?? [])),
++  };
++}
++
+@@
+-    if (plan) {
+-      setAiPlan(plan);
+-    } else {
++    if (plan) {
++      setAiPlan(normalizeAiPlanES(plan));
++    } else {
+       console.warn("Plan IA no disponible:", dataPlan);
+     }
+*** End Patch

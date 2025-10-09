@@ -293,8 +293,7 @@ export default function AreteDemo() {
     silent?: boolean; 
     reason?: string; 
     summary?: string; // <-- add this line
-    preAI?: string;
-  preAIJson?: any;      // <-- add this line to allow preAI property
+    preAI?: any;      // <-- add this line to allow preAI property
   };
 
    // para el scroll al enviar email
@@ -307,8 +306,7 @@ export default function AreteDemo() {
   aiPlan?: any;
   silent?: boolean; // si true, no muestra alerts
   summary?: string; // <-- add this line
-  preAI?: any;
-  preAIJson?: any;      // <-- add this line to allow preAI property
+  preAI?: any;      // <-- add this line to allow preAI property
   user?: {
     projectName?: string;
     founderName?: string;
@@ -641,8 +639,7 @@ if (plan) {
    }
 
     // envía el email silencioso (si está configurado)
-    void sendReportEmail({ preAI: preAIRef?.current?.innerHTML || "",
-    silent: true, reason: 'evaluate-ia' });
+    void sendReportEmail({ silent: true, reason: 'evaluate-ia' });
     // guarda data IA para cálculos / visualizaciones extra
     // si sigues usando la fusión con IA
     setIaData(data);
@@ -1565,7 +1562,7 @@ useEffect(() => {
     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
       
       <div>
-        <div className="text-muted-foreground">Capital de trabajo necesario en meses (plan {mesesPE}m)</div>
+        <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
         <div className="font-semibold">
           ${fmtCL((outputs?.peCurve?.acumDeficitUsuario ?? 0))}
         </div>
@@ -1664,8 +1661,7 @@ useEffect(() => {
                  <Button
                onClick={() =>
                  sendReportEmail({
-  preAI: preAIRef?.current?.innerHTML || "",
-    to: email,
+  to: email,
   reason: 'user-asked',
   // El mismo informe que ves: prioriza IA; si no, el base
   report: aiReport ?? nonAIReport,
@@ -1677,7 +1673,7 @@ useEffect(() => {
   ),
 
   // Bloque “pre-AI” para renderizar en el correo lo mismo que el tablero
-  preAIJson: {
+  preAI: {
     items: outputs?.items || [],
     meta:  { ...(outputs?.report?.meta || {}), mesesPE, N: (outputs?.report?.meta?.clientsUsed ?? 0) },
     pe:    outputs?.pe,
@@ -1732,7 +1728,7 @@ useEffect(() => {
                      <div className="rounded-xl border p-4 bg-white/60 text-sm leading-6">
                         {buildInvestorNarrative(baseOut.report.input, { ...(outputs?.report?.meta || {}), peCurve: outputs?.peCurve, pe: outputs?.pe, capitalTrabajo: (outputs?.peCurve?.acumDeficitUsuario ?? 0), ventasPE: (outputs?.pe?.ventasPE ?? 0), clientsPE: (outputs?.pe?.clientsPE ?? 0) })}
                      </div>
-                   <div ref={preAIRef}><PreAIReportView outputs={outputs} /></div>
+                   <PreAIReportView outputs={outputs} />
                  </div>
 
                  {aiReport && (
@@ -1748,7 +1744,7 @@ useEffect(() => {
   <>
     <div className="mt-6 space-y-4">
       <h3 className="mt-6 text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-indigo-600">
-        Plan de Acción — ¡No te dentengas!
+        Plan de Acción — ¡Sigue con tu propósito!
       </h3>
 
       {(() => {
@@ -2463,7 +2459,7 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
         {/* KPIs superiores */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mt-2">
           <div>
-            <div className="text-muted-foreground">Capital de trabajo necesario en meses (plan {mesesPE}m)</div>
+            <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
             <div className="font-semibold">${fmtCL(acumDef)}</div>
           </div>
         </div>

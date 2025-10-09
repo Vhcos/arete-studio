@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { tryDebitCredit, refundCredit } from "@/lib/credits";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
 
 // Helper
 function toJson<T>(s: string | null | undefined): T {
@@ -55,16 +55,20 @@ export async function POST(req: Request) {
     const { input, objetivo = "6w" } = body;
 
     const system = [
-      "Eres un asesor que arma un plan de acción conciso.",
-      "Devuelves SOLO JSON con este shape:",
-      `{
-        "plan100": string,
-        "bullets": string[]
-      }`,
-      "Nada fuera del JSON."
-    ].join("\n");
-
-    // evita sombrear 'u'/'user' de la DB
+  "Eres un asesor que arma un plan de acción conciso EN ESPAÑOL.",
+  "Devuelves SOLO JSON con este shape:",
+  `{
+    "plan100": string,
+    "bullets": string[],
+    "competencia": string[],
+    "regulacion": string[]
+  }`,
+  "Reglas:",
+  "- Nada fuera del JSON.",
+  "- No inventes datos numéricos que no estén en el contexto.",
+  "- 'bullets' deben ser SEMANALES (no meses): etiqueta cada ítem como 'Semana N: …'."
+].join("\n");
+// evita sombrear 'u'/'user' de la DB
     const userMsg = [
       `Arma un plan de acción para ${objetivo}.`,
       "Contexto del negocio:",
@@ -83,9 +87,31 @@ export async function POST(req: Request) {
     });
 
     const content = completion.choices[0]?.message?.content ?? "";
-    const data = toJson<{ plan100: string; bullets: string[] }>(content);
-
-    return NextResponse.json({
+    let data: any = toJson<any>(content);
+// Normalización: aceptar variantes EN y forzar arrays
+data.competencia = Array.isArray(data?.competencia)
+  ? data.competencia
+  : (Array.isArray(data?.competition) ? data.competition : []);
+data.regulacion = Array.isArray(data?.regulacion)
+  ? data.regulacion
+  : (Array.isArray(data?.regulation) ? data.regulation : []);
+// Asegura 6 bullets y las etiqueta SEMANA 1..6
+if (Array.isArray(data?.bullets)) {
+  data.bullets = data.bullets
+    .filter(Boolean)
+    .slice(0, 6)
+    .map((t: any, i: number) => {
+      let s = String(t || "").trim()
+        .replace(/^semana\s*\d+:\s*/i, "")
+        .replace(/^mes(es)?\s*\d+:\s*/i, "")
+        .replace(/^m\s*\d+[:\-]\s*/i, "")
+        .replace(/^m\d+[:\-]\s*/i, "")
+        .replace(/^paso\s*\d+:\s*/i, "")
+        .replace(/^\d+[\.\-:]\s*/, "");
+      return `Semana ${i+1}: ${s}`;
+    });
+}
+return NextResponse.json({
       ok: true,
       data,
       usage: completion.usage,

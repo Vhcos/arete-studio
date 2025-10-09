@@ -16,6 +16,6 @@ export async function GET() {
   return json({
     hasKey: !!key,
     keyTail: tail,
-    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    model: process.env.OPENAI_MODEL || "gpt-4.1",
   });
 }

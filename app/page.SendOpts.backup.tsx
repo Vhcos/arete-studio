@@ -307,8 +307,7 @@ export default function AreteDemo() {
   aiPlan?: any;
   silent?: boolean; // si true, no muestra alerts
   summary?: string; // <-- add this line
-  preAI?: any;
-  preAIJson?: any;      // <-- add this line to allow preAI property
+  preAI?: any;      // <-- add this line to allow preAI property
   user?: {
     projectName?: string;
     founderName?: string;
@@ -1565,7 +1564,7 @@ useEffect(() => {
     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
       
       <div>
-        <div className="text-muted-foreground">Capital de trabajo necesario en meses (plan {mesesPE}m)</div>
+        <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
         <div className="font-semibold">
           ${fmtCL((outputs?.peCurve?.acumDeficitUsuario ?? 0))}
         </div>
@@ -1748,7 +1747,7 @@ useEffect(() => {
   <>
     <div className="mt-6 space-y-4">
       <h3 className="mt-6 text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-sky-600 to-indigo-600">
-        Plan de Acción — ¡No te dentengas!
+        Plan de Acción — ¡Sigue con tu propósito!
       </h3>
 
       {(() => {
@@ -2463,7 +2462,7 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
         {/* KPIs superiores */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mt-2">
           <div>
-            <div className="text-muted-foreground">Capital de trabajo necesario en meses (plan {mesesPE}m)</div>
+            <div className="text-muted-foreground">Capital de trabajo necesario (plan {mesesPE}m)</div>
             <div className="font-semibold">${fmtCL(acumDef)}</div>
           </div>
         </div>

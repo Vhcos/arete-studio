@@ -53,7 +53,7 @@ export async function callLLMJSONMin(opts: {
   maxOutputTokens?: number;
 }) {
   const {
-    model = process.env.OPENAI_MODEL || "gpt-4o-mini",
+    model = process.env.OPENAI_MODEL || "gpt-4.1",
     system,
     user,
     maxOutputTokens = 600,
