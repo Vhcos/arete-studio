@@ -235,7 +235,6 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
     <!-- Plan de acción -->
     <h3>Plan de Acción — ¡Sigue con tu propósito!</h3>
     <div class="card">
-    <p class="muted" style="margin:0 0 8px">Impulsa tu negocio hacia el éxito</p>
       ${plan100 ? `<p style="margin:0 0 8px">${escapeHtml(plan100)}</p>` : ""}
       ${plan6m.length ? ul(plan6m) : ""}
     </div>
