@@ -1,0 +1,14 @@
+# Webpay (ajusta en Vercel → Production)
+TBK_ENV=production
+TBK_COMMERCE_CODE=XXXXXXXXXXXX
+TBK_API_KEY=XXXXXXXXXXXXXXXXXXXXXXXX
+WEBPAY_RETURN_URL=https://app.aret3.cl/api/webpay/plus/commit
+WEBPAY_FINAL_URL=https://app.aret3.cl/billing/success
+PACK_200CRED_CLP=5000
+ADDON_SESSION_30M_CLP=30000
+
+# Otros (existentes)
+DATABASE_URL=...
+NEXTAUTH_SECRET=...
+RESEND_API_KEY=...
+
