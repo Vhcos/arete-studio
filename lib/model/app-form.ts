@@ -1,3 +1,4 @@
+// lib/model/app-form.ts
 import type { WizardData, Step1, Step2, Step6 } from "@/lib/state/wizard-store";
 
 /**

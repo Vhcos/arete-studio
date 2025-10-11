@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       from: EMAIL_FROM,
       to,                                 // un string o array sirve
       ...(EMAIL_BCC ? { bcc: EMAIL_BCC } : {}),
-      subject: `Informe ARET3 — ${body?.user?.projectName || 'Tu Proyecto'}`,
+      subject: `Informe Preparado por el Equipo de Aret3 — ${body?.user?.projectName || 'Tu Proyecto'}`,
       html,
     });
 

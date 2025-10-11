@@ -1,0 +1,10 @@
+*** a/app/api/webpay/plus/init/route.ts
+--- b/app/api/webpay/plus/init/route.ts
+@@
+ export async function POST(request: Request) {
++  if (process.env.TBK_ENV !== 'production') {
++    return NextResponse.json(
++      { ok: false, error: 'payments_disabled' },
++      { status: 503 }
++    );
++  }

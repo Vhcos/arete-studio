@@ -1,3 +1,5 @@
+//lib/model/sectors.ts
+/* Lista de rubros/sectores predefinidos */
 export type SectorId =
   | 'tech_saas'
   | 'ecommerce_marketplace'

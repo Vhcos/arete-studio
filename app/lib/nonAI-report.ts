@@ -36,6 +36,18 @@ export function buildInvestorNarrative(input: any, meta: any): string {
       tourism: 'turismo',
       construction: 'construcción',
       services: 'servicios',
+      manufacturing_product: 'Manufactura / Producto físico',
+      restaurant_cafe: 'Restaurante / Café',
+      health_wellness: 'Salud y Bienestar',
+      education_edtech: 'Educación / EdTech',
+      tourism_hospitality: 'Turismo / Hotelería',
+      construction_realestate: 'Construcción / Inmobiliaria',
+      logistics_mobility: 'Logística / Transporte',
+      retail_local: 'Retail / Tienda Física',
+      creative_media: 'Creativo / Medios',
+      agro_agritech: 'Agro / AgroTech',
+      services_agency: 'Servicios profesionales / Agencia',
+      ecommerce_marketplace: 'E-commerce / Marketplace',
     };
     const key = String(raw || '').toLowerCase();
     if (map[key]) return map[key];

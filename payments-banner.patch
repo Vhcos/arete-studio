@@ -1,0 +1,23 @@
+*** a/app/billing/page.tsx
+--- b/app/billing/page.tsx
+@@
++// --- Webpay maintenance banner (server-side) ---
++const TBK_ENV = process.env.TBK_ENV ?? 'mock';
++const PAYMENTS_ACTIVE = TBK_ENV === 'production';
++
++function PaymentsBanner() {
++  if (PAYMENTS_ACTIVE) return null;
++  return (
++    <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900">
++      <strong>Pagos en mantenimiento:</strong> activaremos Webpay pronto.
++      {' '}Si necesitas créditos o asesoría antes, escríbenos a{' '}
++      <a className="underline" href="mailto:soporte@aret3.cl">soporte@aret3.cl</a>.
++    </div>
++  );
++}
+@@
+-  return (
+-    <div className="mx-auto max-w-3xl px-4 py-8">
++  return (
++    <div className="mx-auto max-w-3xl px-4 py-8" data-payments-active={String(PAYMENTS_ACTIVE)}>
++      <PaymentsBanner />
