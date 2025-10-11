@@ -214,7 +214,6 @@ export default function AreteDemo() {
   const accent = `hsl(${primaryHue} 90% 45%)`;
   const styleAccent: CSSProperties & Record<'--accent', string> = { '--accent': accent };
   const accentSoft = toHSLA(accent, 0.07);
-  const cardStrong = "rounded-xl border-2 border-slate-300 bg-white shadow-sm";
 
   // -------------------- Formulario --------------------
   
@@ -676,14 +675,8 @@ if (plan) {
     }, 100);
 
     // envía el email silencioso (si está configurado)
-    void sendReportEmail({
-       preAI: preAIRef?.current?.innerHTML || "",
-       ...(typeof window !== "undefined" ? { viewUrl: window.location.href } : {}),
-       silent: true,
-       reason: "evaluate-ia",
-       summary: "Envio automático tras evaluación IA",
-     } as any);
-
+    void sendReportEmail({ preAI: preAIRef?.current?.innerHTML || "",
+    silent: true, reason: 'evaluate-ia' });
     // guarda data IA para cálculos / visualizaciones extra
     // si sigues usando la fusión con IA
     setIaData(data);
@@ -1770,7 +1763,7 @@ useEffect(() => {
                <div id="informe" className="space-y-6">
                  <div>
                    <h2 className="text-lg font-bold">Resumen ejecutivo</h2>
-                     <div className={`${cardStrong} p-4 text-sm leading-6`}>
+                     <div className="rounded-xl border p-4 bg-white/60 text-sm leading-6">
                         {buildInvestorNarrative(baseOut.report.input, { ...(outputs?.report?.meta || {}), peCurve: outputs?.peCurve, pe: outputs?.pe, capitalTrabajo: (outputs?.peCurve?.acumDeficitUsuario ?? 0), ventasPE: (outputs?.pe?.ventasPE ?? 0), clientsPE: (outputs?.pe?.clientsPE ?? 0) })}
                      </div>
                    <div ref={preAIRef}><PreAIReportView outputs={outputs} /></div>
@@ -1780,8 +1773,7 @@ useEffect(() => {
                    <>
                    <div>
                      <h2 className="text-lg font-bold">Evaluación (IA)</h2>
-                      <div className={`${cardStrong} p-4 text-sm`}> <InformePreview />
-                      </div>
+                      <InformePreview />
                       <ReportView report={aiReport} />
                    </div>
 
@@ -1797,7 +1789,7 @@ useEffect(() => {
         const { intro, steps } = splitPlan(aiPlan.plan100 ?? "");
 
         return (
-          <div className={`${cardStrong} p-4 text-sm`}>
+          <div className="rounded-md border bg-white p-4 text-sm leading-relaxed avoid-break">
   {/* Texto del plan (respeta saltos si vinieran) */}
   {aiPlan?.plan100 ? (
     <p className="whitespace-pre-line">{aiPlan.plan100}</p>
@@ -1843,20 +1835,17 @@ useEffect(() => {
 
                     {/* IA – Mapa competitivo + Checklist (bullets como en el email) */}
 <h3 className="text-lg font-bold mt-6">Mapa competitivo</h3>
-<div className="mt-2 rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
- <ul className="list-disc pl-6 space-y-1">
+<ul className="list-disc pl-6 space-y-1">
   {normalizeBullets(aiPlan?.competencia, [
     'Segmentos típicos en tu categoría: low-cost, estándar y premium.',
     'Diferénciate por propuesta y experiencia (no solo precio).',
     'Rango de precio de lista; destaca tu ticket y tiempos de entrega.',
     'Ventajas defendibles: canal directo, servicio postventa, casos y reseñas.',
     'Evita competir en todo: elige 2–3 atributos clave y sé n°1 allí.',
-  ]).map((b, i) => <li key={`reg-${i}`}>{b}</li>)}
-+   </ul>
-</div>
+  ]).map((b, i) => <li key={`comp-${i}`}>{b}</li>)}
+</ul>
 
 <h3 className="text-lg font-bold mt-6">Checklist regulatorio</h3>
-<div className="mt-2 rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
 <ul className="list-disc pl-6 space-y-1">
   {normalizeBullets(aiPlan?.regulacion, [
     'Constitución / formalización (SpA o EIRL).',
@@ -1866,7 +1855,7 @@ useEffect(() => {
     'Prevención de riesgos / seguridad laboral según tamaño.',
   ]).map((b, i) => <li key={`reg-${i}`}>{b}</li>)}
 </ul>
-</div>
+
                  </>
                )}
             </>
@@ -2375,16 +2364,15 @@ function printOnly(target: 'tablero' | 'informe') {
   window.addEventListener('afterprint', cleanup);
 }
 
-const cardStrong = "rounded-xl border-2 border-slate-300 bg-white shadow-sm";
 
 function ReportView({ report }:{ report: StandardReport }) {
   const s = report.sections;
   const r = (report as any)?.ranking ?? { score: 0, constraintsOK: false };
   return (
-   <div className={`${cardStrong} p-4 text-sm leading-6`}>
+    <div className="rounded-xl border p-4 bg-white/5">
       <Item t="Rubro">{s.industryBrief}</Item>
-      <Item t="Analisis del Sector">{s.competitionLocal}</Item>
-      <Item t="FODA">{s.swotAndMarket}</Item>
+      <Item t="Competencia local ($)">{s.competitionLocal}</Item>
+      <Item t="FODA + Tamaño de Mercado">{s.swotAndMarket}</Item>
       <Item t="Veredicto con 3 proximos pasos">{s.finalVerdict}</Item>
       <div className="mt-3 text-xs text-muted-foreground">
         {/* usa r.*, no report.ranking.* */}
@@ -2466,11 +2454,10 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
   const ventasPE = outputs?.pe?.ventasPE ?? 0;
   const clientsPE= outputs?.pe?.clientsPE ?? 0;
 
-  const cardStrong = "rounded-xl border-2 border-slate-300 bg-white shadow-sm";
   return (
-   <div className={`${cardStrong} p-4 text-sm`}>
+    <div className="space-y-4">
       {/* Resumen del tablero */}
-      <div className={`${cardStrong} p-4 text-sm`}>
+      <div className="rounded-xl border p-4 bg-white/5">
         <div className="text-lg font-semibold mb-2">Resumen del tablero</div>
         <ul className="list-disc pl-5 space-y-1 text-sm">
           {items.map((it, i) => (
@@ -2488,7 +2475,7 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
       </div>
 
       {/* EERR anual */}
-      <div className={`${cardStrong} p-4 text-sm`}>
+      <div className="rounded-xl border p-4">
         <div className="text-lg font-semibold mb-2">Estado de Resultados anual (1º proyección para flujos)</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -2505,7 +2492,7 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
       </div>
 
       {/* Brújula menor (sin runway) */}
-      <div className={`${cardStrong} p-4 text-sm`}>
+      <div className="rounded-xl border p-4">
         <div className="font-medium mb-2">Brújula menor</div>
         {/* KPIs superiores */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mt-2">
@@ -2533,7 +2520,7 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
 
       
       {/* Curva hacia el P.E. (corte por meses del plan) */}
-      <div className={`${cardStrong} p-4 text-sm`}>
+      <div className="rounded-xl border p-4">
         <div className="text-lg font-semibold mb-2">Curva hacia el punto de equilibrio</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

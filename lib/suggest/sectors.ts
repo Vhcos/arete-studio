@@ -1,3 +1,4 @@
+// lib/suggest/sectors.ts
 import { SECTORS, SectorId } from "@/lib/domain/sectors";
 
 export type SectorSuggestion = { id: SectorId; label: string; reason: string };

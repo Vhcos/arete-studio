@@ -15,12 +15,14 @@ export type RenderEmailArgs = {
   aiPlan?: AnyObj;     // { plan100?: string, plan6m?: string[] | string, competencia?: string[] | AnyObj[], regulacion?: string[] | AnyObj[] }
   summary?: string;    // resumen ejecutivo tal como lo ves en pantalla (opcional)
   preAI?: string;      // contenido previo a IA (opcional)
+  viewUrl?: string;   // (opcional) link “Ver informe en el navegador”
 };
 
 const css = `
   body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;color:#0f172a;margin:0;padding:0;background:#ffffff}
   .wrap{max-width:720px;margin:0 auto;padding:24px}
   h3{font-size:16px;margin:16px 0 8px}
+  table{margin-top:4px;margin-bottom:8px}
   .card{border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:8px 0 16px}
   .muted{color:#64748b;font-size:12px}
   ul{margin:0 0 0 18px;padding:0}
@@ -29,6 +31,54 @@ const css = `
 
 const li = (s: string) => `<li>${escapeHtml(s)}</li>`;
 const ul = (rows: string[]) => `<ul>${rows.map(li).join("")}</ul>`;
+
+function sourcesList(sources?: any[]): string {
+  const src = Array.isArray(sources) ? sources.filter(x => x && x.url) : [];
+  if (!src.length) return "";
+  const items = src.slice(0, 8).map(s =>
+    `<a href="${escapeHtml(s.url)}" style="color:#0A66C2">${escapeHtml(s.title || s.url)}</a>`
+  ).join(" · ");
+  return `<div class="muted" style="margin-top:6px">Fuentes: ${items}</div>`;
+}
+
+/** Convierte el fragmento HTML del Pre-IA a algo “email-safe” (inline styles básicos) */
+function emailifyPreAI(html: string): string {
+  if (!html) return "";
+
+  let s = html;
+
+  // Tablas: ancho completo, tipografía pequeña y borde inferior en encabezados
+ s = s.replace(
+  /<td([^>]*)>(\s*(?:US?\$)?\s*[\d\.\,]+(?:\s*(?:CLP|USD|UF))?\s*)<\/td>/g,
+  '<td$1 style="padding:6px 8px;text-align:right;white-space:nowrap">$2</td>'
+);
+  s = s.replace(/<thead([^>]*)>/g, '<thead$1>');
+  s = s.replace(/<th([^>]*)>/g,
+    '<th$1 style="text-align:left;padding:6px 8px;border-bottom:1px solid #e2e8f0">');
+  s = s.replace(/<td([^>]*)>/g, '<td$1 style="padding:6px 8px;">');
+
+  // Listas con aire
+  s = s.replace(/<ul([^>]*)>/g, '<ul$1 style="margin:0 0 0 18px;padding:0">');
+  s = s.replace(/<li([^>]*)>/g, '<li$1 style="margin:4px 0">');
+  s = s.replace(
+     /<td([^>]*)>(\s*(?:US?\$)?\s*[\d\.\,]+(?:\s*(?:CLP|USD|UF))?\s*)<\/td>/g,
+     '<td$1 style="padding:6px 8px;text-align:right;white-space:nowrap">$2</td>'
+   );
+  // Títulos comunes que trae tu bloque
+  const titleRx = /(Resumen del tablero|Top riesgos.*?|Estado de Resultados anual.*?|Brújula menor|Curva hacia el punto de equilibrio)/i;
+  s = s.replace(
+    new RegExp(`<div[^>]*>\\s*${titleRx.source}\\s*<\\/div>`, 'gi'),
+    (_m, t) => `<h3>${t}</h3>`
+  );
+
+  // Quitar class="..." para no depender de Tailwind en email
+  s = s.replace(/\sclass="[^"]*"/g, "");
+s = s.replace(
+  /(<tr[^>]*>\s*<td[^>]*>\s*(?:Costo de ventas|Gastos fijos|Gastos de marketing)\s*<\/td>\s*<td[^>]*>)([^<]+)/gi,
+  (_m, g1, value) => `${g1}<span style="color:#B91C1C">${value}<span style="color:#B91C1C"></span>`
+);
+  return s;
+}
 
 function escapeHtml(x: any) {
   return String(x ?? "")
@@ -120,9 +170,18 @@ function getPlan6m(aiPlan: AnyObj | undefined): string[] {
 }
 export function renderReportEmailHtml(args: RenderEmailArgs): string {
   const { user, report = {}, aiPlan } = args;
+  const intelSources = (aiPlan?.intelSources || aiPlan?.sources) as any[] | undefined;
+  const viewUrl = args?.viewUrl || (report as any)?.viewUrl || "";
+  const today = new Date();
+  const fecha = today.toLocaleDateString("es-CL", { year:"numeric", month:"long", day:"numeric" });
+  const preheader = `Tu evaluación con IA está lista: diagnóstico, plan y próximos pasos (${user?.projectName ?? "ARET3"}).`;
+
 
   const executive = (args?.summary ?? getExecutiveSummary(args));
-  const preAIHtml = args?.preAI ? `<div class="card">${escapeHtml(args.preAI)}</div>` : "";
+  const preAIHtml =
+  typeof args?.preAI === "string" && args.preAI.trim()
+    ? `<h3>Datos Cualitativos y Cuantitativos (Tu tablero)</h3><div class="card">${emailifyPreAI(args.preAI)}</div>`
+    : "";
 
   // “Evaluación (IA)” – usa los pasos del report si existen, si no usa default
   const iaSteps: string[] =
@@ -160,8 +219,29 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
 <style>${css}</style>
 </head>
 <body>
+  <!-- Preheader oculto para Gmail/Outlook -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">
+    ${escapeHtml(preheader)}
+  </div>
   <div class="wrap">
-    <p class="muted">Informe Preparado por el Equipo de Aret3</p>
+
+   <div class="card" style="display:flex;justify-content:space-between;align-items:right;margin-bottom:24px">
+   <span style="display:inline-block;background:#EEF6FF;color:#0A66C2;border:1px solid #D6EAFE;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700">
+      Preparado por el equipo Aret3
+    </span>
+  <div class="muted " style="font-size:10px;center-align:right">
+    ${escapeHtml(fecha)} ·
+    Generado automáticamente
+  </div>
+</div>
+    ${viewUrl ? `<div style="margin-top:8px">
+       <a href="${escapeHtml(viewUrl)}"
+         style="display:inline-block;background:#0A66C2;color:#fff;text-decoration:none;padding:8px 12px;border-radius:8px">
+          Ver informe en el navegador
+       </a>
+     </div>` : ""}
+
+    <h3>Datos del proyecto</h3>
 
     <div class="card">
       <div><strong>Proyecto:</strong> ${escapeHtml(user?.projectName ?? "")}</div>
@@ -172,6 +252,13 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
     <h3>Resumen ejecutivo</h3>
     <div class="card">
       <p style="margin:0">${escapeHtml(executive)}</p>
+    </div>
+
+     <!-- Evaluación (IA) -->
+    <h3>Evaluación (IA)</h3>
+    <div class="card">
+      <p class="muted" style="margin:0 0 8px">Impulsa tu negocio hacia el éxito</p>
+      ${ul(iaList)}
     </div>
 
     <h3>Rubro</h3>
@@ -190,13 +277,6 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
       <div class="muted">Score: ${escapeHtml(report.ranking.score)} / 100 · ${report.ranking.constraintsOK ? "✓ Consistente" : "△ Revisar campos"}</div>
     ` : ""}
 
-    <!-- Evaluación (IA) -->
-    <h3>Evaluación (IA)</h3>
-    <div class="card">
-      <p class="muted" style="margin:0 0 8px">Impulsa tu negocio hacia el éxito</p>
-      ${ul(iaList)}
-    </div>
-
     <!-- Plan de acción -->
     <h3>Plan de Acción — ¡Sigue con tu propósito!</h3>
     <div class="card">
@@ -208,15 +288,18 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
     <h3>Mapa competitivo</h3>
     <div class="card">
       ${ul(compBullets)}
+       ${sourcesList(intelSources)} 
     </div>
 
     <!-- Checklist regulatorio -->
     <h3>Checklist regulatorio</h3>
     <div class="card">
       ${ul(regBullets)}
-    </div>
-
+    ${preAIHtml}
   </div>
-${preAIHtml}</body>
+  <div style="font-size:11px;color:#94a3b8;margin-top:12px;text-align:center">
+  Informe generado por el equipo de Aret3 · <a href="https://aret3.cl" style="color:#0A66C2">aret3.cl</a>
+  </div>
+  </div></body>
 </html>`;
 }
