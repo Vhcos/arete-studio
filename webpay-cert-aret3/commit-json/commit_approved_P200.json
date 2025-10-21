@@ -1,0 +1,11 @@
+{
+  "buy_order": "P200-xxxxxxxxxxxx",
+  "session_id": "user_xxx",
+  "amount": 5000,
+  "status": "AUTHORIZED",
+  "response_code": 0,
+  "authorization_code": "XXXXXX",
+  "payment_type_code": "VD",
+  "installments_number": 0,
+  "card_detail": { "card_number": "**** **** **** 6623" }
+}

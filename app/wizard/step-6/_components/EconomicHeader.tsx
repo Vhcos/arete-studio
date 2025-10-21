@@ -1,3 +1,4 @@
+// app/wizard/step-6/_components/EconomicHeader.tsx
 "use client";
 
 import React, { useMemo } from "react";

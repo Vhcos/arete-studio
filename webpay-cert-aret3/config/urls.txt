@@ -1,0 +1,3 @@
+Return/Commit: https://app.aret3.cl/api/webpay/plus/commit
+Final/Thanks:  https://app.aret3.cl/billing/success
+Dominio:       https://app.aret3.cl

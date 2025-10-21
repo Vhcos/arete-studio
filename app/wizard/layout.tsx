@@ -1,3 +1,4 @@
+// app/wizard/layout.tsx
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ProgressHeader } from "@/components/wizard/ProgressHeader";

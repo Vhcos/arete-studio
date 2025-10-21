@@ -1,0 +1,20 @@
+Asunto: Puesta en Producción Webpay Plus – ARET3 (app.aret3.cl)
+
+Hola equipo Transbank,
+
+Adjunto ZIP con la evidencia de integración en ambiente de integración para Webpay Plus (REST v1.2).
+
+Datos:
+- Dominio: https://app.aret3.cl
+- Return/Commit: https://app.aret3.cl/api/webpay/plus/commit
+- Final/Thanks: https://app.aret3.cl/billing/success
+- Montos: P200=5000, A30=30000
+- buyOrder ≤ 26 (prefijos P200… y ADD30…)
+- session_id = userId
+- Validación de montos en commit
+- Idempotencia: requestId = tbk:<token_ws>:(P200|A30)
+
+Quedo atento(a) a la validación y a la entrega de la API Key Secret de producción asociada a nuestro código de comercio.
+
+Saludos,
+<Victor Hurtado/+569 64965511/ grupohurtado.victor@gmail.com>

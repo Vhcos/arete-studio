@@ -561,8 +561,8 @@ const costoVariableMes =
     return (
       <div className="rounded-md border bg-white p-2 text-xs">
         <div className="font-medium">Mes {String(label).replace('M','')}</div>
-        <div>12m P.E.: <strong>{fmtNum(clientes12)}</strong> clientes</div>
-        <div>{mesesPE}m P.E.: <strong>{fmtNum(clientesUsr)}</strong> clientes</div>
+        <div>12m Punto de Equilibrio.: <strong>{fmtNum(clientes12)}</strong> clientes</div>
+        <div>{mesesPE}m Punto de Equilibrio: <strong>{fmtNum(clientesUsr)}</strong> clientes</div>
         <div>Déficit: <strong>${fmtCL(deficit)}</strong></div>
       </div>
     );
@@ -1425,7 +1425,7 @@ useEffect(() => {
                   <select className="w-full border-2 rounded-md px-3 py-2" value={mesesPE} onChange={e => setMesesPE(parseInt(e.target.value))} style={{ borderColor: accent }}>
                     {[3,6,9,12].map(m => <option key={m} value={m}>{m} meses</option>)}
                   </select>
-                  <p className="text-xs text-muted-foreground">Esto se mostrara como una curva de "{mesesPE}m P.E.". en un  grafico  diseñado en el Tablero contra 
+                  <p className="text-xs text-muted-foreground">Esto se mostrara como una curva de "{mesesPE}m Punto de Equilibrio". en un  grafico  diseñado en el Tablero contra 
                     una curva de 12 meses que es un estimado de llegada a punto de equli¡brio estos 12m equivalen a una avance del 8% de avance mensual en ventas.</p>
                 </div>
 
@@ -1538,14 +1538,14 @@ useEffect(() => {
                           <YAxis yAxisId="right" orientation="right" tickFormatter={(v)=>`$${new Intl.NumberFormat('es-CL').format(v)}`} />
                           <Tooltip content={<TooltipContent />} />
                           <Legend />
-                          <Line yAxisId="left" type="monotone" dataKey="%PE_12m" name="12m P.E." strokeDasharray="4 4" dot={false} />
-                          <Line yAxisId="left" type="monotone" dataKey="%PE_usuario" name={`${mesesPE}m P.E.`} dot={false} />
+                          <Line yAxisId="left" type="monotone" dataKey="%PE_12m" name="12m Punto de Equilibrio." strokeDasharray="4 4" dot={false} />
+                          <Line yAxisId="left" type="monotone" dataKey="%PE_usuario" name={`${mesesPE}m Punto de Equilibrio`} dot={false} />
                           <Bar yAxisId="right" dataKey="deficit" name="Déficit mensual" opacity={0.5} />
                         </ComposedChart>
                       </ResponsiveContainer>
                     </div>
                     <div className="text-xs text-muted-foreground mt-2">
-                      Líneas: <strong>12m P.E.</strong> (ruta en 12 meses) y <strong>{mesesPE}m P.E.</strong> (tu plan). Barra = <strong>déficit mensual</strong> (MC total − Gastos fijos).
+                      Líneas: <strong>12m P.E.</strong> (ruta en 12 meses) y <strong>{mesesPE}m Punto de Equilibrio.</strong> (tu plan). Barra = <strong>déficit mensual</strong> (MC total − Gastos fijos).
                     </div>
                   </div>
                 </div>
@@ -1616,11 +1616,11 @@ useEffect(() => {
   {/* Métricas operativas */}
   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
     <div className="flex items-center justify-between">
-      <span>Ventas para P.E.</span>
+      <span>Ventas para Punto de Equilibrio</span>
       <span className="font-medium">${fmtCL(outputs.pe.ventasPE)}</span>
     </div>
     <div className="flex items-center justify-between">
-      <span>Clientes para tu P.E.</span>
+      <span>Clientes para tu Punto de Equilibrio</span>
       <span className="font-medium">{fmtNum(outputs.pe.clientsPE)}</span>
     </div>
     <div className="flex items-center justify-between">
@@ -2516,16 +2516,16 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
         </div>
         {/* Métricas operativas (copia del tablero) */}
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center justify-between"><span>Ventas para P.E.</span><span className="font-medium">${fmtCL(ventasPE)}</span></div>
-          <div className="flex items-center justify-between"><span>Clientes para tu P.E.</span><span className="font-medium">{fmtNum(clientsPE)}</span></div>
-          <div className="flex items-center justify-between"><span>Clientes objetivo (mes)</span><span className="font-medium">{fmtNum(N)}</span></div>
-          <div className="flex items-center justify-between"><span>Tráfico requerido</span><span className="font-medium">{fmtNum(Q)}</span></div>
+          <div className="flex items-center justify-between"><span>Ventas para Punto de Equilibrio....</span><span className="font-medium">${fmtCL(ventasPE)}</span></div>
+          <div className="flex items-center justify-between"><span>Clientes para tu Punto de Equiibrio....</span><span className="font-medium">{fmtNum(clientsPE)}</span></div>
+          <div className="flex items-center justify-between"><span>Clientes objetivo (mes)....</span><span className="font-medium">{fmtNum(N)}</span></div>
+          <div className="flex items-center justify-between"><span>Tráfico requerido....</span><span className="font-medium">{fmtNum(Q)}</span></div>
           <div className="flex items-center justify-between">
-            <span>Costo unitario tráfico por cliente</span>
+            <span>Costo unitario tráfico por cliente....</span>
             <span className="font-medium">{fmtCL(mode === 'budget' ? CPL_implicito : (Q > 0 ? Math.round((M_requerido || 0) / Q) : 0))}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Costo por cliente que compra</span>
+            <span>Costo por cliente que compra....</span>
             <span className="font-medium">{fmtCL(mode === 'budget' ? CAC_implicito : CAC_target)}</span>
           </div>
         </div>
@@ -2540,7 +2540,7 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
             <thead>
               <tr className="text-left">
                 <th className="py-1 pr-2">Mes</th>
-                <th className="py-1 pr-2">% P.E. (usuario)</th>
+                <th className="py-1 pr-2">% Punto de Equilibrio (usuario)</th>
                 <th className="py-1 pr-2">Clientes/mes</th>
                 <th className="py-1 pr-2">Déficit del mes</th>
               </tr>

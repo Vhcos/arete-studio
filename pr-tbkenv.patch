@@ -1,0 +1,34 @@
+diff --git a/lib/webpay.ts b/lib/webpay.ts
+--- a/lib/webpay.ts
++++ b/lib/webpay.ts
+@@
+ type TbkEnv = "integration" | "live";
+ 
+ function baseUrl(env: TbkEnv) {
+   return env === "live"
+     ? "https://webpay3g.transbank.cl/rswebpaytransaction/api/webpay/v1.2"
+     : "https://webpay3gint.transbank.cl/rswebpaytransaction/api/webpay/v1.2";
+ }
+ 
+-function tbkEnv(): TbkEnv {
+-  const v = (process.env.TBK_ENV || "integration").toLowerCase();
+-  return v === "live" ? "live" : "integration";
+-}
++function tbkEnv(): TbkEnv {
++  const v = (process.env.TBK_ENV || "integration").toLowerCase().trim();
++  if (v === "live" || v === "prod" || v === "production") return "live";
++  return "integration";
++}
+ 
+-function tbkHeaders() {
+-  const apiKeyId = process.env.TBK_API_KEY_ID || "";
+-  const apiKeySecret = process.env.TBK_API_KEY_SECRET || "";
++function tbkHeaders() {
++  const apiKeyId = (process.env.TBK_API_KEY_ID || "").trim();
++  const apiKeySecret = (process.env.TBK_API_KEY_SECRET || "").trim();
+   return {
+     "Content-Type": "application/json",
+     "Tbk-Api-Key-Id": apiKeyId,
+     "Tbk-Api-Key-Secret": apiKeySecret,
+   };
+ }
