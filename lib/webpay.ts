@@ -1,3 +1,4 @@
+// lib/webpay.ts
 type TbkEnv = "integration" | "live";
 
 function baseUrl(env: TbkEnv) {
