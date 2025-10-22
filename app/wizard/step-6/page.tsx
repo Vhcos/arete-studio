@@ -12,6 +12,7 @@ import type { SectorId } from "@/lib/model/sectors";
 import EconomicHeader from "./_components/EconomicHeader";
 import { SECTORS } from "@/lib/model/sectors";
 import EERRAnual from "@/components/finance/EERRAnual";
+import UpsellBanner from "@/components/wizard/UpsellBanner";
 
 /* =============== Helpers CLP y números =============== */
 const onlyDigitsComma = (s: string) => s.replace(/[^\d,]/g, "");
@@ -274,7 +275,7 @@ export default function Step6Page() {
       const legacy = toLegacyForm({ ...data, step6: s6 } as any);
       localStorage.setItem("arete:legacyForm", JSON.stringify(legacy));
 
-      router.push("/wizard/step-5"); // siguiente según tu flujo
+      router.push("/wizard/step-7"); // siguiente según tu flujo
     } catch (e: any) {
       setErr(e?.message ?? "Error al guardar");
     } finally {
@@ -513,9 +514,13 @@ export default function Step6Page() {
       {err && <p className="text-sm text-red-600 mb-3">{err}</p>}
 
       <div className="mt-2 flex items-center justify-between">
-        <PrevButton href="/wizard/step-3" />
+        <PrevButton href="/wizard/step-5" />
         <NextButton onClick={onNext} />
       </div>
+      <UpsellBanner />
+      <p className="mt-4 text-xs text-slate-500">
+          Nota: la generación con IA se hará al final, en el Informe.
+        </p>
     </main>
   );
 }

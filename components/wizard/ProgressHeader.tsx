@@ -1,13 +1,15 @@
+// components/wizard/ProgressHeader.tsx
 "use client";
 import { usePathname } from "next/navigation";
 
 const STEPS = [
   { slug:"step-1", label:"Datos" },
-  { slug:"step-2", label:"Tipo" },
-  { slug:"step-3", label:"Contexto" },
-  { slug:"step-6", label:"Económico" },
+  { slug:"step-2", label:"Idea" },
+  { slug:"step-3", label:"Rubro" },
+  { slug:"step-4", label:"Ventaja" },
   { slug:"step-5", label:"Emocional" },
-  { slug:"step-4", label:"Confirmar" },
+  { slug:"step-6", label:"Economico" },
+  { slug:"step-7", label:"Confirmar" },
 ];
 
 export function ProgressHeader() {

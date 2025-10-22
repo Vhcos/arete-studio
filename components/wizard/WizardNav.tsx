@@ -1,3 +1,4 @@
+// components/wizard/WizardNav.tsx
 "use client";
 import Link from "next/link";
 

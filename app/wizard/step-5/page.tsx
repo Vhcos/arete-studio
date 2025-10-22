@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useWizardStore } from "@/lib/state/wizard-store";
 import { Step5Schema } from "@/lib/validation/wizard-extra";
+import UpsellBanner from "@/components/wizard/UpsellBanner";
 
 type S = { key: keyof ReturnType<typeof getDefault>; label: string };
 function getDefault() {
@@ -19,6 +20,7 @@ const FIELDS: S[] = [
   { key:"toleranciaRiesgo", label:"4.Tolerancia al Riesgo" },
   { key:"accesibilidad", label:"5.Accesibilidad al cliente" },
   { key:"pasion", label:"6.Tu pasión/compromiso con la idea" },
+  
   
   
   { key:"testeoPrevio", label:"Testeo previo" },
@@ -42,7 +44,7 @@ export default function Step5Page() {
     const completeData = { ...getDefault(), ...parsed.data };
     setStep5(completeData);
 
-    router.push("/wizard/step-4");
+    router.push("/wizard/step-6");
   }
 
   return (
@@ -84,9 +86,13 @@ export default function Step5Page() {
       {err && <p className="mt-3 text-xs text-red-600">{err}</p>}
 
       <div className="mt-6 flex items-center gap-3">
-        <button onClick={() => router.push("/wizard/step-6")} className="rounded-lg border px-4 py-2">Atrás</button>
-        <button onClick={onNext} className="rounded-lg bg-blue-600 text-white px-4 py-2">Siguiente</button>
+        <button onClick={() => router.push("/wizard/step-4")} className="rounded-lg border px-4 py-2">Atrás</button>
+        <button onClick={onNext} className="rounded-lg bg-green-600 text-white px-4 py-2">Siguiente</button>
       </div>
+      <UpsellBanner />
+      <p className="mt-4 text-xs text-slate-500">
+          Nota: la generación con IA se hará al final, en el Informe.
+        </p>
     </div>
   );
 }

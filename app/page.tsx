@@ -1012,26 +1012,23 @@ useEffect(() => {
           </div>
 
             <h1 className="text-2xl font-bold tracking-tight">
-             <span className="hidden sm:inline"> Evalúa tu Idea de Negocio con IA</span>
+             <span className="hidden sm:inline"> Evalúa tu Idea de Negocio con la ayuda de la IA</span>
              <p className="text-sm text-muted-foreground -mt-1">
-            Cumple tu propósito de la mejor manera
+            Sigue tu sueño no te rindas
            </p>
-             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio con IA</span>
+             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio con la ayuda de la IA</span>
            </h1>
            
 
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
             <Link
-              href="/wizard/step-4"
-              className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
+              href="/wizard/step-1"
+              className="inline-flex items-center gap-2 rounded border border-blue-600 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
               title="Volver al Paso 4 del asistente"
             >
-                ← Volver al paso 6
+                ← Volver al paso 1 del asistente
             </Link>
-             <p className="text-sm text-muted-foreground -mt-1">
-            <strong>En Informe podrás aplicar IA a tu idea y obtener un plan de negocio</strong>
-           </p>
             
           </div>
         </div>
@@ -1474,12 +1471,14 @@ useEffect(() => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Tablero de decisión</CardTitle>
+                 
                   <div className="flex items-center gap-2">
                     <Badge className={badgeClass(scoreColor)}>{Math.round(outputs.totalScore)} / 100</Badge>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
+                 <p> En Informe podrás aplicar IA</p>
                   <div className="no-print mb-3">
                    <Button onClick={() => printOnly('tablero')}>Imprimir tablero</Button>
                   
@@ -1487,7 +1486,7 @@ useEffect(() => {
                     href="/informe"
                       className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                   Ir a informe
+                   Ir a informe y aplica IA →
                   </Link>
                  </div>
                   <section id="tablero" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1671,7 +1670,10 @@ useEffect(() => {
           {/* REPORT */}
           <TabsContent value="explain">
             <Card className="border-none shadow-sm">
-              <CardHeader><CardTitle>Informe</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Informe</CardTitle>
+              <p className="mt-4 text-xs text-slate-500 flex items-center gap-1">
+        Nota: La generación con IA resta 3 créditos.
+      </p></CardHeader>
               <CardContent>
                  <div className="no-print mb-4 flex w-full items-center justify-between gap-3">
                 <Button

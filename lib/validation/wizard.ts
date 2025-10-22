@@ -1,3 +1,4 @@
+// lib/validation/wizard.ts
 import { z } from "zod";
 
 // Cuenta palabras reales (no caracteres)
@@ -7,20 +8,17 @@ export const Step1Schema = z.object({
   // ahora permite vacío (mostrarás aviso, pero no bloquea)
   ubicacion: z.string().trim().optional().default(""), // ← NUEVO
   projectName: z.string().optional(),
-  idea: z.string()
-    .trim()
-    .min(5, "Escribe al menos 5 caracteres para activar el Informe con IA")
-    .refine((v) => wordCount(v) <= 500, { message: "Máximo 500 palabras" })
-    .optional()
-    .default(""),
+  idea: z.string().optional().default(""),
   founderName: z.string().optional(),
   notifyEmail: z.string().email("Ingresa un email válido para su informe").optional(),
 });
 
 export const Step2Schema = z.object({
   sectorId: z.string().min(2, "Selecciona un sector"),
-  template: z.enum(["default", "lean", "pitch"]),
+  template: z.string().optional().default(""),
+  ubicacion: z.string().trim().optional().default(""),
 });
+
 
 export const Step3Schema = z.object({
   ventajaTexto: z.string().trim().optional().default(""),

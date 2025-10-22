@@ -26,7 +26,7 @@ export default function EconomicHeader({
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold">Paso 4 · Económico</h2>
+      <h2 className="text-lg font-semibold">Paso 6 · Económico</h2>
 
       <p className="text-sm text-slate-700">
         <strong>Con 3–4 datos clave te armamos un presupuesto base para tu idea de negocio en {sectorLabel}.</strong>{" "}

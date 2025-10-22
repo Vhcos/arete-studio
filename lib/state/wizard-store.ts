@@ -13,6 +13,7 @@ export type Step1 = {
 export type Step2 = {
   sectorId: string;
   template: string;
+  ubicacion?: string; // ahora vive aquí
   
 };
 
