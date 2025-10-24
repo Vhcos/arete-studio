@@ -1,3 +1,4 @@
+// app/wizard/idea/page.tsx
 import { Suspense } from "react";
 import IdeaClient from "./IdeaClient";
 

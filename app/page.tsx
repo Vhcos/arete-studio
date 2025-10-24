@@ -1,3 +1,4 @@
+// app/page.tsx
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities, @typescript-eslint/no-unused-vars */
 import React, { useMemo, useState, useEffect, useRef  } from "react";
@@ -218,6 +219,15 @@ export default function AreteDemo() {
 
   // -------------------- Formulario --------------------
   
+// Escala emocional 1–3 (UI) <-> 0–10 (cálculo)
+const triToTen = (v: number) => Math.max(1, Math.min(3, Math.round(v))) * 5 - 5; // 1→0, 2→5, 3→10
+const tenToTri = (n: number) => {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 2;          // default medio
+  if (x <= 3) return 1;
+  if (x <= 7) return 2;
+  return 3;
+};
 
 // ——— estado local (ajústalo a tu estado existente si ya lo tienes)
   
@@ -255,16 +265,17 @@ export default function AreteDemo() {
   const [ventaAnual, setVentaAnual] = useState('');        // 10) Venta primer año (12m)
   const [inversionInicial, setInversionInicial] = useState(''); // 20) Inversión inicial
 
-  // blandos / cualitativos (0–10)
-  const [urgencia, setUrgencia] = useState(5);
-  const [accesibilidad, setAccesibilidad] = useState(7);
-  const [competencia, setCompetencia] = useState(6);
-  const [experiencia, setExperiencia] = useState(5);
-  const [pasion, setPasion] = useState(8);
-  const [planesAlternativos, setPlanesAlternativos] = useState(6); // antes: riesgoControlado
-  const [toleranciaRiesgo, setToleranciaRiesgo] = useState(6);
-  const [testeoPrevio, setTesteoPrevio] = useState(5); // antes: traccionCualitativa
-  const [redApoyo, setRedApoyo] = useState(5);
+  // antes: 0–10 (ej. 5, 7, 6, …)
+const [urgencia, setUrgencia] = useState(2);
+const [accesibilidad, setAccesibilidad] = useState(2);
+const [competencia, setCompetencia] = useState(2);
+const [experiencia, setExperiencia] = useState(2);
+const [pasion, setPasion] = useState(2);
+const [planesAlternativos, setPlanesAlternativos] = useState(2);
+const [toleranciaRiesgo, setToleranciaRiesgo] = useState(2);
+const [testeoPrevio, setTesteoPrevio] = useState(2);
+const [redApoyo, setRedApoyo] = useState(2);
+
 
   // Supuestos y ajustes
   const [supuestos, setSupuestos] = useState("");
@@ -516,9 +527,6 @@ const costoVariableMes =
       ingresosMeta: ventaMensualCalc,
       ticket: parseNumberCL(ticket), costoUnit: parseNumberCL(costoUnit),
       cac: parseNumberCL(cac), frecuenciaAnual: parseNumberCL(frecuenciaAnual),
-      urgencia: parseNumberCL(urgencia), accesibilidad: parseNumberCL(accesibilidad), competencia: parseNumberCL(competencia),
-      experiencia: parseNumberCL(experiencia), pasion: parseNumberCL(pasion), planesAlternativos: parseNumberCL(planesAlternativos), toleranciaRiesgo: parseNumberCL(toleranciaRiesgo),
-      testeoPrevio: parseNumberCL(testeoPrevio), redApoyo: parseNumberCL(redApoyo),
       supuestos,
       clientesManual: parseNumberCL(clientesManual || 0),
       mesesPE,
@@ -527,6 +535,15 @@ const costoVariableMes =
       marketingMensual:  parseNumberCL(marketingMensual),  // CLP
       costoPct:          parseNumberCL(costoPct),          // en %
       inversionInicial: parseNumberCL(inversionInicial),
+      urgencia:            triToTen(urgencia),
+      accesibilidad:       triToTen(accesibilidad),
+      competencia:         triToTen(competencia),
+      experiencia:         triToTen(experiencia),
+      pasion:              triToTen(pasion),
+      planesAlternativos:  triToTen(planesAlternativos),
+      toleranciaRiesgo:    triToTen(toleranciaRiesgo),
+      testeoPrevio:        triToTen(testeoPrevio),
+      redApoyo:            triToTen(redApoyo),
     } as const;
     return computeScores(input);
   }, [idea, ventajaTexto, rubro, ubicacion, capitalTrabajo, gastosFijos, ticket, costoUnit, frecuenciaAnual, urgencia, accesibilidad, competencia, experiencia, pasion, planesAlternativos, toleranciaRiesgo, testeoPrevio, redApoyo, supuestos, 
@@ -1434,16 +1451,37 @@ useEffect(() => {
 
                 {/* Sliders */}
                 <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <SliderField label="Tu idea resuelve un problema (0–10)" value={urgencia} onChange={setUrgencia} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Accesibilidad al cliente (0–10)" value={accesibilidad} onChange={setAccesibilidad} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Competencia (cantidad/calidad, 0–10 = alta)" value={competencia} onChange={setCompetencia} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="TU experiencia en el rubro (0–10)" value={experiencia} onChange={setExperiencia} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="TU pasión/compromiso con la idea (0–10)" value={pasion} onChange={setPasion} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Planes alternativos a las dificultades (0–10)" value={planesAlternativos} onChange={setPlanesAlternativos} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="TU tolerancia al riesgo (0–10)" value={toleranciaRiesgo} onChange={setToleranciaRiesgo} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Testeo previo (0–10)" value={testeoPrevio} onChange={setTesteoPrevio} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Red de apoyo (mentores/socios/contactos, 0–10)" value={redApoyo} onChange={setRedApoyo} accent={accent} accentSoft={accentSoft} />
-                </div>
+  <TriPillField label="Tu idea resuelve un problema"
+                hint="¿nace de observar a tu cliente?"
+                value={urgencia} onChange={setUrgencia}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Accesibilidad al cliente"
+                hint="Ubicación/canal para alcanzar al cliente inicial"
+                value={accesibilidad} onChange={setAccesibilidad}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Competencia (intensidad)"
+                hint="Cantidad/calidad en tu zona/canal"
+                value={competencia} onChange={setCompetencia}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Tu experiencia en el rubro"
+                value={experiencia} onChange={setExperiencia}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Tu pasión/compromiso con la idea"
+                value={pasion} onChange={setPasion}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Planes alternativos a dificultades"
+                value={planesAlternativos} onChange={setPlanesAlternativos}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Tu tolerancia al riesgo"
+                value={toleranciaRiesgo} onChange={setToleranciaRiesgo}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Testeo previo (señales)"
+                value={testeoPrevio} onChange={setTesteoPrevio}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Red de apoyo (mentores/socios/contactos)"
+                value={redApoyo} onChange={setRedApoyo}
+                accent={accent} accentSoft={accentSoft} />
+</div>
               </CardContent>
             </Card>
 
@@ -1686,7 +1724,7 @@ useEffect(() => {
               }
                title={!isAIEnabled ? "Agrega al menos 5 caracteres en ‘Idea’ para habilitar la IA" : undefined}
               >
-               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
+               {iaLoading ? "Evaluando…" : "Generar Informe con IA Aret3"}
                </Button>
 
              <div className="ml-auto flex items-center gap-2"></div>
@@ -2564,3 +2602,48 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
   );
 }
 
+function TriPillField({
+  label,
+  hint,
+  value,
+  onChange,
+  accent,
+  accentSoft,
+}: {
+  label: string;
+  hint?: string;
+  value: number;                 // 1 | 2 | 3
+  onChange: (n: number) => void;
+  accent: string;
+  accentSoft: string;
+}) {
+  const opts = [1, 2, 3] as const;
+  return (
+    <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+      <div className="text-sm font-medium">{label}</div>
+      {hint && <div className="text-xs text-muted-foreground -mt-1">{hint}</div>}
+      <div className="mt-2 flex gap-2">
+        {opts.map((n) => {
+          const active = value === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onChange(n)}
+              className={[
+                "h-10 w-10 rounded-xl border text-sm font-medium transition",
+                active
+                  ? "bg-blue-600 text-white border-blue-700 shadow"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+              ].join(" ")}
+              aria-pressed={active}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+      <div className="text-xs text-muted-foreground">1 = nada · 2 = medio · 3 = mucho</div>
+    </div>
+  );
+}

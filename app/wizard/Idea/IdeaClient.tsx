@@ -1,3 +1,4 @@
+// app/wizard/idea/IdeaClient.tsx
 "use client";
 
 import * as React from "react";

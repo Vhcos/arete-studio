@@ -1,4 +1,4 @@
-//  app/wizard/step-4/page.tsx
+// app/wizard/step-4/page.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -8,27 +8,18 @@ import type { Step3 } from "@/lib/state/wizard-store";
 import { Step3Schema } from "@/lib/validation/wizard";
 import { NextButton, PrevButton } from "@/components/wizard/WizardNav";
 import UpsellBanner from "@/components/wizard/UpsellBanner";
+import EconomicHeader from "@/components/wizard/EconomicHeader";
+import BotIcon from "@/components/icons/BotIcon";
 
 const AI_ADV_ENDPOINT =
   process.env.NEXT_PUBLIC_AI_ADV_ENDPOINT ?? "/api/ai/advantage-improve";
 
-// Icono IA
-function BotIcon({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 3h6v3H9V3Z" fill="currentColor" />
-      <rect x="3" y="6" width="18" height="12" rx="4" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="9" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="15" cy="12" r="1.5" fill="currentColor" />
-      <path d="M7 18c1.5 1 3.5 1.5 5 1.5S15.5 19 17 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
+/* Spinner mínimo */
 function Spinner({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" aria-hidden="true">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
   );
 }
@@ -37,7 +28,7 @@ export default function Step4Page() {
   const router = useRouter();
   const { data, setStep3 } = useWizardStore();
 
-  // Contexto para el prompt
+  // Contexto para el prompt IA
   const idea = (data.step1?.idea ?? "").toString();
   const sectorId = (data.step2?.sectorId ?? "").toString();
   const ubicacion = (data.step2?.ubicacion ?? "").toString();
@@ -67,8 +58,10 @@ export default function Step4Page() {
       const improved = (j?.ventaja ?? j?.text ?? j?.content ?? "").toString().trim();
       if (!improved) throw new Error("Respuesta de IA vacía.");
       setLocal((s) => ({ ...s, ventajaTexto: improved }));
-      // refrescar el header de créditos
-      try { window.dispatchEvent(new Event("focus")); } catch {}
+      try {
+        // refresca créditos en el header
+        window.dispatchEvent(new Event("focus"));
+      } catch {}
     } catch (e: any) {
       setAiError(e?.message || "No se pudo mejorar con IA. Reintenta.");
     } finally {
@@ -91,71 +84,77 @@ export default function Step4Page() {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold mb-1">
-        Paso 4 · Cuéntanos qué harás distinto, cuál será tu impacto diferenciador y dónde harás tu negocio.
-      </h1>
-      <p className="text-sm text-slate-600 mb-6">Es muy importante que pienses en esto.</p>
+    <main className="mx-auto max-w-7xl px-3 py-8">
+      <EconomicHeader
+        title="Paso 4 · Tu ventaja diferenciadora"
+        subtitle="Cuéntanos qué harás distinto, cuál será tu impacto y dónde operarás."
+      />
 
-      <div className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium">
-            Tu ventaja diferenciadora (escribe con inspiración)
-          </label>
+      <section className="mx-auto mt-6 max-w-2xl rounded-xl border-2 border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5 p-6">
+        <label className="block text-sm font-medium text-slate-700">
+          Tu ventaja diferenciadora
+        </label>
 
-          {/* Textarea + botón IA (igual que Paso 2, estilos azules) */}
-          <div className="flex gap-3 items-stretch">
-            <textarea
-              className="mt-1 w-full rounded-lg border px-3 py-2 min-h-[120px]"
-              rows={5}
-              value={local.ventajaTexto ?? ""}
-              onChange={(e) => setLocal((s) => ({ ...s, ventajaTexto: e.target.value }))}
-              placeholder="¿Qué harás distinto o especial? tecnología, experiencia, costos, tiempo, marca, red, nicho, etc."
-            />
-            <button
-              type="button"
-              onClick={onImproveWithAI}
-              disabled={aiLoading}
-              title="Mejorar con IA (resta 1 crédito)"
-              aria-busy={aiLoading}
-              className={[
-                "mt-1 shrink-0 w-[56px] rounded-xl border px-3 py-2",
-                "flex flex-col items-center justify-center",
-                "transition-colors duration-150",
-                "bg-blue-100 border-blue-300 text-blue-700",
-                "hover:bg-blue-200 hover:border-blue-400 hover:text-blue-800",
-                "active:bg-blue-300 active:border-blue-500",
-                "shadow-sm hover:shadow",
-                "disabled:opacity-60 disabled:cursor-not-allowed",
-              ].join(" ")}
-            >
-              {aiLoading ? <Spinner className="w-5 h-5" /> : <BotIcon />}
-              <span className="mt-1 text-[10px] leading-none">IA</span>
-            </button>
-          </div>
-
-          {errors.ventajaTexto && (
-            <p className="mt-1 text-xs text-red-600">{errors.ventajaTexto}</p>
-          )}
-          {aiError && <p className="mt-2 text-xs text-red-600">IA: {aiError}</p>}
+        {/* Textarea + botón IA (igual patrón Step-2: blue 100/200/300) */}
+        <div className="flex gap-3 items-stretch">
+          <textarea
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 min-h-[120px] shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
+            rows={5}
+            value={local.ventajaTexto ?? ""}
+            onChange={(e) => setLocal((s) => ({ ...s, ventajaTexto: e.target.value }))}
+            placeholder="¿Qué harás distinto o especial? tecnología, experiencia, costos, tiempo, marca, red, nicho, etc."
+          />
+          <button
+            type="button"
+            onClick={onImproveWithAI}
+            disabled={aiLoading}
+            title="Mejorar con IA Aret3 (resta 1 crédito)"
+            aria-busy={aiLoading}
+            className={[
+              "mt-1 shrink-0 w-[64px] rounded-xl border px-3 py-2",
+              "flex flex-col items-center justify-center",
+              "transition-colors duration-150",
+              "bg-blue-100 border-blue-300 text-blue-700",
+              "hover:bg-blue-200 hover:border-blue-400 hover:text-blue-800",
+              "active:bg-blue-300 active:border-blue-500",
+              "shadow-sm hover:shadow",
+              "disabled:opacity-60 disabled:cursor-not-allowed",
+            ].join(" ")}
+          >
+            {aiLoading ? <Spinner className="w-5 h-5" /> : <BotIcon className="w-5 h-5" variant="t3" />}
+            <span className="mt-1 text-[10px] leading-none">IA Aret3</span>
+          </button>
         </div>
+
+        {/* Mensajes */}
+        {errors.ventajaTexto && (
+          <p className="mt-1 text-xs text-red-600">{errors.ventajaTexto}</p>
+        )}
+        {aiError && <p className="mt-2 text-xs text-red-600">IA: {aiError}</p>}
+
+        {/* Ejemplo */}
+        <p className="text-sm text-slate-400 mt-2">
+          Ejemplo: Propuesta de atención a la vieja escuela, donde “cada cliente es un invitado especial”,
+          distinta de la frialdad de las cadenas y la improvisación de los bares amateur.
+        </p>
+
+        <div className="mt-6 flex items-center justify-between">
+          <PrevButton href="/wizard/step-3" />
+          <NextButton onClick={onNext} />
+        </div>
+      </section>
+
+      <div className="max-w-2xl mx-auto mt-4">
+        <UpsellBanner />
       </div>
 
-      {/* Ejemplo */}
-      <p className="text-sm text-slate-400 mt-2">
-        Ejemplo: Propuesta de atención a la vieja escuela, donde “cada cliente es un invitado especial”, diferente de la frialdad de las cadenas y la improvisación de los bares amateur.
+      <p className="mt-4 text-xs text-slate-500 text-center">
+        Nota: usar{" "}
+        <span className="inline-flex items-center gap-1 font-medium">
+          <BotIcon className="w-3.5 h-3.5" variant="t3" /> IA Aret3
+        </span>{" "}
+        resta 1 crédito.
       </p>
-
-      <div className="mt-8 flex items-center justify-between">
-        <PrevButton href="/wizard/step-3" />
-        <NextButton onClick={onNext} />
-      </div>
-
-      <UpsellBanner />
-
-      <p className="mt-4 text-xs text-slate-500 flex items-center gap-1">
-        Nota: la generación con IA <BotIcon className="w-3.5 h-3.5" /> resta un crédito.
-      </p>
-    </div>
+    </main>
   );
 }
