@@ -1,0 +1,7 @@
+{
+  "buy_order": "P200-xxxxxxxxxxxx",
+  "session_id": "user_xxx",
+  "amount": 5000,
+  "status": "FAILED",
+  "response_code": -1
+}

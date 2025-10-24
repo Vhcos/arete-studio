@@ -91,20 +91,25 @@ export const STEP6_TEMPLATES: Record<Step6TemplateId, Step6Percentages> = {
 
 // === Rubro (SectorId) → Plantilla (A..E) ===
 export const RUBRO_TO_TEMPLATE: Record<SectorId, Step6TemplateId> = {
-  tech_saas: "C",
-  ecommerce_marketplace: "E",
-  services_agency: "C",
-  manufacturing_product: "D",
+  
   food_beverage: "A",
   restaurant_cafe: "A",
-  health_wellness: "C",
-  education_edtech: "C",
+  retail_local: "A",
   tourism_hospitality: "A",
+
   construction_realestate: "B",
   logistics_mobility: "B",
-  retail_local: "A",
+
+  tech_saas: "C",
+  services_agency: "C",
+  health_wellness: "C",
+  education_edtech: "C",
   creative_media: "C",
+
   agro_agritech: "D",
+  manufacturing_product: "D",
+  
+  ecommerce_marketplace: "E",
 };
 
 export function getTemplateIdForSector(sector: SectorId): Step6TemplateId {

@@ -1,3 +1,4 @@
+// app/page.tsx
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities, @typescript-eslint/no-unused-vars */
 import React, { useMemo, useState, useEffect, useRef  } from "react";
@@ -218,6 +219,15 @@ export default function AreteDemo() {
 
   // -------------------- Formulario --------------------
   
+// Escala emocional 1–3 (UI) <-> 0–10 (cálculo)
+const triToTen = (v: number) => Math.max(1, Math.min(3, Math.round(v))) * 5 - 5; // 1→0, 2→5, 3→10
+const tenToTri = (n: number) => {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 2;          // default medio
+  if (x <= 3) return 1;
+  if (x <= 7) return 2;
+  return 3;
+};
 
 // ——— estado local (ajústalo a tu estado existente si ya lo tienes)
   
@@ -255,16 +265,17 @@ export default function AreteDemo() {
   const [ventaAnual, setVentaAnual] = useState('');        // 10) Venta primer año (12m)
   const [inversionInicial, setInversionInicial] = useState(''); // 20) Inversión inicial
 
-  // blandos / cualitativos (0–10)
-  const [urgencia, setUrgencia] = useState(5);
-  const [accesibilidad, setAccesibilidad] = useState(7);
-  const [competencia, setCompetencia] = useState(6);
-  const [experiencia, setExperiencia] = useState(5);
-  const [pasion, setPasion] = useState(8);
-  const [planesAlternativos, setPlanesAlternativos] = useState(6); // antes: riesgoControlado
-  const [toleranciaRiesgo, setToleranciaRiesgo] = useState(6);
-  const [testeoPrevio, setTesteoPrevio] = useState(5); // antes: traccionCualitativa
-  const [redApoyo, setRedApoyo] = useState(5);
+  // antes: 0–10 (ej. 5, 7, 6, …)
+const [urgencia, setUrgencia] = useState(2);
+const [accesibilidad, setAccesibilidad] = useState(2);
+const [competencia, setCompetencia] = useState(2);
+const [experiencia, setExperiencia] = useState(2);
+const [pasion, setPasion] = useState(2);
+const [planesAlternativos, setPlanesAlternativos] = useState(2);
+const [toleranciaRiesgo, setToleranciaRiesgo] = useState(2);
+const [testeoPrevio, setTesteoPrevio] = useState(2);
+const [redApoyo, setRedApoyo] = useState(2);
+
 
   // Supuestos y ajustes
   const [supuestos, setSupuestos] = useState("");
@@ -516,9 +527,6 @@ const costoVariableMes =
       ingresosMeta: ventaMensualCalc,
       ticket: parseNumberCL(ticket), costoUnit: parseNumberCL(costoUnit),
       cac: parseNumberCL(cac), frecuenciaAnual: parseNumberCL(frecuenciaAnual),
-      urgencia: parseNumberCL(urgencia), accesibilidad: parseNumberCL(accesibilidad), competencia: parseNumberCL(competencia),
-      experiencia: parseNumberCL(experiencia), pasion: parseNumberCL(pasion), planesAlternativos: parseNumberCL(planesAlternativos), toleranciaRiesgo: parseNumberCL(toleranciaRiesgo),
-      testeoPrevio: parseNumberCL(testeoPrevio), redApoyo: parseNumberCL(redApoyo),
       supuestos,
       clientesManual: parseNumberCL(clientesManual || 0),
       mesesPE,
@@ -527,6 +535,15 @@ const costoVariableMes =
       marketingMensual:  parseNumberCL(marketingMensual),  // CLP
       costoPct:          parseNumberCL(costoPct),          // en %
       inversionInicial: parseNumberCL(inversionInicial),
+      urgencia:            triToTen(urgencia),
+      accesibilidad:       triToTen(accesibilidad),
+      competencia:         triToTen(competencia),
+      experiencia:         triToTen(experiencia),
+      pasion:              triToTen(pasion),
+      planesAlternativos:  triToTen(planesAlternativos),
+      toleranciaRiesgo:    triToTen(toleranciaRiesgo),
+      testeoPrevio:        triToTen(testeoPrevio),
+      redApoyo:            triToTen(redApoyo),
     } as const;
     return computeScores(input);
   }, [idea, ventajaTexto, rubro, ubicacion, capitalTrabajo, gastosFijos, ticket, costoUnit, frecuenciaAnual, urgencia, accesibilidad, competencia, experiencia, pasion, planesAlternativos, toleranciaRiesgo, testeoPrevio, redApoyo, supuestos, 
@@ -561,8 +578,8 @@ const costoVariableMes =
     return (
       <div className="rounded-md border bg-white p-2 text-xs">
         <div className="font-medium">Mes {String(label).replace('M','')}</div>
-        <div>12m P.E.: <strong>{fmtNum(clientes12)}</strong> clientes</div>
-        <div>{mesesPE}m P.E.: <strong>{fmtNum(clientesUsr)}</strong> clientes</div>
+        <div>12m Punto de Equilibrio.: <strong>{fmtNum(clientes12)}</strong> clientes</div>
+        <div>{mesesPE}m Punto de Equilibrio: <strong>{fmtNum(clientesUsr)}</strong> clientes</div>
         <div>Déficit: <strong>${fmtCL(deficit)}</strong></div>
       </div>
     );
@@ -1012,26 +1029,23 @@ useEffect(() => {
           </div>
 
             <h1 className="text-2xl font-bold tracking-tight">
-             <span className="hidden sm:inline"> Evalúa tu Idea de Negocio con IA</span>
+             <span className="hidden sm:inline"> Evalúa tu Idea de Negocio con la ayuda de la IA</span>
              <p className="text-sm text-muted-foreground -mt-1">
-            Cumple tu propósito de la mejor manera
+            Sigue tu sueño no te rindas
            </p>
-             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio con IA</span>
+             <span className="sm:hidden">Aret3 · Evalúa tu Idea de Negocio con la ayuda de la IA</span>
            </h1>
            
 
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
             <Link
-              href="/wizard/step-4"
-              className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
+              href="/wizard/step-1"
+              className="inline-flex items-center gap-2 rounded border border-blue-600 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
               title="Volver al Paso 4 del asistente"
             >
-                ← Volver al paso 6
+                ← Volver al paso 1 del asistente
             </Link>
-             <p className="text-sm text-muted-foreground -mt-1">
-            <strong>En Informe podrás aplicar IA a tu idea y obtener un plan de negocio</strong>
-           </p>
             
           </div>
         </div>
@@ -1425,7 +1439,7 @@ useEffect(() => {
                   <select className="w-full border-2 rounded-md px-3 py-2" value={mesesPE} onChange={e => setMesesPE(parseInt(e.target.value))} style={{ borderColor: accent }}>
                     {[3,6,9,12].map(m => <option key={m} value={m}>{m} meses</option>)}
                   </select>
-                  <p className="text-xs text-muted-foreground">Esto se mostrara como una curva de "{mesesPE}m P.E.". en un  grafico  diseñado en el Tablero contra 
+                  <p className="text-xs text-muted-foreground">Esto se mostrara como una curva de "{mesesPE}m Punto de Equilibrio". en un  grafico  diseñado en el Tablero contra 
                     una curva de 12 meses que es un estimado de llegada a punto de equli¡brio estos 12m equivalen a una avance del 8% de avance mensual en ventas.</p>
                 </div>
 
@@ -1437,16 +1451,37 @@ useEffect(() => {
 
                 {/* Sliders */}
                 <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <SliderField label="Tu idea resuelve un problema (0–10)" value={urgencia} onChange={setUrgencia} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Accesibilidad al cliente (0–10)" value={accesibilidad} onChange={setAccesibilidad} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Competencia (cantidad/calidad, 0–10 = alta)" value={competencia} onChange={setCompetencia} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="TU experiencia en el rubro (0–10)" value={experiencia} onChange={setExperiencia} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="TU pasión/compromiso con la idea (0–10)" value={pasion} onChange={setPasion} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Planes alternativos a las dificultades (0–10)" value={planesAlternativos} onChange={setPlanesAlternativos} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="TU tolerancia al riesgo (0–10)" value={toleranciaRiesgo} onChange={setToleranciaRiesgo} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Testeo previo (0–10)" value={testeoPrevio} onChange={setTesteoPrevio} accent={accent} accentSoft={accentSoft} />
-                  <SliderField label="Red de apoyo (mentores/socios/contactos, 0–10)" value={redApoyo} onChange={setRedApoyo} accent={accent} accentSoft={accentSoft} />
-                </div>
+  <TriPillField label="Tu idea resuelve un problema"
+                hint="¿nace de observar a tu cliente?"
+                value={urgencia} onChange={setUrgencia}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Accesibilidad al cliente"
+                hint="Ubicación/canal para alcanzar al cliente inicial"
+                value={accesibilidad} onChange={setAccesibilidad}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Competencia (intensidad)"
+                hint="Cantidad/calidad en tu zona/canal"
+                value={competencia} onChange={setCompetencia}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Tu experiencia en el rubro"
+                value={experiencia} onChange={setExperiencia}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Tu pasión/compromiso con la idea"
+                value={pasion} onChange={setPasion}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Planes alternativos a dificultades"
+                value={planesAlternativos} onChange={setPlanesAlternativos}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Tu tolerancia al riesgo"
+                value={toleranciaRiesgo} onChange={setToleranciaRiesgo}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Testeo previo (señales)"
+                value={testeoPrevio} onChange={setTesteoPrevio}
+                accent={accent} accentSoft={accentSoft} />
+  <TriPillField label="Red de apoyo (mentores/socios/contactos)"
+                value={redApoyo} onChange={setRedApoyo}
+                accent={accent} accentSoft={accentSoft} />
+</div>
               </CardContent>
             </Card>
 
@@ -1474,12 +1509,14 @@ useEffect(() => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Tablero de decisión</CardTitle>
+                 
                   <div className="flex items-center gap-2">
                     <Badge className={badgeClass(scoreColor)}>{Math.round(outputs.totalScore)} / 100</Badge>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
+                 <p> En Informe podrás aplicar IA</p>
                   <div className="no-print mb-3">
                    <Button onClick={() => printOnly('tablero')}>Imprimir tablero</Button>
                   
@@ -1487,7 +1524,7 @@ useEffect(() => {
                     href="/informe"
                       className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                   Ir a informe
+                   Ir a informe y aplica IA →
                   </Link>
                  </div>
                   <section id="tablero" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1538,14 +1575,14 @@ useEffect(() => {
                           <YAxis yAxisId="right" orientation="right" tickFormatter={(v)=>`$${new Intl.NumberFormat('es-CL').format(v)}`} />
                           <Tooltip content={<TooltipContent />} />
                           <Legend />
-                          <Line yAxisId="left" type="monotone" dataKey="%PE_12m" name="12m P.E." strokeDasharray="4 4" dot={false} />
-                          <Line yAxisId="left" type="monotone" dataKey="%PE_usuario" name={`${mesesPE}m P.E.`} dot={false} />
+                          <Line yAxisId="left" type="monotone" dataKey="%PE_12m" name="12m Punto de Equilibrio." strokeDasharray="4 4" dot={false} />
+                          <Line yAxisId="left" type="monotone" dataKey="%PE_usuario" name={`${mesesPE}m Punto de Equilibrio`} dot={false} />
                           <Bar yAxisId="right" dataKey="deficit" name="Déficit mensual" opacity={0.5} />
                         </ComposedChart>
                       </ResponsiveContainer>
                     </div>
                     <div className="text-xs text-muted-foreground mt-2">
-                      Líneas: <strong>12m P.E.</strong> (ruta en 12 meses) y <strong>{mesesPE}m P.E.</strong> (tu plan). Barra = <strong>déficit mensual</strong> (MC total − Gastos fijos).
+                      Líneas: <strong>12m P.E.</strong> (ruta en 12 meses) y <strong>{mesesPE}m Punto de Equilibrio.</strong> (tu plan). Barra = <strong>déficit mensual</strong> (MC total − Gastos fijos).
                     </div>
                   </div>
                 </div>
@@ -1616,11 +1653,11 @@ useEffect(() => {
   {/* Métricas operativas */}
   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
     <div className="flex items-center justify-between">
-      <span>Ventas para P.E.</span>
+      <span>Ventas para Punto de Equilibrio</span>
       <span className="font-medium">${fmtCL(outputs.pe.ventasPE)}</span>
     </div>
     <div className="flex items-center justify-between">
-      <span>Clientes para tu P.E.</span>
+      <span>Clientes para tu Punto de Equilibrio</span>
       <span className="font-medium">{fmtNum(outputs.pe.clientsPE)}</span>
     </div>
     <div className="flex items-center justify-between">
@@ -1671,7 +1708,10 @@ useEffect(() => {
           {/* REPORT */}
           <TabsContent value="explain">
             <Card className="border-none shadow-sm">
-              <CardHeader><CardTitle>Informe</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Informe</CardTitle>
+              <p className="mt-4 text-xs text-slate-500 flex items-center gap-1">
+        Nota: La generación con IA resta 3 créditos.
+      </p></CardHeader>
               <CardContent>
                  <div className="no-print mb-4 flex w-full items-center justify-between gap-3">
                 <Button
@@ -1684,7 +1724,7 @@ useEffect(() => {
               }
                title={!isAIEnabled ? "Agrega al menos 5 caracteres en ‘Idea’ para habilitar la IA" : undefined}
               >
-               {iaLoading ? "Evaluando…" : "Generar Informe con IA"}
+               {iaLoading ? "Evaluando…" : "Generar Informe con IA Aret3"}
                </Button>
 
              <div className="ml-auto flex items-center gap-2"></div>
@@ -2516,16 +2556,16 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
         </div>
         {/* Métricas operativas (copia del tablero) */}
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center justify-between"><span>Ventas para P.E.</span><span className="font-medium">${fmtCL(ventasPE)}</span></div>
-          <div className="flex items-center justify-between"><span>Clientes para tu P.E.</span><span className="font-medium">{fmtNum(clientsPE)}</span></div>
-          <div className="flex items-center justify-between"><span>Clientes objetivo (mes)</span><span className="font-medium">{fmtNum(N)}</span></div>
-          <div className="flex items-center justify-between"><span>Tráfico requerido</span><span className="font-medium">{fmtNum(Q)}</span></div>
+          <div className="flex items-center justify-between"><span>Ventas para Punto de Equilibrio....</span><span className="font-medium">${fmtCL(ventasPE)}</span></div>
+          <div className="flex items-center justify-between"><span>Clientes para tu Punto de Equiibrio....</span><span className="font-medium">{fmtNum(clientsPE)}</span></div>
+          <div className="flex items-center justify-between"><span>Clientes objetivo (mes)....</span><span className="font-medium">{fmtNum(N)}</span></div>
+          <div className="flex items-center justify-between"><span>Tráfico requerido....</span><span className="font-medium">{fmtNum(Q)}</span></div>
           <div className="flex items-center justify-between">
-            <span>Costo unitario tráfico por cliente</span>
+            <span>Costo unitario tráfico por cliente....</span>
             <span className="font-medium">{fmtCL(mode === 'budget' ? CPL_implicito : (Q > 0 ? Math.round((M_requerido || 0) / Q) : 0))}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Costo por cliente que compra</span>
+            <span>Costo por cliente que compra....</span>
             <span className="font-medium">{fmtCL(mode === 'budget' ? CAC_implicito : CAC_target)}</span>
           </div>
         </div>
@@ -2540,7 +2580,7 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
             <thead>
               <tr className="text-left">
                 <th className="py-1 pr-2">Mes</th>
-                <th className="py-1 pr-2">% P.E. (usuario)</th>
+                <th className="py-1 pr-2">% Punto de Equilibrio (usuario)</th>
                 <th className="py-1 pr-2">Clientes/mes</th>
                 <th className="py-1 pr-2">Déficit del mes</th>
               </tr>
@@ -2562,3 +2602,48 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
   );
 }
 
+function TriPillField({
+  label,
+  hint,
+  value,
+  onChange,
+  accent,
+  accentSoft,
+}: {
+  label: string;
+  hint?: string;
+  value: number;                 // 1 | 2 | 3
+  onChange: (n: number) => void;
+  accent: string;
+  accentSoft: string;
+}) {
+  const opts = [1, 2, 3] as const;
+  return (
+    <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
+      <div className="text-sm font-medium">{label}</div>
+      {hint && <div className="text-xs text-muted-foreground -mt-1">{hint}</div>}
+      <div className="mt-2 flex gap-2">
+        {opts.map((n) => {
+          const active = value === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onChange(n)}
+              className={[
+                "h-10 w-10 rounded-xl border text-sm font-medium transition",
+                active
+                  ? "bg-blue-600 text-white border-blue-700 shadow"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+              ].join(" ")}
+              aria-pressed={active}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+      <div className="text-xs text-muted-foreground">1 = nada · 2 = medio · 3 = mucho</div>
+    </div>
+  );
+}

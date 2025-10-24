@@ -7,20 +7,21 @@ function baseUrl(env: TbkEnv) {
     : "https://webpay3gint.transbank.cl/rswebpaytransaction/api/webpay/v1.2";
 }
 
-function tbkEnv(): TbkEnv {
-  const v = (process.env.TBK_ENV || "integration").toLowerCase();
-  return v === "live" ? "live" : "integration";
-}
+ function tbkEnv(): TbkEnv {
+   const v = (process.env.TBK_ENV || "integration").toLowerCase().trim();
+   if (v === "live" || v === "prod" || v === "production") return "live";
+  return "integration";
+ }
 
-function tbkHeaders() {
-  const apiKeyId = process.env.TBK_API_KEY_ID || "";
-  const apiKeySecret = process.env.TBK_API_KEY_SECRET || "";
-  return {
-    "Content-Type": "application/json",
-    "Tbk-Api-Key-Id": apiKeyId,
-    "Tbk-Api-Key-Secret": apiKeySecret,
-  };
-}
+ function tbkHeaders() {
+   const apiKeyId = (process.env.TBK_API_KEY_ID || "").trim();
+   const apiKeySecret = (process.env.TBK_API_KEY_SECRET || "").trim();
+   return {
+     "Content-Type": "application/json",
+     "Tbk-Api-Key-Id": apiKeyId,
+     "Tbk-Api-Key-Secret": apiKeySecret,
+   };
+ }
 
 export async function webpayPlusCreate(input: {
   buyOrder: string;

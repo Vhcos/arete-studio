@@ -1,44 +1,73 @@
+// app/wizard/step-1/page.tsx
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useWizardStore } from "@/lib/state/wizard-store";
 import { Step1Schema } from "@/lib/validation/wizard";
 import { NextButton, PrevButton } from "@/components/wizard/WizardNav";
+import UpsellBanner from "@/components/wizard/UpsellBanner";
+import BotIcon from "@/components/icons/BotIcon";
 
 export default function Step1Page() {
   const router = useRouter();
   const { data, setStep1 } = useWizardStore();
-  const s1 = data.step1 ?? {};
+  const { data: session } = useSession();
+  const s1: any = data.step1 ?? {};
+
+  // Soportamos ambos nombres: email | notifyEmail
+  const existingEmail = (s1.notifyEmail ?? s1.email ?? "") as string;
 
   const [local, setLocal] = useState({
-    projectName: s1.projectName ?? "",
-    idea: s1.idea ?? "",
-    ubicacion: s1.ubicacion ?? "",
-    founderName: s1.founderName ?? "",
-    notifyEmail: s1.notifyEmail ?? "",
+    projectName: (s1.projectName ?? "") as string,
+    founderName: (s1.founderName ?? "") as string,
+    email: existingEmail,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Autofill desde sesión si falta
+  useEffect(() => {
+    const e = session?.user?.email;
+    if (e && !local.email) {
+      setLocal((prev) => ({ ...prev, email: e }));
+    }
+  }, [session?.user?.email, local.email]);
+
   function onNext() {
-    const parsed = Step1Schema.safeParse(local);
+    // Validamos contra el schema actual (que usa "email")
+    const parsed = Step1Schema.safeParse({
+      projectName: local.projectName,
+      founderName: local.founderName,
+      email: local.email,
+      ubicacion: s1.ubicacion ?? "",
+    });
+
     if (!parsed.success) {
       const e: Record<string, string> = {};
-      parsed.error.issues.forEach(i => (e[i.path.join(".")] = i.message));
+      parsed.error.issues.forEach((i) => (e[i.path.join(".")] = i.message));
       setErrors(e);
       return;
     }
-    console.log("[S1] ubicacion a guardar:", parsed.data.ubicacion);  //Verifica que Step-1 realmente guarda ubicacion
 
-    setStep1(parsed.data);
+    // Guardamos con ambos nombres para mantener compatibilidad aguas abajo
+    setStep1(
+      {
+        ...(data.step1 ?? {}),
+        ...parsed.data,
+        email: local.email,
+        notifyEmail: local.email,
+      } as any
+    );
+
     router.push("/wizard/step-2");
   }
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-1">Paso 1 · Bienvenido a Aret3</h1>
-      <p className="text-sm text-slate-600 mb-6">Estamos encantado de tenerte inicia este viaje con estos primeros pasos.</p>
+      <h1 className="text-xl font-semibold mb-1">Paso 1 · Datos básicos</h1>
+      <p className="text-sm text-slate-600 mb-6">Cuéntanos lo mínimo para empezar.</p>
 
-      <label className="block text-sm font-medium">Que nombre le tienes a tu Proyecto</label>
+      <label className="block text-sm font-medium">Nombre del proyecto</label>
       <input
         className="mt-1 w-full rounded-lg border px-3 py-2"
         placeholder="p. ej. Joyas Patagonia"
@@ -47,40 +76,7 @@ export default function Step1Page() {
       />
       {errors.projectName && <p className="mt-1 text-xs text-red-600">{errors.projectName}</p>}
 
-      <label className="text-xl font-semibold mb-1">
-  ¿Cuál es tu Idea que te Inspira? Necesitas escribir tu idea para{" "}
-  <span className="text-red-600 font-bold"> activar el Informe con IA</span>
-</label>
-<textarea
-  className="mt-1 w-full rounded-lg border px-3 py-2"
-  placeholder="Describe brevemente tu maravillosa idea eso ayudara a la IA. Con al menos 5 caracteres podrás activar el Informe con IA."
-  rows={3}
-  value={local.idea}
-  onChange={(e) => setLocal((s) => ({ ...s, idea: e.target.value }))}
-  onBlur={() => {
-    if ((local.idea ?? "").trim().length < 5) {
-      setErrors((prev) => ({ ...prev, idea: "Escribe al menos 5 caracteres para activar el Informe con IA" }));
-    } else {
-      setErrors((prev) => {
-        const { idea, ...rest } = prev;
-        return rest;
-      });
-    }
-  }}
-/>
-{errors.idea && <p className="mt-1 text-xs text-red-600">{errors.idea}</p>}
-
-      
-        {/* NUEVO: Ubicación (mismo patrón que founderName) */}
-      <label className="block text-sm font-medium mt-4">Ubicación</label>
-      <input
-        className="mt-1 w-full rounded-lg border px-3 py-2"
-        placeholder="Comuna, País, Continente"
-        value={local.ubicacion}
-        onChange={(e) => setLocal((s) => ({ ...s, ubicacion: e.target.value }))}
-      />
-
-      <label className="block text-sm font-medium mt-4">Danos tu nombre emprendedora/o</label>
+      <label className="block text-sm font-medium mt-4">Tu nombre</label>
       <input
         className="mt-1 w-full rounded-lg border px-3 py-2"
         placeholder="p. ej. Carola Plaza"
@@ -88,20 +84,30 @@ export default function Step1Page() {
         onChange={(e) => setLocal((s) => ({ ...s, founderName: e.target.value }))}
       />
 
-      <label className="block text-sm font-medium mt-4">Tu email asi recibiras tu informe </label>
+      <label className="block text-sm font-medium mt-4">Email de contacto</label>
       <input
         type="email"
         className="mt-1 w-full rounded-lg border px-3 py-2"
         placeholder="tucorreo@ejemplo.com"
-        value={local.notifyEmail}
-        onChange={(e) => setLocal((s) => ({ ...s, notifyEmail: e.target.value }))}
+        value={local.email}
+        onChange={(e) => setLocal((s) => ({ ...s, email: e.target.value }))}
       />
-      {errors.notifyEmail && <p className="mt-1 text-xs text-red-600">{errors.notifyEmail}</p>}
+      {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
 
       <div className="mt-6 flex items-center justify-between">
         <PrevButton href="/" />
         <NextButton onClick={onNext} />
       </div>
+
+      <UpsellBanner />
+
+      <p className="mt-4 text-xs text-slate-500">
+        Nota: la generación{" "}
+        <span className="inline-flex items-center gap-1 font-medium">
+          <BotIcon className="w-3.5 h-3.5" /> IA Aret3
+        </span>{" "}
+        se hará al final, en el Informe.
+      </p>
     </div>
   );
 }

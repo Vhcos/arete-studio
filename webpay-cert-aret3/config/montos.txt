@@ -1,0 +1,3 @@
+# Mapeo producto → monto (CLP)
+P200 (pack-200) = 5000
+A30  (addon_session_30m) = 30000

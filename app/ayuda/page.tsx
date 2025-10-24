@@ -341,7 +341,7 @@ export default function AyudaPage() {
             </li>
             <li>
               <strong>Cálculo (idea):</strong> margen de contribución % = (Precio − Costo unitario) / Precio. <br />
-              Ventas para P.E. ≈ Gastos fijos / (Margen de contribución %).
+              Ventas para PUNTO DE EQULIBRIO ≈ Gastos fijos / (Margen de contribución %).
            </li>
            <li>
               <strong>Interpretación:</strong> si tus <em>ingresos meta</em> &gt; PE → vas encima del punto; si no, estás por debajo.

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { signOut } from "next-auth/react";
 import { usePathname, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 const MARKETING_URL =
   process.env.NEXT_PUBLIC_MARKETING_URL || "https://aret3.cl";
@@ -72,23 +73,17 @@ export default function BillingBadge() {
           {plan ? `⭐ PRO · IA: ${count}` : <>IA disponibles: <strong>{count}</strong></>}
         </div>
 
-        {/* CTA asesoría */}
-        <button
-          onClick={goAdvisory}
-          className="text-xs px-2 py-1 rounded border border-blue-600 text-blue-700 hover:bg-blue-50"
-          title="Asesoría 30 min"
-        >
-          Asesoría 30 min
-        </button>
-
-        {/* CTA: Mejora tu plan */}
-        <a
+        
+       {/* Caluga compacta hacia billing */}
+        <Link
           href="/billing"
-          className="text-xs px-2 py-1 rounded border border-red-600 text-blue-700 hover:bg-blue-50"
-          title="Mejorar plan"
+          className="inline-flex items-center rounded-xl border border-red-600 text-blue-700 px-3 py-1.5 text-xs sm:text-sm font-semibold hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 whitespace-nowrap"
         >
-          Mejora tu plan
-        </a>
+          <span className="sm:hidden">Mejora tu plan</span>
+          <span className="hidden sm:inline">
+            Revisa nuestros planes y asesorías 1:1
+          </span>
+        </Link>
 
         <button
           onClick={handleSignOut}

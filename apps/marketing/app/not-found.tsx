@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
+// apps/marketing/app/not-found.tsx
 // Forzar que /404 NO se genere en SSG
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
