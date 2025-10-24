@@ -1,8 +1,8 @@
 // app/wizard/step-2/page.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useWizardStore } from "@/lib/state/wizard-store";
 import { NextButton, PrevButton } from "@/components/wizard/WizardNav";
 import UpsellBanner from "@/components/wizard/UpsellBanner";
@@ -24,6 +24,7 @@ function Spinner({ className = "w-5 h-5" }: { className?: string }) {
 
 export default function Step2Page() {
   const router = useRouter();
+  const sp = useSearchParams();
   const { data, setStep1 } = useWizardStore();
   const s1 = data.step1 ?? {};
 
@@ -31,6 +32,12 @@ export default function Step2Page() {
   const [error, setError] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Soporta prefill desde query (?prefill=... o ?p=...) si el campo está vacío
+  useEffect(() => {
+    const q = sp?.get("prefill") ?? sp?.get("p");
+    if (q && !idea.trim()) setIdea(q);
+  }, [sp, idea]);
 
   async function onImproveWithAI() {
     const txt = (idea ?? "").trim();
@@ -51,10 +58,7 @@ export default function Step2Page() {
       const improved = (j?.idea ?? j?.text ?? j?.content ?? "").toString().trim();
       if (!improved) throw new Error("Respuesta de IA vacía.");
       setIdea(improved);
-      try {
-        // refresca créditos en el header
-        window.dispatchEvent(new Event("focus"));
-      } catch {}
+      try { window.dispatchEvent(new Event("focus")); } catch {}
     } catch (e: any) {
       setAiError(e?.message || "No se pudo mejorar con IA. Configura el endpoint y reintenta.");
     } finally {
@@ -68,7 +72,7 @@ export default function Step2Page() {
       setError("Escribe al menos 5 caracteres para continuar.");
       return;
     }
-    // Mantener compat: idea en step1 (tu store ya lo soporta)
+    // Mantener compat: idea en step1
     setStep1({ ...(data.step1 ?? {}), idea: txt });
     router.push("/wizard/step-3");
   }
