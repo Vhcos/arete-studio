@@ -1,3 +1,4 @@
+// app/wizard/step-6/page.tsx
 "use client";
 
 import { useMemo, useState, useEffect } from "react";

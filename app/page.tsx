@@ -1040,11 +1040,11 @@ useEffect(() => {
           </div>
           <div className="flex flex-wrap gap-2 sm:justify-end">
             <Link
-              href="/wizard/step-1"
+              href="/wizard/step-11"
               className="inline-flex items-center gap-2 rounded border border-blue-600 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
               title="Volver al Paso 4 del asistente"
             >
-                ← Volver al paso 1 del asistente
+                ← Volver al Asistente
             </Link>
             
           </div>

@@ -1,3 +1,4 @@
+
 ¡de una! te dejo un “meta-prompt” + una guía en **Markdown** para pegar tal cual en tu repo (p. ej. `docs/wizard-style.md`) y que cualquiera —o tú conmigo en otra conversación— siga exactamente el mismo estilo y reglas.
 
 ---

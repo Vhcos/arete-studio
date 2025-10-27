@@ -81,8 +81,9 @@ export default function Step2Page() {
     <main className="mx-auto max-w-7xl px-3 py-8">
       <EconomicHeader
         title="Paso 2 · ¿Cuál es tu idea de negocio?"
-        subtitle="Escribe una oración clara que explique de qué se trata tu idea, qué ofreces y para quién es."
+        subtitle="Escribe una oración clara que explique de qué se trata tu idea, qué ofreces y para quién es. Puedes mejorarla con IA Aret3."
       />
+     
 
       <section className="mx-auto mt-6 max-w-2xl rounded-xl border-2 border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5 p-6">
         {/* Editor + botón IA lateral */}

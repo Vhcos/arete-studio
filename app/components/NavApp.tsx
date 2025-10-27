@@ -1,56 +1,40 @@
-// app/components/NavApp.tsx
+//  app/components/NavApp.tsx
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import BillingBadge from "./BillingBadge";
 
-function isActiveTab(
-  pathname: string | null,
-  tabParam: string | null,
-  target: "board" | "explain" | "form"
-) {
-  if (pathname === "/tablero" && target === "board") return true;
-  if (pathname === "/informe" && target === "explain") return true;
-  if (pathname === "/formulario" && target === "form") return true;
-  if (pathname === "/") return (tabParam ?? "form") === target;
-  return false;
-}
-
 export default function NavApp() {
-  const pathname = usePathname();              // string | null
-  const search = useSearchParams();            // ... | null (según versión)
-  const tabParam = search?.get("tab") ?? null; // string | null
+  const pathname = usePathname();
 
-  const baseItem = "px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap";
-  const active = "bg-slate-900 text-white";
-  const idle   = "text-slate-600 hover:text-slate-900 hover:bg-slate-100";
+  const base =
+    "px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap";
+  const active = "border border-sky-300 bg-sky-50 text-sky-800 shadow-sm";
+  const idle = "text-slate-600 hover:text-slate-900 hover:bg-slate-100";
 
- return (
+  const isInforme = pathname === "/informe";
+  const isStep1 = pathname?.startsWith("/wizard/step-1");
+
+  return (
     <div className="flex items-center justify-between gap-3 w-full">
-      {/* Izquierda: tabs */}
       <nav className="flex flex-wrap items-center gap-3 text-sm">
-        <Link href="/tablero" className={`${baseItem} ${isActiveTab(pathname, tabParam, "board") ? active : idle}`}>
-          Tablero
-        </Link>
-        <Link href={{ pathname: "/informe", query: { ia_hint: "1" } }}
-        className={`${baseItem} ${isActiveTab(pathname, tabParam, "explain") ? active : idle}`}>
+        <Link
+          href="/informe"
+          className={`${base} ${isInforme ? "bg-slate-900 text-white" : idle}`}
+        >
           Informe
         </Link>
-        <Link href="/formulario" className={`${baseItem} ${isActiveTab(pathname, tabParam, "form") ? active : idle}`}>
-          Formulario
-        </Link>
 
-        {/* Guía de uso */}
+        {/* Paso 1 con borde azul claro + sombra */}
         <Link
-          href="/ayuda"
-          className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none"
+          href="/wizard/step-1"
+          className={`${base} ${isStep1 ? active : idle}`}
         >
-          Guía de uso
+          Paso 1
         </Link>
       </nav>
 
-      {/* Derecha: badge de créditos */}
       <BillingBadge />
     </div>
   );

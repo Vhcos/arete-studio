@@ -95,7 +95,7 @@ export default function Step1Page() {
       {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
 
       <div className="mt-6 flex items-center justify-between">
-        <PrevButton href="/" />
+        <PrevButton href="/informe" />
         <NextButton onClick={onNext} />
       </div>
 

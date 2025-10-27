@@ -5,7 +5,7 @@ import * as React from "react";
 type Props = {
   /** Título grande. Puede ser string o JSX. */
   title?: React.ReactNode;
-  /** Subtítulo / descripción. Puede ser string o JSX. */
+  /** Subtítulo / descripción. Puede ser string o JSX (details, listas, etc.). */
   subtitle?: React.ReactNode;
   /** Chip de rubro (opcional). */
   sectorLabel?: string | null;
@@ -30,10 +30,11 @@ export default function EconomicHeader({
         {title ?? "Paso Económico"}
       </h1>
 
-      {(subtitle || sectorLabel) && (
-        <p className="mx-auto mt-1 max-w-3xl text-sm text-slate-600">
+      {/* SUBTÍTULO: usar <div>, no <p>, para permitir <details>/<ol>/<summary> */}
+      {subtitle && (
+        <div className="mx-auto mt-1 max-w-3xl text-sm text-slate-600 [&_summary]:cursor-pointer">
           {subtitle}
-        </p>
+        </div>
       )}
 
       {(sectorLabel || ventaMensual || ticket) && (
@@ -43,13 +44,15 @@ export default function EconomicHeader({
               Rubro: <b>{sectorLabel}</b>
             </span>
           ) : null}
+
           {typeof ventaMensual === "number" && ventaMensual > 0 ? (
-            <span className="rounded-full border bg-blue-50 px-3 py-1 text-xs text-blue-700 border-blue-200">
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs text-blue-700">
               Venta mensual: <b>${fmtCL(ventaMensual)}</b>
             </span>
           ) : null}
+
           {typeof ticket === "number" && ticket > 0 ? (
-            <span className="rounded-full border bg-indigo-50 px-3 py-1 text-xs text-indigo-700 border-indigo-200">
+            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs text-indigo-700">
               Ticket: <b>${fmtCL(ticket)}</b>
             </span>
           ) : null}
