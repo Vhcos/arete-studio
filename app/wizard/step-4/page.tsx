@@ -121,8 +121,8 @@ export default function Step4Page() {
               "disabled:opacity-60 disabled:cursor-not-allowed",
             ].join(" ")}
           >
-            {aiLoading ? <Spinner className="w-5 h-5" /> : <BotIcon className="w-5 h-5" variant="t3" />}
-            <span className="mt-1 text-[10px] leading-none">IA Aret3</span>
+            {aiLoading ? <Spinner className="w-5 h-5" /> :  <BotIcon className="h-8 w-8" variant="t3" glowHue="gold"/>}
+            <span className="mt-1 text-[10px] leading-none">Estimar con IA Aret3</span>
           </button>
         </div>
 

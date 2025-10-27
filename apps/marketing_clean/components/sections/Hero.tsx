@@ -6,7 +6,7 @@ export default function Hero() {
     <section id="producto" className="mx-auto max-w-6xl px-4 pt-12 pb-10 text-center">
       <p className="text-xs font-semibold tracking-wider text-slate-400">#1 software de negocios en Chile para evaluar ideas</p>
       <h1 className="mt-2 mx-auto max-w-3xl text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-        Evalúa tu idea de negocio sigue tu sueño
+        Evalúa tu idea de negocio
       </h1>
       <p className="mt-3 mx-auto max-w-2xl text-slate-600">
         Aret3 te acompaña en cada paso que necesitas para llevar a cabo tu sueño, recibe un
