@@ -22,6 +22,12 @@ export default function Hero() {
         >
           Comienza tu prueba gratis
         </a>
+        <a
+          href="#ejemplo"
+          className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Ver ejemplo de informe
+        </a>
       </div>
     </section>
   );

@@ -122,7 +122,7 @@ export default function Step4Page() {
             ].join(" ")}
           >
             {aiLoading ? <Spinner className="w-5 h-5" /> :  <BotIcon className="h-8 w-8" variant="t3" glowHue="gold"/>}
-            <span className="mt-1 text-[10px] leading-none">Estimar con IA Aret3</span>
+            <span className="mt-1 text-[10px] leading-none">Escribe con IA Aret3</span>
           </button>
         </div>
 

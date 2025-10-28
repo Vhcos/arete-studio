@@ -158,7 +158,7 @@ export default function Step2Page() {
               ) : (
                  <BotIcon className="h-8 w-8" variant="t3" glowHue="gold"/>
               )}
-              <span className="mt-1 text-[10px] leading-none">Estimar con IA Aret3</span>
+              <span className="mt-1 text-[10px] leading-none">Escribe con IA Aret3</span>
             </button>
           </div>
 

@@ -511,8 +511,8 @@ export default function Step6Page() {
       <section className="relative mx-auto mt-8 max-w-2xl rounded-xl border-2 border-slate-200 bg-white p-6 text-center shadow-xl ring-1 ring-slate-900/5">
         <h2 className="text-xl md:text-2xl font-semibold text-slate-900">¿Cuánto dinero dispones para tu idea?</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Con este monto estimaremos tu <span className="font-medium">capital de trabajo</span> para operar y el restante
-          será tu <span className="font-medium">inversión inicial</span>.
+          Con este monto estimaremos tu <span className="font-medium">capital de trabajo</span> para operar y sabrás 
+          el disponible para <span className="font-medium">inversión inicial</span>.
         </p>
 
         <div className="mt-5 flex justify-center">

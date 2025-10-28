@@ -1,3 +1,4 @@
+// apps/marketing/components/sections/Hero.tsx
 import CTARegister from "../CTARegister";
 
 export default function Hero() {
