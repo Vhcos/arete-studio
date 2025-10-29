@@ -1,0 +1,34 @@
+--- lib/renderReportHtml.ts
++++ lib/renderReportHtml.ts
+@@
+-// ...otros imports...
++import { renderStep10PanelSection } from "./report/sections/step10Panel";
+@@
+-export function renderReportHtml(data: any): string {
+-  return `
+-    <!doctype html>
+-    <html>
+-      <body>
+-        <main>
+-          <!-- ... secciones previas ... -->
+-        </main>
+-      </body>
+-    </html>
+-  `;
+-}
++export function renderReportHtml(data: any): string {
++  const input = (data?.report?.input ?? data?.input ?? {}) as any;
++  const tpl   = (data?.tpl ?? {}) as any;
++  return `
++    <!doctype html>
++    <html>
++      <body class="bg-white">
++        <main class="prose prose-slate max-w-none">
++          <!-- ... secciones previas ... -->
++          ${renderStep10PanelSection(input, tpl)}
++          <!-- ... secciones siguientes ... -->
++        </main>
++      </body>
++    </html>
++  `;
++}

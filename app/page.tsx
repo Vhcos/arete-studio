@@ -1042,7 +1042,7 @@ useEffect(() => {
             <Link
               href="/wizard/step-11"
               className="inline-flex items-center gap-2 rounded border border-blue-600 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
-              title="Volver al Paso 4 del asistente"
+              title="Volver al Paso 11 del asistente"
             >
                 ← Volver al Asistente
             </Link>
@@ -1643,7 +1643,7 @@ useEffect(() => {
     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
       
       <div>
-        <div className="text-muted-foreground">Capital de trabajo necesario en meses (plan {mesesPE}m)</div>
+        <div className="text-muted-foreground">Capital requerido hasta P.E. (plan {mesesPE}m)</div>
         <div className="font-semibold">
           ${fmtCL((outputs?.peCurve?.acumDeficitUsuario ?? 0))}
         </div>
@@ -1811,7 +1811,7 @@ useEffect(() => {
                  <div>
                    <h2 className="text-lg font-bold">Resumen ejecutivo</h2>
                      <div className={`${cardStrong} p-4 text-sm leading-6`}>
-                        {buildInvestorNarrative(baseOut.report.input, { ...(outputs?.report?.meta || {}), peCurve: outputs?.peCurve, pe: outputs?.pe, capitalTrabajo: (outputs?.peCurve?.acumDeficitUsuario ?? 0), ventasPE: (outputs?.pe?.ventasPE ?? 0), clientsPE: (outputs?.pe?.clientsPE ?? 0) })}
+                        {buildInvestorNarrative(baseOut.report.input, { ...(outputs?.report?.meta || {}), peCurve: outputs?.peCurve, pe: outputs?.pe, capitalTrabajo: parseNumberCL(capitalTrabajo), acumDeficitUsuario: (outputs?.peCurve?.acumDeficitUsuario ?? 0), ventasPE: (outputs?.pe?.ventasPE ?? 0), clientsPE: (outputs?.pe?.clientsPE ?? 0) })}
                      </div>
                    <div ref={preAIRef}><PreAIReportView outputs={outputs} /></div>
                  </div>
