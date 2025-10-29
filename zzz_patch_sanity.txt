@@ -1,0 +1,2 @@
+OK: git apply funciona.
+Puedes borrar este archivo después.
