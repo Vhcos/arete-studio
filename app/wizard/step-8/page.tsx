@@ -9,8 +9,11 @@ import { getTemplateForSector } from "@/lib/model/step6-distributions";
 import { SECTORS } from "@/lib/model/sectors";
 import type { SectorId } from "@/lib/model/sectors";
 import UpsellBanner from "@/components/wizard/UpsellBanner";
+
+
 import EconomicHeader from "@/components/wizard/EconomicHeader";
 import BotIcon from "@/components/icons/BotIcon";
+import { computeTaxFromPBT } from "@/lib/finance/tax";
 
 /* helpers */
 const fmtCL = (n: number) => n.toLocaleString("es-CL");
@@ -37,7 +40,6 @@ export default function Step8Page() {
   }, [data.step6?.ventaAnio1]);
 
   /* derivados anuales (según tu plantilla) */
-  const impuestosPct = 0.02;
 
   const cvMat = r(ventaAnual * tpl.cv_materiales);
   const cvPer = r(ventaAnual * tpl.cv_personal);
@@ -53,7 +55,9 @@ export default function Step8Page() {
 
   const mkt = r(ventaAnual * tpl.marketing);
   const resAI = clamp0(margen - (gfTot + mkt)); // resultado antes de impuestos (no negativo)
-  const impuestos = r(ventaAnual * impuestosPct);
+  const tax = computeTaxFromPBT(resAI, ventaAnual);
+  const impuestos = tax.taxAmount;
+  const impuestosPct = tax.taxPctOverSales;
   const rentaNeta = clamp0(resAI - impuestos);
   const rentaNetaPct = ventaAnual > 0 ? rentaNeta / ventaAnual : 0;
 
@@ -75,7 +79,7 @@ export default function Step8Page() {
     { label: "Gastos de Marketing o Comercialización", anual: mkt, mensual: toMensual(mkt), p: ventaAnual > 0 ? mkt / ventaAnual : 0, cost: true, dividerTop: true },
 
     { label: "Resultado antes de impuestos", anual: resAI, mensual: toMensual(resAI), p: ventaAnual > 0 ? resAI / ventaAnual : 0, strong: true, dividerTop: true },
-    { label: "Impuestos (2%)", anual: impuestos, mensual: toMensual(impuestos), p: impuestosPct, cost: true },
+    { label: "Impuestos (25% RAI)", anual: impuestos, mensual: toMensual(impuestos), p: impuestosPct, cost: true },
     { label: "Rentabilidad neta", anual: rentaNeta, mensual: toMensual(rentaNeta), p: rentaNetaPct, strong: true, dividerTop: true },
   ];
 
@@ -188,7 +192,7 @@ export default function Step8Page() {
           <div className="flex justify-between text-slate-600"><span>− Marketing</span><span>{fmtCLP(segMkt)}</span></div>
 
           <div className="h-3 w-full rounded bg-slate-200 overflow-hidden">
-            <div className="h-3" style={segStyle(segImp, "#c7d2fe")} title="Impuestos (2%)" />
+            <div className="h-3" style={segStyle(segImp, "#c7d2fe")} title="Impuestos (25% RAI)" />
           </div>
           <div className="flex justify-between text-slate-600"><span>− Impuestos (2%)</span><span>{fmtCLP(segImp)}</span></div>
 
@@ -208,7 +212,7 @@ export default function Step8Page() {
             { k: "Costos variables (personal)", v: cvPer, c: "bg-rose-300" },
             { k: "Gastos fijos totales", v: gfTot, c: "bg-orange-200" },
             { k: "Marketing", v: mkt, c: "bg-amber-200" },
-            { k: "Impuestos (2%)", v: impuestos, c: "bg-indigo-200" },
+            { k: "Impuestos (25% RAI)", v: impuestos, c: "bg-indigo-200" },
             { k: "Rentabilidad neta", v: rentaNeta, c: "bg-emerald-200" },
           ].map((it) => {
             const p = denom > 0 ? clamp0(it.v) / denom : 0;
