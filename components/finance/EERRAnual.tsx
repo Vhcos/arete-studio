@@ -1,6 +1,8 @@
 //  components/finance/EERRAnual.tsx  
 "use client";
 
+import { computeTaxFromPBT } from "@/lib/finance/tax";
+
 type Tpl = {
   cv_materiales: number; cv_personal: number; margen_contrib: number;
   gf_tot: number; gf_arriendo: number; gf_sueldosAdm: number; gf_sueldoDueno: number; gf_otros: number;
@@ -51,10 +53,13 @@ export default function EERRAnual({
   const gfOtr = Math.round(V * tpl.gf_otros);
 
   const mkt   = Math.round(V * tpl.marketing);
-  const resAI = Math.round(V * tpl.resultado);
-  const imp   = Math.round(V * impuestosPct);
-  const neta  = Math.max(0, resAI - imp);
-  const netaPct = V > 0 ? neta / V : 0;
+  
+const resAI  = Math.round(V * tpl.resultado);
+const tax    = computeTaxFromPBT(resAI, V);
+const imp    = tax.taxAmount;
+const impPct = tax.taxPctOverSales;
+const neta   = Math.max(0, resAI - imp);
+const netaPct = V > 0 ? neta / V : 0;
 
   return (
     <div className="rounded-lg border overflow-hidden">
@@ -77,7 +82,7 @@ export default function EERRAnual({
 
         <Row label="Gastos de Marketing o Comercialización" value={mkt} percent={tpl.marketing} cost />
         <Row label="Resultado antes de impuestos" value={resAI} percent={tpl.resultado} strong />
-        <Row label="Impuestos (2%)" value={imp} percent={impuestosPct} cost />
+        <Row label="Impuestos (25% RAI)" value={imp} percent={impPct} cost />
         <Row label="Rentabilidad neta" value={neta} percent={netaPct} strong />
       </div>
     </div>
