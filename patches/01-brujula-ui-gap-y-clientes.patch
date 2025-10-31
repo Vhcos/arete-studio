@@ -1,0 +1,87 @@
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ import React, { useMemo } from "react";
+ // ... otros imports ...
++// (no requiere nuevos imports para este parche)
+ 
+ // =====================================================================================
+ // ... helpers/estado existentes ...
+@@ -980,15 +981,56 @@
+   <div
+     className="rounded-xl border-2 p-4"
+     style={{ borderColor: accent, background: accentSoft }}
+   >
+-    <div className="font-medium mb-2">BRUJULA MENOR</div>
++    <div className="font-medium mb-2">BRÚJULA MENOR</div>
+ 
+-    {/* KPIs superiores */}
+-    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+-      <div>
+-        <div className="text-muted-foreground">Capital requerido hasta P.E. (plan {mesesPE}m)</div>
+-        <div className="font-semibold">
+-          ${fmtCL((outputs?.peCurve?.acumDeficitUsuario ?? 0))}
+-        </div>
+-      </div>
+-    </div>
++    {/* === Capital de trabajo necesario (comparación) === */}
++    {(() => {
++      // requerido: suma de déficits de la curva hacia P.E. (12m o segun plan)
++      const requerido = Math.max(0, Number(outputs?.peCurve?.acumDeficitUsuario ?? 0));
++      // disponible: capitalTrabajo ingresado por el usuario (string o número)
++      const disponible = parseNumberCL(capitalTrabajo);
++      // brecha local (evitamos colisión con helpers globales)
++      const gap = Math.abs((disponible || 0) - (requerido || 0));
++      const suficiente = (disponible || 0) >= (requerido || 0);
++      return (
++        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
++          <div className="rounded-md border bg-white p-3">
++            <div className="text-muted-foreground">
++              Capital requerido hasta P.E. (plan {mesesPE}m)
++            </div>
++            <div className="font-semibold">
++              ${fmtCL(requerido)}
++            </div>
++            <div className="text-[11px] text-muted-foreground mt-1">
++              Considera los déficits mensuales de la curva hacia P.E.
++            </div>
++          </div>
++          <div className="rounded-md border bg-white p-3">
++            <div className="text-muted-foreground">Capital disponible</div>
++            <div className="font-semibold">
++              ${fmtCL(disponible)}
++            </div>
++          </div>
++          <div className={`rounded-md border p-3 ${suficiente ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
++            <div className="text-muted-foreground">Brecha</div>
++            <div className={`${suficiente ? "text-green-700" : "text-amber-700"} font-semibold`}>
++              {suficiente ? `Alcanza (superávit $${fmtCL(gap)})` : `Faltan $${fmtCL(gap)}`}
++            </div>
++          </div>
++        </div>
++      );
++    })()}
+ 
+     {/* Métricas operativas */}
+     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+       <div className="flex items-center justify-between">
+         <span>Ventas para Punto de Equilibrio</span>
+         <span className="font-medium">${fmtCL(outputs.pe.ventasPE)}</span>
+       </div>
+       <div className="flex items-center justify-between">
+         <span>Clientes para tu Punto de Equilibrio</span>
+         <span className="font-medium">{fmtNum(outputs.pe.clientsPE)}</span>
+       </div>
+       <div className="flex items-center justify-between">
+-        <span>Clientes objetivo (mes)</span>
+-        <span className="font-medium">{fmtNum(N)}</span>
++        <span>Clientes objetivo (mes)</span>
++        <span className="font-medium">
++          {fmtNum(Math.round((outputs?.report?.meta?.clientsUsed ?? N) || 0))}
++        </span>
+       </div>
+       <div className="flex items-center justify-between">
+         <span>Tráfico requerido</span>
+         <span className="font-medium">{fmtNum(Q)}</span>
+       </div>

@@ -40,6 +40,7 @@ import type { AiPlan, CompetitiveRow, RegulationRow } from './types/plan';
 import type { ChartPoint } from './types/report';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import PanelNavegacion from "@/components/report/PanelNavegacion";
 
 // --- helpers para bullets (acepta string[] o filas de tabla) ---
 function normalizeBullets(input: unknown, fallback: string[]): string[] {
@@ -2145,7 +2146,23 @@ function computeScores(input: any) {
 
   const founderFit = clamp((input.experiencia * 0.6 + input.pasion * 0.4), 0, 10);
 
-  const burnMensual = Math.max(0, input.gastosFijos || 0);
+  // === Marketing mensual para PE/Runway ===
+// 1) Si el usuario definió un presupuesto mensual de marketing, úsalo.
+// 2) Si no, si existen CAC y clientsUsed, infiérelo (aprox) como CAC * clientsUsed.
+let mktMes = 0;
+const _mk = Number(input.marketingMensual ?? 0);
+if (Number.isFinite(_mk) && _mk > 0) {
+  mktMes = _mk;
+} else {
+  const _cac = Number(input.cac ?? 0);
+  const _cu  = Number(input.clientsUsed ?? input.N ?? 0);
+  if (Number.isFinite(_cac) && _cac > 0 && Number.isFinite(_cu) && _cu > 0) {
+    mktMes = Math.round(_cac * _cu);
+  }
+}
+
+const burnMensual = Math.max(0, (Number(input.gastosFijos) || 0) + mktMes);
+
   const runwayMeses = burnMensual > 0 ? (Math.max(0, input.capitalTrabajo || 0) / burnMensual) : Infinity;
   const tolerancia = clamp((input.toleranciaRiesgo * 0.6 + Math.min(10, (runwayMeses / 12) * 10) * 0.4), 0, 10);
   const sentimiento = clamp(input.testeoPrevio, 0, 10);
@@ -2543,73 +2560,19 @@ function PreAIReportView({ outputs }:{ outputs:any }) {
           </table>
         </div>
       </div>
-
-      {/* Brújula menor (sin runway) */}
-      <div className={`${cardStrong} p-4 text-sm`}>
-        <div className="font-medium mb-2">Brújula menor</div>
-        {/* KPIs superiores */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mt-2">
-          <div>
-            <div className="text-muted-foreground">Capital de trabajo necesario en meses (plan {mesesPE}m)</div>
-            <div className="font-semibold">${fmtCL(acumDef)}</div>
-          </div>
-        </div>
-        {/* Métricas operativas (copia del tablero) */}
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center justify-between"><span>Ventas para Punto de Equilibrio....</span><span className="font-medium">${fmtCL(ventasPE)}</span></div>
-          <div className="flex items-center justify-between"><span>Clientes para tu Punto de Equiibrio....</span><span className="font-medium">{fmtNum(clientsPE)}</span></div>
-          <div className="flex items-center justify-between"><span>Clientes objetivo (mes)....</span><span className="font-medium">{fmtNum(N)}</span></div>
-          <div className="flex items-center justify-between"><span>Tráfico requerido....</span><span className="font-medium">{fmtNum(Q)}</span></div>
-          <div className="flex items-center justify-between">
-            <span>Costo unitario tráfico por cliente....</span>
-            <span className="font-medium">{fmtCL(mode === 'budget' ? CPL_implicito : (Q > 0 ? Math.round((M_requerido || 0) / Q) : 0))}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>Costo por cliente que compra....</span>
-            <span className="font-medium">{fmtCL(mode === 'budget' ? CAC_implicito : CAC_target)}</span>
-          </div>
-        </div>
-      </div>
-
       
-      {/* Curva hacia el P.E. (corte por meses del plan) */}
+
+
+      {/* PANEL DE NAVEGACION */}
       <div className={`${cardStrong} p-4 text-sm`}>
-        <div className="text-lg font-semibold mb-2">Curva hacia el punto de equilibrio</div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left">
-                <th className="py-1 pr-2">Mes</th>
-                <th className="py-1 pr-2">% Punto de Equilibrio (usuario)</th>
-                <th className="py-1 pr-2">Clientes/mes</th>
-                <th className="py-1 pr-2">Déficit del mes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(peData ?? []).slice(0, mesesPE).map((r:any, i:number) => (
-                <tr key={i} className="border-t">
-                  <td className="py-1 pr-2">{r.mes}</td>
-                  <td className="py-1 pr-2">{r['%PE_usuario']}%</td>
-                  <td className="py-1 pr-2">{fmtNum(Math.round(r.clientes_usuario || 0))}</td>
-                  <td className="py-1 pr-2">${fmtCL(Math.round(r.deficit || 0))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <PanelNavegacion />
       </div>
     </div>
   );
 }
 
-function TriPillField({
-  label,
-  hint,
-  value,
-  onChange,
-  accent,
-  accentSoft,
-}: {
+// TriPillField component
+function TriPillField(props: {
   label: string;
   hint?: string;
   value: number;                 // 1 | 2 | 3
@@ -2617,6 +2580,7 @@ function TriPillField({
   accent: string;
   accentSoft: string;
 }) {
+  const { label, hint, value, onChange, accent, accentSoft } = props;
   const opts = [1, 2, 3] as const;
   return (
     <div className="space-y-2 rounded-xl border-2 p-3" style={{ borderColor: accent, background: accentSoft }}>
