@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# README — Flujo de trabajo con *heredocs* (ARET3)
 
-## Getting Started
+Este documento estandariza cómo hacemos cambios en el repo usando **heredocs** (sin `git apply`), para asegurar reproducibilidad y menos fricción.
 
-First, run the development server:
+## 0) Convenciones
+- **Ramas**: `feat/<tema>-YYYY-MM-DD`, `fix/<tema>-YYYY-MM-DD`, `chore/<tema>-YYYY-MM-DD`
+- **Commits**: `feat(<área>): …`, `fix(<área>): …`, `chore(<área>): …`
+- **Zona horaria**: America/Santiago
+- **Moneda/formatos**: Chile (CLP, UF, IVA)
+- **Rubro**: la normalización a español vive en `lib/nonAI-report.ts` (no tocar `page.tsx` para esto).
 
+## 1) Quickstart — Crear/actualizar archivos con heredoc
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+git fetch --all --prune
+git switch -c feat/<tema>-YYYY-MM-DD
+mkdir -p <ruta/carpeta>
+cat > lib/finance/tax.ts <<'TS'
+/**
+ * Cálculo de impuesto:
+ * - 25% de la rentabilidad antes de impuestos (PBT/RAI)
+ * - redondeado a entero; si PBT <= 0, impuesto = 0
+ * - % sobre venta = impuesto / venta (si venta > 0)
+ */
+export function computeTaxFromPBT(pbt: number, sales: number) {
+  const taxable = Math.max(0, Number.isFinite(pbt) ? pbt : 0);
+  const taxAmount = Math.round(0.25 * taxable);
+  const taxPctOverSales = sales > 0 ? taxAmount / sales : 0;
+  return { taxAmount, taxPctOverSales };
+}
+TS
+git add -A
+git commit -m "feat(finanzas): helper computeTaxFromPBT (25% RAI + % sobre venta)"
+git push -u origin feat/<tema>-YYYY-MM-DD
+perl -0777 -pe 's|<details open=\{helpOpen\} className="text-sm">[\s\S]*?</details>|<details open={helpOpen} className="text-sm">
+  <summary className="cursor-pointer font-medium text-slate-800">Impuestos (25% RAI)</summary>
+  <p className="mt-1 text-slate-600 text-[13px]">
+    Se calcula como <b>25% del resultado antes de impuestos (RAI)</b>, redondeado a entero.
+    El porcentaje mostrado sobre la venta es <code>impuesto / venta</code>. Si el RAI ≤ 0, el impuesto es 0.
+  </p>
+</details>|g' -i app/wizard/step-8/page.tsx
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+grep -RIn --exclude-dir=node_modules --include='*.{ts,tsx}' "Impuestos (2%)" .
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+mkdir -p lib/model
+cat > lib/model/sectors.ts <<'TS'
+/* …contenido de sectores… */
+TS
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+cat > lib/model/step6-distributions.ts <<'TS'
+/* …contenido de plantillas por rubro… */
+TS
 
-## Learn More
+perl -0777 -pe 's/"Impuestos \(2%\)"/"Impuestos (25% RAI)"/g' -i app/wizard/step-8/page.tsx
+perl -0777 -pe 's/"Impuestos \(2%\)"/"Impuestos (25% RAI)"/g' -i components/finance/EERRAnual.tsx
 
-To learn more about Next.js, take a look at the following resources:
+git add -A
+git commit -m "feat(step6): plantillas por rubro + normaliza labels impuestos (25% RAI)"
+git push
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+git status
+git fetch --all --prune
+git switch main
+git pull --ff-only
+git merge --no-ff origin/feat/<tema>-YYYY-MM-DD -m "merge: <resumen del cambio>"
+git push origin main
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+git branch -d feat/<tema>-YYYY-MM-DD
+git push origin --delete feat/<tema>-YYYY-MM-DD
 
-## Deploy on Vercel
+git log --oneline --graph --decorate --max-count=20
+git diff --name-status origin/main...HEAD
+grep -RIn --exclude-dir=node_modules --include='*.{ts,tsx}' "Impuestos (2%)" .
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+git reset --soft HEAD~1
+git restore -s origin/main -- <ruta/archivo>
+git reflog --date=local --decorate
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+7) Notas
+
+perl -0777 es portable en macOS y apto para reemplazos multilínea.
+
+No subir .env.local; mantener .env.example documentado.
+
+Rubro en español: lib/nonAI-report.ts.
