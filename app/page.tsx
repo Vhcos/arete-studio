@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import InformePreview from "@/components/informe/InformePreview";
-import EERRAnual from "@/components/finance/EERRAnual";
 import { getTemplateForSector } from "@/lib/model/step6-distributions";
 import type { SectorId } from "@/lib/model/sectors";
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
@@ -41,6 +40,7 @@ import type { ChartPoint } from './types/report';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import PanelNavegacion from "@/components/report/PanelNavegacion";
+import Step8Board from "@/components/report/Step8Board";
 
 // --- helpers para bullets (acepta string[] o filas de tabla) ---
 function normalizeBullets(input: unknown, fallback: string[]): string[] {
@@ -1591,13 +1591,15 @@ useEffect(() => {
                 
 
                           <div className="lg:col-span-1 space-y-4">
-  {/* BOARD de EERR */}
-  <div
-    className="rounded-xl border-2 p-4"
-    style={{ borderColor: accent, background: accentSoft }}
-  >
-    <EERRAnual ventaAnual={ventaAnualEERR} tpl={tpl} />
-  </div>
+  
+    {/* BOARD de EERR (Step-8 embed) */}
+    <div
+      className="rounded-xl border-2 p-4"
+      style={{ borderColor: accent, background: accentSoft }}
+    >
+      <Step8Board ventaAnual={ventaAnualEERR} tpl={tpl} />
+    </div>
+  
 
   
 <div className="rounded-xl border p-5">
