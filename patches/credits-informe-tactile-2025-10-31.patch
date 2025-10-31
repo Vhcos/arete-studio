@@ -1,0 +1,174 @@
+*** a/app/page.tsx
+--- b/app/page.tsx
+@@
+ import Link from "next/link";
+ import { useRouter, useSearchParams } from "next/navigation";
+ import PanelNavegacion from "@/components/report/PanelNavegacion";
+ 
++// --- Créditos (informe/email) ---
++const FREE_CREDITS = 10; // ↓↓↓ nuevo default (antes 20)
++
+ // --- helpers para bullets (acepta string[] o filas de tabla) ---
+ function normalizeBullets(input: unknown, fallback: string[]): string[] {
+@@
+ export default function AreteDemo() {
+@@
+   const [primaryHue] = useState(215); // azul
+   const accent = `hsl(${primaryHue} 90% 45%)`;
+   const styleAccent: CSSProperties & Record<'--accent', string> = { '--accent': accent };
+   const accentSoft = toHSLA(accent, 0.07);
+   const cardStrong = "rounded-xl border-2 border-slate-300 bg-white shadow-sm";
++
++  // ===== Créditos (persistidos en localStorage) =====
++  const [credits, setCredits] = useState<number>(FREE_CREDITS);
++  useEffect(() => {
++    try {
++      const raw = localStorage.getItem("arete:credits");
++      let c = Number.parseInt(raw ?? "", 10);
++      if (!Number.isFinite(c) || c > FREE_CREDITS) c = FREE_CREDITS; // fuerza reducción a 10
++      setCredits(c);
++    } catch { /* noop */ }
++  }, []);
++  useEffect(() => {
++    try { localStorage.setItem("arete:credits", String(credits)); } catch { /* noop */ }
++  }, [credits]);
++  function hasCredits(n = 1) { return Number.isFinite(credits) && credits >= n; }
++  function spendCredits(n = 1) {
++    if (!hasCredits(n)) {
++      alert("No tienes créditos suficientes para esta acción.");
++      return false;
++    }
++    setCredits((c) => Math.max(0, c - n));
++    return true;
++  }
+@@
+   // ------ Botón “Evaluar con IA” rojo con letras blancas
+ 
+   const isAIEnabled = canRunAI && !iaLoading;
+@@
+   return (
+    <div className="min-h-screen p-6" style={styleAccent}>
+       <div className="mx-auto max-w-7xl space-y-6">
+         {/* Header */}
+         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+           <div className="flex items-center gap-3">
+@@
+            </h1>
+            
+            
+           </div>
+-          <div className="flex flex-wrap gap-2 sm:justify-end">
++          <div className="flex flex-wrap gap-2 sm:justify-end items-center">
++            {/* Indicador de créditos */}
++            <span className="inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium bg-white border-blue-600 text-slate-900">
++              Créditos: <span className="ml-1 font-bold">{credits}</span>
++            </span>
+             <Link
+               href="/wizard/step-11"
+               className="inline-flex items-center gap-2 rounded border border-blue-600 rounded-xl border px-3 py-2 text-sm hover:bg-slate-50"
+               title="Volver al Paso 11 del asistente"
+             >
+                 ← Volver al Asistente
+             </Link>
+             
+           </div>
+         </div>
+@@
+           {/* REPORT */}
+           <TabsContent value="explain">
+             <Card className="border-none shadow-sm">
+               <CardHeader><CardTitle>Informe</CardTitle>
+-              <p className="mt-4 text-xs text-slate-500 flex items-center gap-1">
+-        Nota: La generación con IA resta 3 créditos.
+-      </p></CardHeader>
++              <p className="mt-4 text-xs text-slate-500 flex items-center gap-1">
++                Nota: La generación con IA resta 3 créditos. Imprimir/Enviar usan 1 crédito.
++              </p></CardHeader>
+               <CardContent>
+-                 <div className="no-print mb-4 flex w-full items-center justify-between gap-3">
++                 <div className="no-print mb-4 flex w-full items-center justify-between gap-3">
+                 <Button
+               onClick={handleEvaluateAI}
+               disabled={!isAIEnabled}
+               className={
+                 isAIEnabled
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
+               }
+                title={!isAIEnabled ? "Agrega al menos 5 caracteres en ‘Idea’ para habilitar la IA" : undefined}
+               >
+                {iaLoading ? "Evaluando…" : "Generar Informe con IA Aret3"}
+                </Button>
+ 
+              <div className="ml-auto flex items-center gap-2"></div>
+-                <button
+-                  type="button"
+-                  onClick={() => window.print()}
+-                  className={[
+-                     "inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm transition",
+-                     "bg-white text-slate-900 border-2 border-blue-600",
+-                     "hover:bg-blue-50 hover:border-blue-700 hover:shadow-md",
+-                     "active:translate-y-[1px] active:shadow-none",
+-                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400"
+-                 ].join(" ")}
+-                >
+-                 Imprimir informe
+-               </button>
++                <button
++                  type="button"
++                  onClick={() => { if (!spendCredits(1)) return; window.print(); }}
++                  disabled={!hasCredits(1)}
++                  className={[
++                    "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm transition",
++                    "bg-white text-slate-900 border-2 border-blue-600",
++                    "hover:bg-blue-50 hover:border-blue-700 hover:shadow-md",
++                    "active:translate-y-[1px] active:shadow-none",
++                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400",
++                    !hasCredits(1) ? "opacity-60 cursor-not-allowed" : ""
++                  ].join(" ")}
++                  title={!hasCredits(1) ? "Sin créditos disponibles" : "Imprimir informe (1 crédito)"}
++                >
++                  Imprimir informe
++                </button>
+ 
+-                 <Button
+-               onClick={() =>
+-                 sendReportEmail({
++                 <button
++                   type="button"
++                   onClick={async () => {
++                     if (!hasCredits(1)) { alert("Sin créditos disponibles."); return; }
++                     const ok = await sendReportEmail({
+   preAI: preAIRef?.current?.innerHTML || "",
+     to: email,
+   reason: 'user-asked',
+   // El mismo informe que ves: prioriza IA; si no, el base
+   report: aiReport ?? nonAIReport,
+@@
+                      ubicacion,   // ubicación (país/ciudad)
+                    },
+-                 })
+-              }
+-                  disabled={!emailOK || emailSending}
+-                 >
+-                 Informe a mi email
+-               </Button>
++                 });
++                     if (ok) spendCredits(1);
++                   }}
++                   disabled={!emailOK || emailSending || !hasCredits(1)}
++                   className={[
++                     "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm transition",
++                     "bg-white text-slate-900 border-2 border-blue-600",
++                     "hover:bg-blue-50 hover:border-blue-700 hover:shadow-md",
++                     "active:translate-y-[1px] active:shadow-none",
++                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400",
++                     (!emailOK || emailSending || !hasCredits(1)) ? "opacity-60 cursor-not-allowed" : ""
++                   ].join(" ")}
++                   title={!hasCredits(1) ? "Sin créditos disponibles" : (!emailOK ? "Escribe un email válido" : "Enviar informe (1 crédito)")}
++                 >
++                   Informe a mi email
++                 </button>
+                </div>
+ 
+*** End Patch
