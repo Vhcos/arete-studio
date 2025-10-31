@@ -194,7 +194,7 @@ export default function Step8Page() {
           <div className="h-3 w-full rounded bg-slate-200 overflow-hidden">
             <div className="h-3" style={segStyle(segImp, "#c7d2fe")} title="Impuestos (25% RAI)" />
           </div>
-          <div className="flex justify-between text-slate-600"><span>− Impuestos (2%)</span><span>{fmtCLP(segImp)}</span></div>
+          <div className="flex justify-between text-slate-600"><span>− Impuestos (25% RAI)</span><span>{fmtCLP(segImp)}</span></div>
 
           <div className="h-3 w-full rounded bg-slate-200 overflow-hidden">
             <div className="h-3" style={segStyle(segUtil, "#86efac")} title="Rentabilidad neta" />
@@ -245,11 +245,12 @@ export default function Step8Page() {
             </p>
           </details>
           <details open={helpOpen} className="text-sm">
-            <summary className="cursor-pointer font-medium text-slate-800">Impuestos (2%)</summary>
-            <p className="mt-1 text-slate-600 text-[13px]">
-              Aproximación práctica: si la utilidad antes de impuestos ronda el 10% de las ventas y la tasa es ~25%, entonces 25%×10% ≈ <b>2% de la venta</b>.
-            </p>
-          </details>
+             <summary className="cursor-pointer font-medium text-slate-800">Impuestos (25% RAI)</summary>
+               <p className="mt-1 text-slate-600 text-[13px]">
+                  Se calcula como <b>25% del resultado antes de impuestos (RAI)</b>, redondeado a entero.
+                  El porcentaje mostrado sobre la venta es <code>impuesto / venta</code>. Si el RAI ≤ 0, el impuesto es 0.
+              </p>
+             </details>
           <details open={helpOpen} className="text-sm">
             <summary className="cursor-pointer font-medium text-slate-800">Sugerencias</summary>
             <ul className="mt-1 list-disc pl-5 text-slate-600 text-[13px] space-y-1">
