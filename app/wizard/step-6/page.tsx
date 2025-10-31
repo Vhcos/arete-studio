@@ -1,3 +1,4 @@
+// app/wizard/step-6/page.tsx
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -8,7 +9,7 @@ import { Step6Schema } from "@/lib/validation/wizard-extra";
 import { toLegacyForm } from "@/lib/bridge/wizard-to-legacy";
 import { getTemplateForSector } from "@/lib/model/step6-distributions";
 import type { SectorId } from "@/lib/model/sectors";
-import EconomicHeader from "./_components/EconomicHeader";
+import EconomicHeader from "@/components/wizard/EconomicHeader";
 import { SECTORS } from "@/lib/model/sectors";
 import UpsellBanner from "@/components/wizard/UpsellBanner";
 import BotIcon from "@/components/icons/BotIcon";
@@ -52,7 +53,7 @@ function safeDiv(n: number, d: number): number {
   return Number.isFinite(r) ? Math.round(r) : 0;
 }
 
-/* ====== UI helpers (inline, sin dependencias) ====== */
+/* ====== UI helpers ====== */
 function InfoDot({ title }: { title: string }) {
   return (
     <span
@@ -73,6 +74,14 @@ function Badge({ children }: { children: React.ReactNode }) {
 }
 function LabelSmall({ children }: { children: React.ReactNode }) {
   return <span className="text-xs font-medium text-slate-700">{children}</span>;
+}
+function Spinner({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  );
 }
 
 /* ====== Candado ====== */
@@ -97,29 +106,11 @@ function LockToggle({
       title={locked ? `${label} bloqueado` : `Bloquear ${label}`}
       aria-pressed={locked}
     >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        className={locked ? "text-sky-600" : "text-slate-400"}
-      >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={locked ? "text-sky-600" : "text-slate-400"}>
         {locked ? (
-          <path
-            d="M7 10V8a5 5 0 1 1 10 0v2M6 10h12v10H6V10Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M7 10V8a5 5 0 1 1 10 0v2M6 10h12v10H6V10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         ) : (
-          <path
-            d="M17 10V8a5 5 0 1 0-10 0v2M6 10h12v10H6V10Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M17 10V8a5 5 0 1 0-10 0v2M6 10h12v10H6V10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         )}
       </svg>
       {locked ? "Bloqueado" : "Bloquear"}
@@ -133,8 +124,8 @@ type Local = {
   capitalTrabajo?: string;
 
   ventaMensual?: string; // CLP
-  ventaAnual?: string;   // CLP (alineado a schema)
-  ticket?: string;       // CLP por cliente
+  ventaAnual?: string; // CLP
+  ticket?: string; // CLP por cliente
   clientesMensuales?: string; // SOLO LOCAL
 
   gastosFijosMensuales?: string;
@@ -158,82 +149,63 @@ export default function Step6Page() {
   const [lastEdited, setLastEdited] = useState<EditedKey>(null);
   const [userTyped, setUserTyped] = useState<TypedFlags>({ M: false, A: false, T: false, C: false });
 
-  // Locks persistentes (imitan “el usuario escribió” aunque no teclee en esta sesión)
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiErr, setAiErr] = useState<string | null>(null);
+  const [aiExplain, setAiExplain] = useState<string>("");
+  const [aiSources, setAiSources] = useState<{ title?: string; url: string }[]>([]);
+  const [flashIA, setFlashIA] = useState(false); // destello visual tras aplicar IA
+
+  // Locks
   const [lockT, setLockT] = useState(false);
   const [lockC, setLockC] = useState(false);
 
-  // Prefill (lee ventaAnual o compat ventaAnio1)
-  const anualPrev =
-    (data as any)?.step6?.ventaAnual ??
-    (data as any)?.step6?.ventaAnio1 ??
-    0;
+  // Prefill venta anual/mensual
+  const anualPrev = (data as any)?.step6?.ventaAnual ?? (data as any)?.step6?.ventaAnio1 ?? 0;
   const mensualPrev = anualPrev ? Math.round(anualPrev / 12) : 0;
 
   const [local, setLocal] = useState<Local>({
     inversionInicial: formatCLPInput((data as any)?.step6?.inversionInicial ?? 0),
     capitalTrabajo: formatCLPInput((data as any)?.step6?.capitalTrabajo ?? 0),
-
     ventaMensual: formatCLPInput(mensualPrev),
     ventaAnual: formatCLPInput(anualPrev),
-
     ticket: formatCLPInput((data as any)?.step6?.ticket ?? 0),
-    clientesMensuales: "", // no persistimos
-
+    clientesMensuales: "",
     gastosFijosMensuales: formatCLPInput((data as any)?.step6?.gastosFijosMensuales ?? 0),
     presupuestoMarketing: formatCLPInput((data as any)?.step6?.presupuestoMarketing ?? 0),
     costoVarUnit: formatCLPInput((data as any)?.step6?.costoVarUnit ?? 0),
-
     conversionPct: (data as any)?.step6?.conversionPct ?? 0,
     frecuenciaCompraMeses: (data as any)?.step6?.frecuenciaCompraMeses ?? 6,
     mesesPE: (data as any)?.step6?.mesesPE ?? 6,
   });
 
   /* ============ Sector / Plantilla ============ */
-  const sector: SectorId =
-    ((data as any)?.step2?.sectorId as SectorId) ?? ("retail_local" as SectorId);
+  const sector: SectorId = ((data as any)?.step2?.sectorId as SectorId) ?? ("retail_local" as SectorId);
   const tpl = getTemplateForSector(sector);
   const sectorInfo = SECTORS.find((s) => s.id === sector);
   const sectorLabel = sectorInfo?.label ?? sector;
 
   /* ============ Derivados (KPIs) ============ */
   const derived = useMemo(() => {
-    const M =
-      num(local.ventaMensual) > 0
-        ? num(local.ventaMensual)
-        : Math.round(num(local.ventaAnual) / 12);
-
+    const M = num(local.ventaMensual) > 0 ? num(local.ventaMensual) : Math.round(num(local.ventaAnual) / 12);
     const A = num(local.ventaAnual) > 0 ? num(local.ventaAnual) : M * 12;
-
     const T = num(local.ticket);
     const C_input = toInt(local.clientesMensuales);
-
     const C = C_input > 0 ? C_input : T > 0 ? safeDiv(M, T) : 0;
     const C_year = C * 12;
 
-    // Distribución por plantilla (anual)
     const cvMat = Math.round(A * tpl.cv_materiales);
     const cvPer = Math.round(A * tpl.cv_personal);
-
     const costoVarUnitario = C_year > 0 ? Math.round((cvMat + cvPer) / C_year) : 0;
 
-    return {
-      ventaMensual: M,
-      ventaAnual: A,
-      clientesMensuales: C,
-      clientesAnuales: C_year,
-      cvMat,
-      cvPer,
-      costoVarUnitario,
-    };
+    return { ventaMensual: M, ventaAnual: A, clientesMensuales: C, clientesAnuales: C_year, cvMat, cvPer, costoVarUnitario };
   }, [local, tpl]);
 
-  /* ======== Solver: respeta último editado + locks + si el usuario escribió ======== */
+  /* ======== Solver ======== */
   function solveAndSet(
     source: EditedKey,
     values: Partial<{ M: number; A: number; T: number; C: number }>,
     typedNow?: Partial<TypedFlags>
   ) {
-    // typed “efectivo” = lo escrito por el usuario OR lock activo
     const typed: TypedFlags = {
       ...userTyped,
       ...(typedNow || {}),
@@ -270,36 +242,33 @@ export default function Step6Page() {
         let T = T0;
         let C = C0;
 
-        if (typed.T && !typed.C && T > 0) {
-          C = safeDiv(M, T);
-        } else if (typed.C && !typed.T && C > 0) {
-          T = safeDiv(M, C);
-        } else {
+        if (typed.T && !typed.C && T > 0) C = safeDiv(M, T);
+        else if (typed.C && !typed.T && C > 0) T = safeDiv(M, C);
+        else {
           if (T > 0 && C <= 0) C = safeDiv(M, T);
           else if (C > 0 && T <= 0) T = safeDiv(M, C);
         }
-
         return applySet(M, A, T, C);
       }
       case "ventaAnual": {
         const A = A0;
         const M = A > 0 ? Math.round(A / 12) : 0;
-        let T = T0, C = C0;
+        let T = T0,
+          C = C0;
 
-        if (typed.T && !typed.C && T > 0) {
-          C = safeDiv(M, T);
-        } else if (typed.C && !typed.T && C > 0) {
-          T = safeDiv(M, C);
-        } else {
+        if (typed.T && !typed.C && T > 0) C = safeDiv(M, T);
+        else if (typed.C && !typed.T && C > 0) T = safeDiv(M, C);
+        else {
           if (T > 0 && C <= 0) C = safeDiv(M, T);
           else if (C > 0 && T <= 0) T = safeDiv(M, C);
         }
-
         return applySet(M, A, T, C);
       }
       case "ticket": {
         const T = T0;
-        let C = C0, M = M0, A = A0;
+        let C = C0,
+          M = M0,
+          A = A0;
 
         if (typed.C) {
           M = Math.max(0, T * C);
@@ -311,12 +280,13 @@ export default function Step6Page() {
           }
         }
         A = M * 12;
-
         return applySet(M, A, T, C);
       }
       case "clientesMensuales": {
         const C = C0;
-        let T = T0, M = M0, A = A0;
+        let T = T0,
+          M = M0,
+          A = A0;
 
         if (typed.T) {
           M = Math.max(0, T * C);
@@ -328,7 +298,6 @@ export default function Step6Page() {
           }
         }
         A = M * 12;
-
         return applySet(M, A, T, C);
       }
       default:
@@ -336,7 +305,7 @@ export default function Step6Page() {
     }
   }
 
-  /* ===== Autorelleno visible según plantilla (gastos/mkt/cvu) ===== */
+  /* ===== Autorelleno por plantilla ===== */
   useEffect(() => {
     const A = derived.ventaAnual;
     const T = num(local.ticket);
@@ -346,8 +315,7 @@ export default function Step6Page() {
     const mktMensual = Math.round((A * tpl.marketing) / 12);
 
     const C_year = derived.clientesMensuales > 0 ? derived.clientesMensuales * 12 : 0;
-    const costoVarUnit =
-      C_year > 0 ? Math.round((derived.cvMat + derived.cvPer) / C_year) : 0;
+    const costoVarUnit = C_year > 0 ? Math.round((derived.cvMat + derived.cvPer) / C_year) : 0;
 
     const next = {
       gastosFijosMensuales: formatCLPInput(gfMensual),
@@ -364,7 +332,7 @@ export default function Step6Page() {
     });
   }, [derived.ventaAnual, derived.cvMat, derived.cvPer, derived.clientesMensuales, local.ticket, tpl]);
 
-  /* =============== Guardar y avanzar (compat ventaAnual/ventaAnio1) =============== */
+  /* =============== Guardar y avanzar =============== */
   const completedCount = useMemo(() => {
     let c = 0;
     if (parseCLP(local.ventaMensual) > 0) c++;
@@ -387,23 +355,21 @@ export default function Step6Page() {
       setErr(null);
 
       const inversionInicial = parseCLP(local.inversionInicial);
-      const capitalTrabajo   = parseCLP(local.capitalTrabajo);
+      const capitalTrabajo = parseCLP(local.capitalTrabajo);
 
-      const ventaMensualNum  = parseCLP(local.ventaMensual);
-      const ventaAnualNum    = num(local.ventaAnual) > 0 ? num(local.ventaAnual) : ventaMensualNum * 12;
+      const ventaMensualNum = parseCLP(local.ventaMensual);
+      const ventaAnualNum = num(local.ventaAnual) > 0 ? num(local.ventaAnual) : ventaMensualNum * 12;
 
-      const ticketNum        = parseCLP(local.ticket);
-      const conv             = Math.max(0, Math.min(100, num(local.conversionPct)));
+      const ticketNum = parseCLP(local.ticket);
+      const conv = Math.max(0, Math.min(100, num(local.conversionPct)));
 
-      const gfMensual        = Math.round((ventaAnualNum * tpl.gf_tot) / 12);
-      const mktMensual       = Math.round((ventaAnualNum * tpl.marketing) / 12);
-      const cvTot            = Math.round(ventaAnualNum * (tpl.cv_materiales + tpl.cv_personal));
+      const gfMensual = Math.round((ventaAnualNum * tpl.gf_tot) / 12);
+      const mktMensual = Math.round((ventaAnualNum * tpl.marketing) / 12);
+      const cvTot = Math.round(ventaAnualNum * (tpl.cv_materiales + tpl.cv_personal));
 
-      const C_local          =
-        toInt(local.clientesMensuales) ||
-        (ticketNum > 0 ? safeDiv(ventaMensualNum, ticketNum) : 0);
-      const clientesAnuales  = C_local * 12;
-      const costoVarUnit     = clientesAnuales > 0 ? Math.round(cvTot / clientesAnuales) : 0;
+      const C_local = toInt(local.clientesMensuales) || (ticketNum > 0 ? safeDiv(ventaMensualNum, ticketNum) : 0);
+      const clientesAnuales = C_local * 12;
+      const costoVarUnit = clientesAnuales > 0 ? Math.round(cvTot / clientesAnuales) : 0;
 
       const s6ForValidation = {
         inversionInicial,
@@ -429,7 +395,7 @@ export default function Step6Page() {
 
       const s6ToStore = {
         ...s6ForValidation,
-        ventaAnio1: ventaAnualNum, // compat para vistas que aún usan la clave legacy
+        ventaAnio1: ventaAnualNum,
       };
 
       setStep6(s6ToStore as any);
@@ -442,6 +408,78 @@ export default function Step6Page() {
       setErr(e?.message ?? "Error al guardar");
     } finally {
       setBusy(false);
+    }
+  }
+
+  /* ====== Aplicar IA de forma atómica (T & C → M y A) ====== */
+  function applyIAEstimate(ticketCLP?: number, clientesMes?: number) {
+    const T = !lockT && ticketCLP && ticketCLP > 0 ? Math.round(ticketCLP) : parseCLP(local.ticket);
+    const C = !lockC && clientesMes && clientesMes > 0 ? Math.round(clientesMes) : toInt(local.clientesMensuales);
+
+    // Si tenemos ambos, calculamos M y A directamente
+    const M = T > 0 && C > 0 ? T * C : parseCLP(local.ventaMensual) || Math.round(parseCLP(local.ventaAnual) / 12);
+    const A = M > 0 ? M * 12 : parseCLP(local.ventaAnual);
+
+    setLocal((p) => ({
+      ...p,
+      ticket: T > 0 ? formatCLPInput(T) : p.ticket ?? "",
+      clientesMensuales: C > 0 ? String(C) : p.clientesMensuales ?? "",
+      ventaMensual: M > 0 ? formatCLPInput(M) : p.ventaMensual ?? "",
+      ventaAnual: A > 0 ? formatCLPInput(A) : p.ventaAnual ?? "",
+    }));
+    setUserTyped({ M: true, A: true, T: true, C: true });
+
+    // destello breve en el recuadro de ventas
+    setFlashIA(true);
+    window.setTimeout(() => setFlashIA(false), 900);
+  }
+
+  /* ================= IA Suggest ================= */
+  async function onSuggestIA() {
+    if (aiBusy) return;
+    setAiBusy(true);
+    setAiErr(null);
+    setAiExplain("");
+    setAiSources([]);
+
+    try {
+      const idea =
+        (data as any)?.step1?.idea ||
+        (data as any)?.step2?.idea ||
+        "";
+      const ubicacion =
+        (data as any)?.step1?.ubicacion ||
+        (data as any)?.step3?.ubicacion ||
+        "Chile";
+
+      const r = await fetch("/api/ai/step6-suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idea,
+          rubro: sectorLabel,
+          ubicacion,
+          country: "CL",
+        }),
+      });
+
+      const j = await r.json();
+      if (!r.ok || !j?.ok) {
+        throw new Error(j?.error || `IA no disponible (${r.status})`);
+      }
+
+      // Aplica T & C y calcula M y A
+      applyIAEstimate(Number(j.ticket_clp) || 0, Number(j.clientes_mensuales) || 0);
+
+      setAiExplain(j.explicacion || "");
+      setAiSources(Array.isArray(j.fuentes) ? j.fuentes.slice(0, 3) : []);
+
+      // 💳 MISMO PATRÓN QUE STEP-2/4: refresca créditos por "focus"
+      try { window.dispatchEvent(new Event("focus")); } catch {}
+    } catch (e: any) {
+      setAiErr(e?.message || "No se pudo estimar con IA.");
+    } finally {
+      setAiBusy(false);
     }
   }
 
@@ -467,19 +505,14 @@ export default function Step6Page() {
   /* ================= UI ================= */
   return (
     <main className="mx-auto max-w-7xl px-3 py-8">
-      <EconomicHeader
-        title="Paso 6: Tu punto de partida: capital y ventas"
-        sectorLabel={sectorLabel}
-      />
+      <EconomicHeader title="Paso 6: Tu punto de partida: capital y ventas" sectorLabel={sectorLabel} />
 
       {/* === Marco 1: Capital === */}
-      <section className="relative mx-auto mt-8 max-w-2xl rounded-xl border-2 border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5 p-6 text-center">
-        <h2 className="text-xl md:text-2xl font-semibold text-slate-900">
-          ¿Cuánto dinero dispones para tu idea?
-        </h2>
+      <section className="relative mx-auto mt-8 max-w-2xl rounded-xl border-2 border-slate-200 bg-white p-6 text-center shadow-xl ring-1 ring-slate-900/5">
+        <h2 className="text-xl md:text-2xl font-semibold text-slate-900">¿Cuánto dinero dispones para tu idea?</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Con este monto estimaremos tu <span className="font-medium">capital de trabajo</span> para operar
-          y el restante será tu <span className="font-medium">inversión inicial</span>.
+          Con este monto estimaremos tu <span className="font-medium">capital de trabajo</span> para operar y sabrás 
+          el disponible para <span className="font-medium">inversión inicial</span>.
         </p>
 
         <div className="mt-5 flex justify-center">
@@ -489,50 +522,78 @@ export default function Step6Page() {
             aria-label="Monto disponible"
             placeholder="$"
             value={local.inversionInicial ?? ""}
-            onChange={(e) =>
-              setLocal((p) => ({ ...p, inversionInicial: formatCLPInput(e.target.value) }))
-            }
+            onChange={(e) => setLocal((p) => ({ ...p, inversionInicial: formatCLPInput(e.target.value) }))}
             className="w-full max-w-sm rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-lg tracking-wide shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-300"
           />
         </div>
       </section>
 
       {/* === Marco 2: Ventas === */}
-      <section className="relative mx-auto mt-6 max-w-3xl rounded-xl border-2 border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5 p-6">
+      <section
+        className={[
+          "relative mx-auto mt-6 max-w-3xl rounded-xl border-2 border-slate-200 bg-white p-6 shadow-xl ring-1 ring-slate-900/5 transition",
+          "ring-2 ring-blue-300", // destello suave; puedes cambiar a amber si quieres dorado
+          flashIA ? "animate-pulse" : "",
+        ].join(" ")}
+        aria-live="polite"
+      >
         {/* Badge contador */}
-        <div className="absolute right-3 top-3" aria-live="polite">
+        <div className="absolute right-3 top-3">
           <Badge>{completedCount}/4 listos ✓</Badge>
         </div>
 
-        <h2 className="text-lg md:text-xl font-semibold text-slate-900 text-center">
-          Aquí necesitamos tus ventas
-        </h2>
+        <h2 className="text-lg md:text-xl font-semibold text-slate-900 text-center">Aquí necesitamos tus ventas</h2>
         <p className="mt-2 text-sm text-slate-600 text-center">
-          Completa cualquier <span className="font-medium">2 de 4</span> y el resto lo calculamos con{" "}
+          Completa solo  <span className="font-medium">2 de los 4</span> sí necesitas ayuda aplica{" "}
           <span className="inline-flex items-center gap-1 font-medium">
-            <BotIcon className="w-3.5 h-3.5" variant="t3" /> IA Aret3
+            <BotIcon className="h-4 w-4" variant="t3"  glowHue="gold" /> 
           </span>.
         </p>
 
-        {/* ¿Cómo lo calculamos? */}
-        <div className="mt-3 text-center">
+        {/* Controles superiores */}
+        <div className="mt-3 flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
           <details className="inline-block">
-            <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700">
-              ¿Cómo lo calculamos?
-            </summary>
+            <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700">¿Cómo lo calculamos?</summary>
             <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-              <ul className="list-disc pl-4 space-y-1 text-left">
-                <li>Venta mensual (M) = <strong>Ticket (T)</strong> × <strong>Clientes/mes (C)</strong></li>
-                <li>Venta anual (A) = <strong>12 × M</strong></li>
-                <li>Ticket: ingreso promedio por compra de un cliente<InfoDot title="Promedio que gasta un cliente por compra." /></li>
-                <li>Clientes mensuales: personas atendidas en un mes<InfoDot title="No son visitas: son clientes que compran." /></li>
+              <ul className="list-disc space-y-1 pl-4 text-left">
+                <li>
+                  Venta mensual (M) = <strong>Ticket (T)</strong> × <strong>Clientes/mes (C)</strong>
+                </li>
+                <li>
+                  Venta anual (A) = <strong>12 × M</strong>
+                </li>
+                <li>
+                  Ticket: ingreso promedio por compra de un cliente
+                  <InfoDot title="Promedio que gasta un cliente por compra." />
+                </li>
+                <li>
+                  Clientes mensuales: personas atendidas en un mes
+                  <InfoDot title="No son visitas: son clientes que compran." />
+                </li>
               </ul>
             </div>
           </details>
+
+          {/* Botón IA */}
+          <button
+            type="button"
+            onClick={onSuggestIA}
+            disabled={aiBusy}
+            aria-busy={aiBusy}
+            className={[
+              "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-sm transition",
+              "border-blue-300 bg-blue-100 text-blue-700 hover:border-blue-400 hover:bg-blue-200 hover:text-blue-800",
+              "disabled:opacity-60 disabled:cursor-not-allowed",
+            ].join(" ")}
+            title="Estimar Ticket y Clientes con IA (consume 1 crédito)"
+          >
+            {aiBusy ? <Spinner /> : <BotIcon className="h-8 w-8" variant="t3" glowHue="gold" />}
+            Estimar con IA
+          </button>
         </div>
 
         {/* Inputs */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Venta mensual */}
           <label className="block">
             <LabelSmall>Venta Mensual</LabelSmall>
@@ -546,22 +607,14 @@ export default function Step6Page() {
                 className="w-full bg-transparent outline-none"
                 aria-describedby="venta-m-help"
               />
-              <span className="ml-2 text-slate-400 text-xs">/mes</span>
+              <span className="ml-2 text-xs text-slate-400">/mes</span>
             </div>
             <p id="venta-m-help" className="mt-1 text-[11px] text-slate-500">
               Puedes estimarla con la calculadora inferior si no la conoces.
             </p>
-
-            {/* Calculadora “No lo sé” */}
             <details className="mt-2">
-              <summary className="cursor-pointer text-[11px] text-sky-700 hover:underline">
-                No lo sé, ayúdame a estimarlo
-              </summary>
-              <VentaMensualEstimator
-                ticketStr={local.ticket ?? ""}
-                clientesStr={local.clientesMensuales ?? ""}
-                onApply={(M) => onChangeVentaMensual(String(M))}
-              />
+              <summary className="cursor-pointer text-[11px] text-sky-700 hover:underline">No lo sé, ayúdame a estimarlo</summary>
+              <VentaMensualEstimator ticketStr={local.ticket ?? ""} clientesStr={local.clientesMensuales ?? ""} onApply={(M) => onChangeVentaMensual(String(M))} />
             </details>
           </label>
 
@@ -578,20 +631,12 @@ export default function Step6Page() {
                 className="w-full bg-transparent outline-none"
                 aria-describedby="venta-a-help"
               />
-              <span className="ml-2 text-slate-400 text-xs">/año</span>
+              <span className="ml-2 text-xs text-slate-400">/año</span>
             </div>
-            <p id="venta-a-help" className="mt-1 text-[11px] text-slate-500">
-              Si conoces la venta anual, la mensual se completa sola.
-            </p>
-
+            <p id="venta-a-help" className="mt-1 text-[11px] text-slate-500">Si conoces la venta anual, la mensual se completa sola.</p>
             <details className="mt-2">
-              <summary className="cursor-pointer text-[11px] text-sky-700 hover:underline">
-                No lo sé, ayúdame a estimarlo
-              </summary>
-              <VentaAnualEstimator
-                ventaMensualStr={local.ventaMensual ?? ""}
-                onApply={(A) => onChangeVentaAnual(String(A))}
-              />
+              <summary className="cursor-pointer text-[11px] text-sky-700 hover:underline">No lo sé, ayúdame a estimarlo</summary>
+              <VentaAnualEstimator ventaMensualStr={local.ventaMensual ?? ""} onApply={(A) => onChangeVentaAnual(String(A))} />
             </details>
           </label>
 
@@ -600,30 +645,15 @@ export default function Step6Page() {
             <div className="flex items-center">
               <LabelSmall>Ticket / Ingreso promedio por cliente</LabelSmall>
               <InfoDot title="Promedio que gasta un cliente por compra." />
-              <LockToggle
-                locked={lockT}
-                onToggle={() => setLockT((v) => !v)}
-                label="Ticket"
-              />
+              <LockToggle locked={lockT} onToggle={() => setLockT((v) => !v)} label="Ticket" />
             </div>
             <div className="mt-1 flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-sky-300">
               <span className="mr-2 text-slate-400">$</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={local.ticket ?? ""}
-                onChange={(e) => onChangeTicket(e.target.value)}
-                className="w-full bg-transparent outline-none"
-              />
+              <input type="text" inputMode="numeric" value={local.ticket ?? ""} onChange={(e) => onChangeTicket(e.target.value)} className="w-full bg-transparent outline-none" />
             </div>
-
             <details className="mt-2">
-              <summary className="cursor-pointer text-[11px] text-sky-700 hover:underline">
-                No lo sé, ayúdame a estimarlo
-              </summary>
-              <TicketEstimator
-                onApply={(T) => onChangeTicket(String(T))}
-              />
+              <summary className="cursor-pointer text-[11px] text-sky-700 hover:underline">No lo sé, ayúdame a estimarlo</summary>
+              <TicketEstimator onApply={(T) => onChangeTicket(String(T))} />
             </details>
           </label>
 
@@ -632,11 +662,7 @@ export default function Step6Page() {
             <div className="flex items-center">
               <LabelSmall>Clientes mensuales (cantidad)</LabelSmall>
               <InfoDot title="Personas que compran en un mes." />
-              <LockToggle
-                locked={lockC}
-                onToggle={() => setLockC((v) => !v)}
-                label="Clientes"
-              />
+              <LockToggle locked={lockC} onToggle={() => setLockC((v) => !v)} label="Clientes" />
             </div>
             <div className="mt-1 flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-sky-300">
               <input
@@ -647,58 +673,84 @@ export default function Step6Page() {
                 className="w-full bg-transparent outline-none"
                 placeholder="Ej: 2000"
               />
-              <span className="ml-2 text-slate-400 text-xs">personas/mes</span>
+              <span className="ml-2 text-xs text-slate-400">personas/mes</span>
             </div>
-
             <details className="mt-2">
-              <summary className="cursor-pointer text-[11px] text-sky-700 hover:underline">
-                No lo sé, ayúdame a estimarlo
-              </summary>
-              <ClientesEstimator
-                onApply={(C) => onChangeClientes(String(C))}
-              />
+              <summary className="cursor-pointer text-[11px] text-sky-700 hover:underline">No lo sé, ayúdame a estimarlo</summary>
+              <ClientesEstimator onApply={(C) => onChangeClientes(String(C))} />
             </details>
           </label>
         </div>
 
         {/* KPIs rápidos */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-          <div className="rounded-lg border border-slate-200 bg-white shadow px-3 py-2 text-center">
+        <div className="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center shadow">
             <div className="text-slate-500">Clientes anuales</div>
             <div className="font-semibold">{fmtCL(derived.clientesAnuales)}</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white shadow px-3 py-2 text-center">
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center shadow">
             <div className="text-slate-500">Clientes mensuales</div>
             <div className="font-semibold">{fmtCL(derived.clientesMensuales)}</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white shadow px-3 py-2 text-center">
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center shadow">
             <div className="text-slate-500">Costo variable unitario</div>
             <div className="font-semibold">${fmtCL(derived.costoVarUnitario)}</div>
           </div>
         </div>
+
+        {/* Resultado IA / Fuentes + Disclaimer */}
+        {(aiErr || aiSources.length > 0 || aiExplain) && (
+          <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+            {aiErr ? (
+              <p className="text-rose-600">IA: {aiErr}</p>
+            ) : (
+              <>
+                <p className="mb-2 text-[11px] text-slate-500">
+                  <strong>Nota:</strong> esta es una <em>estimación orientativa</em> según fuentes públicas para {sectorLabel}. 
+                  Debe ser corroborada con tus datos reales (precios, aforo, rotación y demanda local).
+                </p>
+                {aiExplain && <p className="mb-2">{aiExplain}</p>}
+                {aiSources.length > 0 && (
+                  <>
+                    <div className="mb-1 font-medium text-slate-700">Fuentes</div>
+                    <ul className="list-disc pl-5">
+                      {aiSources.map((s, i) => (
+                        <li key={i} className="truncate">
+                          <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-sky-700 hover:underline">
+                            {s.title || s.url}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </section>
 
-      {err && <p className="text-sm text-red-600 mt-4 text-center">{err}</p>}
+      {err && <p className="mt-4 text-center text-sm text-rose-600">{err}</p>}
 
-      <div className="mt-6 flex items-center justify-between max-w-3xl mx-auto">
+      <div className="mx-auto mt-6 flex max-w-3xl items-center justify-between">
         <PrevButton href="/wizard/step-5" />
-       {/* Wrapper para aspecto de deshabilitado sin pasar 'disabled' al NextButton */}
-      <div className={canContinue ? "opacity-100" : "opacity-50 pointer-events-none"}>
-        <NextButton onClick={onNext} />
+        <div className={canContinue ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-50"}>
+          <NextButton onClick={onNext} label="¡Vamos al siguiente paso!" />
+        </div>
       </div>
-     </div>
 
-      <div className="max-w-3xl mx-auto">
+      <div className="mx-auto max-w-3xl">
         <UpsellBanner />
       </div>
 
+      {/* Aviso de créditos, igual que Step-2/4 */}
       <p className="mt-4 text-xs text-slate-500 text-center">
-              Nota: la generación con{" "}
-              <span className="inline-flex items-center gap-1 font-medium">
-                <BotIcon className="w-3.5 h-3.5" variant="t3" /> IA Aret3
-              </span>{" "}
-              se hará al final, en el Informe.
-            </p>
+        Nota: Aplicar{" "}
+        <span className="inline-flex items-center gap-1 font-medium">
+          <BotIcon className="w-3.5 h-3.5" variant="t3" glowHue="gold" /> IA Aret3
+        </span>{" "}
+         para las ventas resta 1 crédito.
+      </p>
     </main>
   );
 }
@@ -718,31 +770,17 @@ function TicketEstimator({ onApply }: { onApply: (ticketCLP: number) => void }) 
   };
 
   return (
-    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+    <div className="mt-2 grid grid-cols-2 gap-2 text:[11px]">
       <div>
-        <div className="text-slate-600 mb-1">Precio promedio</div>
-        <input
-          value={precio}
-          onChange={(e) => setPrecio(formatCLPInput(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="$"
-        />
+        <div className="mb-1 text-slate-600">Precio promedio</div>
+        <input value={precio} onChange={(e) => setPrecio(formatCLPInput(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="$" />
       </div>
       <div>
-        <div className="text-slate-600 mb-1">% descuento medio</div>
-        <input
-          value={desc}
-          onChange={(e) => setDesc(onlyDigits(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="0"
-        />
+        <div className="mb-1 text-slate-600">% descuento medio</div>
+        <input value={desc} onChange={(e) => setDesc(onlyDigits(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="0" />
       </div>
       <div className="col-span-2">
-        <button
-          type="button"
-          onClick={calc}
-          className="mt-2 w-full rounded bg-sky-600 px-3 py-1.5 text-white text-[11px] hover:bg-sky-700"
-        >
+        <button type="button" onClick={calc} className="mt-2 w-full rounded bg-sky-600 px-3 py-1.5 text-[11px] text-white hover:bg-sky-700">
           Aplicar como Ticket
         </button>
       </div>
@@ -757,48 +795,26 @@ function ClientesEstimator({ onApply }: { onApply: (clientes: number) => void })
   const [dias, setDias] = useState<string>("26");
 
   const calc = () => {
-    const c =
-      (Number(onlyDigits(aforo)) || 0) *
-      (Number(onlyDigits(horas)) || 0) *
-      (Number(onlyDigits(dias)) || 0);
+    const c = (Number(onlyDigits(aforo)) || 0) * (Number(onlyDigits(horas)) || 0) * (Number(onlyDigits(dias)) || 0);
     onApply(Math.max(0, Math.round(c)));
   };
 
   return (
-    <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+    <div className="mt-2 grid grid-cols-3 gap-2 text:[11px]">
       <div>
-        <div className="text-slate-600 mb-1">Aforo (personas)</div>
-        <input
-          value={aforo}
-          onChange={(e) => setAforo(onlyDigits(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="Ej: 20"
-        />
+        <div className="mb-1 text-slate-600">Aforo (personas)</div>
+        <input value={aforo} onChange={(e) => setAforo(onlyDigits(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="Ej: 20" />
       </div>
       <div>
-        <div className="text-slate-600 mb-1">Horas pico/día</div>
-        <input
-          value={horas}
-          onChange={(e) => setHoras(onlyDigits(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="Ej: 4"
-        />
+        <div className="mb-1 text-slate-600">Horas pico/día</div>
+        <input value={horas} onChange={(e) => setHoras(onlyDigits(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="Ej: 4" />
       </div>
       <div>
-        <div className="text-slate-600 mb-1">Días/mes</div>
-        <input
-          value={dias}
-          onChange={(e) => setDias(onlyDigits(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="26"
-        />
+        <div className="mb-1 text-slate-600">Días/mes</div>
+        <input value={dias} onChange={(e) => setDias(onlyDigits(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="26" />
       </div>
       <div className="col-span-3">
-        <button
-          type="button"
-          onClick={calc}
-          className="mt-2 w-full rounded bg-sky-600 px-3 py-1.5 text-white text-[11px] hover:bg-sky-700"
-        >
+        <button type="button" onClick={calc} className="mt-2 w-full rounded bg-sky-600 px-3 py-1.5 text-[11px] text-white hover:bg-sky-700">
           Aplicar como Clientes
         </button>
       </div>
@@ -827,29 +843,15 @@ function VentaMensualEstimator({
   return (
     <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
       <div>
-        <div className="text-slate-600 mb-1">Ticket ($)</div>
-        <input
-          value={t}
-          onChange={(e) => setT(formatCLPInput(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="$"
-        />
+        <div className="mb-1 text-slate-600">Ticket ($)</div>
+        <input value={t} onChange={(e) => setT(formatCLPInput(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="$" />
       </div>
       <div>
-        <div className="text-slate-600 mb-1">Clientes/mes</div>
-        <input
-          value={c}
-          onChange={(e) => setC(onlyDigits(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="Ej: 2000"
-        />
+        <div className="mb-1 text-slate-600">Clientes/mes</div>
+        <input value={c} onChange={(e) => setC(onlyDigits(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="Ej: 2000" />
       </div>
       <div className="col-span-2">
-        <button
-          type="button"
-          onClick={calc}
-          className="mt-2 w-full rounded bg-sky-600 px-3 py-1.5 text-white text-[11px] hover:bg-sky-700"
-        >
+        <button type="button" onClick={calc} className="mt-2 w-full rounded bg-sky-600 px-3 py-1.5 text-[11px] text-white hover:bg-sky-700">
           Aplicar como Venta mensual
         </button>
       </div>
@@ -876,29 +878,15 @@ function VentaAnualEstimator({
   return (
     <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
       <div>
-        <div className="text-slate-600 mb-1">Venta mensual ($)</div>
-        <input
-          value={m}
-          onChange={(e) => setM(formatCLPInput(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="$"
-        />
+        <div className="mb-1 text-slate-600">Venta mensual ($)</div>
+        <input value={m} onChange={(e) => setM(formatCLPInput(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="$" />
       </div>
       <div>
-        <div className="text-slate-600 mb-1">Meses operativos</div>
-        <input
-          value={meses}
-          onChange={(e) => setMeses(onlyDigits(e.target.value))}
-          className="w-full rounded border border-slate-300 px-2 py-1"
-          placeholder="12"
-        />
+        <div className="mb-1 text-slate-600">Meses operativos</div>
+        <input value={meses} onChange={(e) => setMeses(onlyDigits(e.target.value))} className="w-full rounded border border-slate-300 px-2 py-1" placeholder="12" />
       </div>
       <div className="col-span-2">
-        <button
-          type="button"
-          onClick={calc}
-          className="mt-2 w-full rounded bg-sky-600 px-3 py-1.5 text-white text-[11px] hover:bg-sky-700"
-        >
+        <button type="button" onClick={calc} className="mt-2 w-full rounded bg-sky-600 px-3 py-1.5 text-[11px] text-white hover:bg-sky-700">
           Aplicar como Venta anual
         </button>
       </div>

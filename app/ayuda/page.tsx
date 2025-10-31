@@ -27,7 +27,7 @@ export default function AyudaPage() {
   // Botón rojo/blanco reutilizable
   const BackBtn = ({ className = "" }: { className?: string }) => (
     <Link
-      href="/"
+      href="/wizard/step-1"
       className={`inline-flex items-center rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-red-700 ${className}`}
     >
       ← Volver a Areté

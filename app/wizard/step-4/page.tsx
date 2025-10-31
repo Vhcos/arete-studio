@@ -87,7 +87,7 @@ export default function Step4Page() {
     <main className="mx-auto max-w-7xl px-3 py-8">
       <EconomicHeader
         title="Paso 4 · Tu ventaja diferenciadora"
-        subtitle="Cuéntanos qué harás distinto, cuál será tu impacto y dónde operarás."
+        subtitle="Cuéntanos qué harás distinto, cuál será tu impacto y dónde operarás. Puedes mejorarla con IA Aret3"
       />
 
       <section className="mx-auto mt-6 max-w-2xl rounded-xl border-2 border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5 p-6">
@@ -121,8 +121,8 @@ export default function Step4Page() {
               "disabled:opacity-60 disabled:cursor-not-allowed",
             ].join(" ")}
           >
-            {aiLoading ? <Spinner className="w-5 h-5" /> : <BotIcon className="w-5 h-5" variant="t3" />}
-            <span className="mt-1 text-[10px] leading-none">IA Aret3</span>
+            {aiLoading ? <Spinner className="w-5 h-5" /> :  <BotIcon className="h-8 w-8" variant="t3" glowHue="gold"/>}
+            <span className="mt-1 text-[10px] leading-none">Escribe con IA Aret3</span>
           </button>
         </div>
 

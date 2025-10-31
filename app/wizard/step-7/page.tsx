@@ -48,22 +48,32 @@ function deriveMcUnit(ticket: number, costoUnit?: number, costoPct?: number) {
   return Math.max(0, Math.round(price - cost));
 }
 
-/* Rampa mensual lineal hasta mes P.E.: suma déficits de 12 meses */
-function acumDeficit(
-  gastosFijosMes: number,
-  mcUnit: number,
-  clientesPERounded: number,
-  mesesPE: number
-) {
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const stepUser = Math.round(100 / Math.max(1, mesesPE));
+/* Capital de trabajo con subida por "peldaños iguales" (incluye marketing)
+   - Parte desde Clientes para P.E.
+   - Incrementa m/mesesPE (sin tope en 1), igual que Step-9
+   - Opcional: tope en clientes objetivo (si existe)
+*/
+function capitalTrabajoDesdePE(opts: {
+  gastosFijosMes: number;
+  marketingMes: number;
+  mcUnit: number;
+  clientesPE: number;         // ceil(gastosFijos/mcUnit)
+  mesesPE: number;            // 3/6/9/12
+  clientesObjetivoMes?: number; // tope; si 0/NaN, no aplica
+}) {
+  const { gastosFijosMes, marketingMes, mcUnit, clientesPE, mesesPE, clientesObjetivoMes } = opts;
   let total = 0;
-  for (const m of months) {
-    const pct = Math.min(100, stepUser * m);
-    const clientesMes = (clientesPERounded * pct) / 100;
-    const mcTotal = clientesMes * mcUnit;
-    const deficit = Math.max(0, gastosFijosMes - mcTotal);
-    total += deficit;
+  for (let m = 1; m <= 12; m++) {
+    const factor = mesesPE > 0 ? m / mesesPE : 1; // igual que Step-9 (sin clamp)
+    const basePE = Math.max(0, Math.ceil(clientesPE * factor));
+    const clientes = (clientesObjetivoMes && clientesObjetivoMes > 0)
+      ? Math.min(basePE, Math.round(clientesObjetivoMes))
+      : basePE;
+
+    const mcTotal = clientes * Math.max(0, mcUnit);
+    const gastos = Math.max(0, gastosFijosMes) + Math.max(0, marketingMes);
+    const resultado = mcTotal - gastos; // mismo criterio que Step-9
+    if (resultado < 0) total += -resultado; // solo meses con déficit
   }
   return Math.round(total);
 }
@@ -97,24 +107,33 @@ export default function Step7Page() {
       ? ventaMensual / ticket
       : 0;
 
+      // Tope opcional (clientes objetivo/mes)
+const clientesObjetivoMes =
+  Number.isFinite(clientesMensuales) && clientesMensuales > 0
+    ? Math.round(clientesMensuales)
+    : 0;
+  // Cálculos principales
   const gastosFijos = Number(s6.gastosFijosMensuales ?? 0);
   const mcUnit = deriveMcUnit(ticket, Number(s6.costoVarUnit ?? 0), Number(s6.costoVarPct ?? 0));
+  // 👇 nuevo: marketing mensual numérico (acepta ambas claves del store)
+  const marketingMensualNum = Number(s6.presupuestoMarketing ?? s6.marketingMensual ?? 0);
 
-  // Punto de equilibrio “duro” → redondeo hacia arriba (siguiente entero)
-  const clientesPE_raw =
-    mcUnit > 0 && gastosFijos > 0 ? gastosFijos / mcUnit : Number.POSITIVE_INFINITY;
-  const clientesPERounded = Number.isFinite(clientesPE_raw)
-    ? Math.ceil(clientesPE_raw)
-    : clientesPE_raw;
-  const ventasPERounded = Number.isFinite(clientesPERounded)
-    ? clientesPERounded * ticket
-    : 0;
+  // Clientes para P.E. (mensual)
+  const clientesPE = mcUnit > 0 ? gastosFijos / mcUnit : 0;
+  const clientesPERounded = Math.ceil(clientesPE);
+  // Ventas para P.E. (mensual)
+  const ventasPE = clientesPERounded * ticket;
+  const ventasPERounded = Math.round(ventasPE);
 
-  // Capital de trabajo estimado con rampa hasta P.E. (usa clientes PE redondeados)
-  const capitalTrabajoNecesario = useMemo(
-    () => acumDeficit(gastosFijos, mcUnit, clientesPERounded, mesesPE),
-    [gastosFijos, mcUnit, clientesPERounded, mesesPE]
-  );
+  // Capital de trabajo necesario
+  const capitalTrabajoNecesario = capitalTrabajoDesdePE({
+    gastosFijosMes: gastosFijos,
+    marketingMes: marketingMensualNum,
+    mcUnit,
+    clientesPE: clientesPERounded,
+    mesesPE,
+    clientesObjetivoMes,
+  });
 
   // Conversión → ratio
   const convRatio =
@@ -246,7 +265,7 @@ export default function Step7Page() {
       {/* Bloque 2: Conoce a tu cliente */}
       <section className="rounded-2xl border bg-white shadow-sm p-5">
         <h2 className="text-base font-semibold">
-          Conoce a tu cliente <span className="text-slate-500 font-normal">(solo debes mover el Porcentaje de conversión)</span>
+          Conoce a tu cliente <span className="text-slate-500 font-normal">(mientras más grande el numero menos visitas.)</span>
         </h2>
         <p className="text-sm text-slate-600">
           Con dos datos simples proyectamos cuántas visitas necesitas para alcanzar tus clientes meta.
@@ -274,7 +293,7 @@ export default function Step7Page() {
               </summary>
               <p className="mt-1">
                 Es el porcentaje de tus visitas que termina comprando. Si no tienes datos:
-                1–4 (e-commerce), 3–10 (tienda), 10–30 (servicios).
+                1–4 (e-commerce), 3–10 (tienda), 10–30 (servicios) mientras más grande el numero menos visitas.
               </p>
             </details>
           </label>

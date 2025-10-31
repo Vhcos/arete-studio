@@ -1,3 +1,4 @@
+//  components/finance/EERRAnual.tsx  
 "use client";
 
 type Tpl = {

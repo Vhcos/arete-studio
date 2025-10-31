@@ -1,0 +1,266 @@
+--- app/page.tsx
++++ app/page.tsx
+@@ -40,6 +40,101 @@
+ import type { ChartPoint } from './types/report';
+ import Link from "next/link";
+ import { useRouter, useSearchParams } from "next/navigation";
++// === Panel Step-10 (helpers compartidos) ===
++const pickNumber = (...vals: any[]) => {
++  for (const v of vals) {
++    const n = Number(v);
++    if (Number.isFinite(n) && n > 0) return Math.round(n);
++  }
++  return 0;
++};
++const deriveCostoUnit = (ticket: number, costoVarPct?: number, costoVarUnit?: number) => {
++  if (typeof costoVarUnit === "number" && costoVarUnit > 0) return Math.min(costoVarUnit, ticket);
++  if (typeof costoVarPct === "number" && costoVarPct > 0) return Math.min((ticket * costoVarPct) / 100, ticket);
++  return 0;
++};
++const calcMcUnit = (ticket: number, costoUnit: number) => Math.max(ticket - costoUnit, 0);
++type K5 =
++  | "urgencia"
++  | "accesibilidad"
++  | "competencia"
++  | "experiencia"
++  | "pasion"
++  | "planesAlternativos"
++  | "toleranciaRiesgo"
++  | "testeoPrevio"
++  | "redApoyo";
++const EMO_FIELDS: { key: K5; label: string }[] = [
++  { key: "urgencia", label: "Problema" },
++  { key: "experiencia", label: "Experiencia" },
++  { key: "competencia", label: "Competencia" },
++  { key: "accesibilidad", label: "Acceso cliente" },
++  { key: "toleranciaRiesgo", label: "Riesgo" },
++  { key: "pasion", label: "Pasión" },
++  { key: "testeoPrevio", label: "Testeo" },
++  { key: "redApoyo", label: "Red apoyo" },
++  { key: "planesAlternativos", label: "Plan B" },
++];
++function toScale3(v: unknown): number {
++  const n = Number(v);
++  if (!Number.isFinite(n) || n <= 0) return 0;
++  if (n <= 1) return 1;
++  if (n <= 2) return 2;
++  return 3;
++}
++function scoreS5(values: Record<K5, number>) {
++  const answered = Object.values(values).filter((v) => v >= 1 && v <= 3);
++  const sum = answered.reduce((a, b) => a + b, 0);
++  const max = (answered.length || 1) * 3;
++  const idx = Math.round((sum / max) * 100);
++  return { sum, idx, answered: answered.length };
++}
++function EmotionRadar({ values }: { values: Record<K5, number> }) {
++  const BOX = 240;
++  const cx = BOX / 2;
++  const cy = BOX / 2;
++  const rMax = 90;
++  const n = EMO_FIELDS.length;
++  const toXY = (i: number, v: number) => {
++    const angle = ((-90 + (360 / n) * i) * Math.PI) / 180;
++    const r = (Math.max(0, Math.min(3, v)) / 3) * rMax;
++    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
++  };
++  const rings = [1, 2, 3].map((lvl) => {
++    const pts = EMO_FIELDS.map((_, i) => {
++      const [x, y] = toXY(i, lvl);
++      return `${x},${y}`;
++    }).join(" ");
++    return <polygon key={lvl} points={pts} fill="none" stroke="#e5e7eb" strokeDasharray="4 4" />;
++  });
++  const polyPts = EMO_FIELDS.map((_, i) => {
++    const [x, y] = toXY(i, values[EMO_FIELDS[i].key] || 0);
++    return `${x},${y}`;
++  }).join(" ");
++  return (
++    <div className="mx-auto w-[210px] sm:w-[240px] aspect-square">
++      <svg viewBox={`0 0 ${BOX} ${BOX}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" className="block">
++        <g>
++          {rings}
++          {EMO_FIELDS.map((_, i) => {
++            const [x, y] = toXY(i, 3);
++            return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#e5e7eb" />;
++          })}
++          <polygon points={polyPts} fill="rgba(56,189,248,0.25)" stroke="#38bdf8" strokeWidth="2" />
++          {EMO_FIELDS.map((f, i) => {
++            const [x, y] = toXY(i, 3.3);
++            return (
++              <text key={f.key} x={x} y={y} textAnchor="middle" className="fill-slate-700 text-[11px]">
++                {f.label}
++              </text>
++            );
++          })}
++        </g>
++      </svg>
++    </div>
++  );
++}
+@@
+-{/* Brújula menor (fusión P.E. + Marketing) */}
+-  <div
+-    className="rounded-xl border-2 p-4"
+-    style={{ borderColor: accent, background: accentSoft }}
+-  >
+-    <div className="font-medium mb-2">BRUJULA MENOR</div>
+-
+-    {/* KPIs superiores */}
+-    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+-      
+-      <div>
+-        <div className="text-muted-foreground">Capital requerido hasta P.E. (plan {mesesPE}m)</div>
+-        <div className="font-semibold">
+-          ${fmtCL((outputs?.peCurve?.acumDeficitUsuario ?? 0))}
+-        </div>
+-      </div>
+-    </div>
+-...
+-    <div className="flex items-center justify-between">
+-      <span>Costo por cliente que compra</span>
+-      <span className="font-medium">
+-        {fmtCL(
+-          (mode === "budget")
+-            ? CAC_implicito
+-            : (N > 0 ? Math.round(M_requerido / N) : 0)
+-        )}
+-      </span>
+-    </div>
+-  </div>
+-</div>
++{/* === Panel de Navegación (Step-10) — versión compacta === */}
++<div className="rounded-2xl border bg-white shadow-sm p-5">
++  <div className="font-medium mb-2">Panel de Navegación</div>
++
++  {/* KPIs principales */}
++  <section className="mt-1 grid grid-cols-1 md:grid-cols-3 gap-4">
++    {/* 1) Objetivos unitarios */}
++    <div className="rounded-xl border bg-white p-4">
++      <h4 className="font-medium">Objetivos unitarios</h4>
++      <ul className="mt-2 text-sm space-y-1">
++        {(() => {
++          const costoUnitario = deriveCostoUnit(ticket, costoPct, costoUnit);
++          const mcUnit = calcMcUnit(ticket, costoUnitario);
++          const clientesPE = (mcUnit > 0 && (gastosFijosMes || 0) > 0) ? Math.ceil(gastosFijosMes / mcUnit) : 0;
++          const clientesMesObj = ticket > 0 ? Math.round((ingresosMeta || 0) / ticket) : 0;
++          const CAC_est = (marketingMensual > 0 && clientesMesObj > 0) ? Math.round(marketingMensual / clientesMesObj) : NaN;
++          return (
++            <>
++              <li>Ticket promedio: <b>{fmtCL(ticket)}</b></li>
++              <li>Costo variable unitario: <b>{fmtCL(costoUnitario)}</b></li>
++              <li>Margen por unidad: <b>{fmtCL(mcUnit)}</b></li>
++              <li>CAC (estimado): <b>{Number.isFinite(CAC_est) ? fmtCL(CAC_est) : "—"}</b></li>
++              <li>Clientes para P.E. (mensual): <b>{clientesPE}</b></li>
++            </>
++          );
++        })()}
++      </ul>
++    </div>
++
++    {/* 2) Operación mensual */}
++    <div className="rounded-xl border bg-white p-4">
++      <h4 className="font-medium">Operación mensual</h4>
++      <ul className="mt-2 text-sm space-y-1">
++        <li>Gastos fijos: <b>{fmtCL(gastosFijosMes || 0)}</b></li>
++        <li>Marketing: <b>{fmtCL(marketingMensual || 0)}</b></li>
++        <li>Meses para llegar al P.E.: <b>{mesesPE}</b></li>
++        <li>Ventas para P.E. (mensual): <b>{(() => {
++          const costoUnitario = deriveCostoUnit(ticket, costoPct, costoUnit);
++          const mcUnit = calcMcUnit(ticket, costoUnitario);
++          const clientesPE = (mcUnit > 0 && (gastosFijosMes || 0) > 0) ? Math.ceil(gastosFijosMes / mcUnit) : 0;
++          return fmtCL(clientesPE * ticket);
++        })()}</b></li>
++      </ul>
++    </div>
++
++    {/* 3) Indicadores anuales */}
++    <div className="rounded-xl border bg-white p-4">
++      <h4 className="font-medium">Grandes indicadores anuales</h4>
++      <ul className="mt-2 text-sm space-y-1">
++        <li>Venta anual: <b>{fmtCL((inp?.ventaAnual ?? inp?.ventaAnio1 ?? (ingresosMeta || 0) * 12) || 0)}</b></li>
++        <li>Rentabilidad antes de imp.: <b>{fmtCL((outputs?.eerr?.utilidadAntesImp ?? 0))}</b></li>
++        <li>Capital de trabajo (déficits 12m): <b>{fmtCL(outputs?.peCurve?.acumDeficitUsuario ?? 0)}</b></li>
++        <li>Sueldo del dueño (plantilla): <b>{(() => {
++          const ventaAnual = Number(inp?.ventaAnual ?? inp?.ventaAnio1 ?? (ingresosMeta || 0) * 12) || 0;
++          const pct = (tpl?.gf_sueldoDueno || 0);
++          return pct > 0 ? fmtCL(Math.round(ventaAnual * pct)) : "—";
++        })()}</b></li>
++      </ul>
++    </div>
++  </section>
++
++  {/* Curva hacia el P.E. (12m) – mini */}
++  <section className="mt-5">
++    <div className="flex items-center gap-2">
++      <h4 className="font-medium">Curva hacia el Punto de Equilibrio (12 meses)</h4>
++      <span className="text-xs text-slate-500">(barras = déficit mensual; línea = avance al P.E.)</span>
++    </div>
++    <div className="mt-3 grid grid-cols-12 gap-2 items-end">
++      {(outputs?.peCurve?.data || []).map((r: any, _i: number, all: any[]) => {
++        const worst = Math.max(1, ...all.map(x => (x.resultado < 0 ? Math.abs(x.resultado) : 1)));
++        const deficit = r.resultado < 0 ? Math.abs(r.resultado) : 0;
++        const h = Math.round((deficit / worst) * 90);
++        return (
++          <div key={r.mes} className="relative">
++            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-sky-300" style={{ height: `${Math.min(100, r.pctPE || 0)}px`, opacity: 0.5 }} />
++            <div className={`mx-auto w-4 rounded ${deficit > 0 ? "bg-rose-300" : "bg-emerald-300"}`} style={{ height: `${deficit > 0 ? h : 6}px` }} />
++            <div className="mt-1 text-[10px] text-center text-slate-500">M{r.mes}</div>
++          </div>
++        );
++      })}
++    </div>
++  </section>
++
++  {/* Perfil emocional (Step-5) – radar mini */}
++  <section className="mt-5">
++    <div className="flex items-center justify-between gap-2">
++      <h4 className="font-medium">Tu perfil para ejecutar la idea (emocional)</h4>
++      {(() => {
++        const s5: Record<K5, number> = {
++          urgencia: toScale3((inp as any)?.urgencia),
++          experiencia: toScale3((inp as any)?.experiencia),
++          competencia: toScale3((inp as any)?.competencia),
++          accesibilidad: toScale3((inp as any)?.accesibilidad),
++          toleranciaRiesgo: toScale3((inp as any)?.toleranciaRiesgo),
++          pasion: toScale3((inp as any)?.pasion),
++          testeoPrevio: toScale3((inp as any)?.testeoPrevio),
++          redApoyo: toScale3((inp as any)?.redApoyo),
++          planesAlternativos: toScale3((inp as any)?.planesAlternativos),
++        };
++        const s = scoreS5(s5);
++        return <span className="text-xs text-slate-500">índice: <b>{s.idx}%</b> · escala 1–3</span>;
++      })()}
++    </div>
++    <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
++      {(() => {
++        const s5: Record<K5, number> = {
++          urgencia: toScale3((inp as any)?.urgencia),
++          experiencia: toScale3((inp as any)?.experiencia),
++          competencia: toScale3((inp as any)?.competencia),
++          accesibilidad: toScale3((inp as any)?.accesibilidad),
++          toleranciaRiesgo: toScale3((inp as any)?.toleranciaRiesgo),
++          pasion: toScale3((inp as any)?.pasion),
++          testeoPrevio: toScale3((inp as any)?.testeoPrevio),
++          redApoyo: toScale3((inp as any)?.redApoyo),
++          planesAlternativos: toScale3((inp as any)?.planesAlternativos),
++        };
++        return <EmotionRadar values={s5} />;
++      })()}
++      <ul className="text-sm text-slate-700 space-y-2">
++        {EMO_FIELDS.map((f) => (
++          <li key={f.key} className="flex items-center justify-between rounded-lg border px-3 py-2">
++            <span>{f.label}</span>
++            <span className="font-semibold">
++              {(() => {
++                const val = toScale3((inp as any)?.[f.key]);
++                return val ? `${val} / 3` : "—";
++              })()}
++            </span>
++          </li>
++        ))}
++        <li className="text-xs text-slate-500">Tip: valores más altos indican mejor base para avanzar en cada aspecto.</li>
++      </ul>
++    </div>
++  </section>
++</div>

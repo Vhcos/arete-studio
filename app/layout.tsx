@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import Script from "next/script";
 import CreditsRefreshHook from "./components/CreditsRefreshHook";
 import Providers from "./providers";
+import FooterApp from "@/components/FooterApp";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -35,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className="min-h-screen bg-white text-slate-900">
-        {/* Google Tag Manager (noscript) — recomendado */}
+        {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-WN7QD875"
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </noscript>
 
         <Providers>
+          {/* Header */}
           <header className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
             <Logo />
             <Suspense fallback={<div className="h-9 w-40" />}>
@@ -53,15 +55,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Suspense>
           </header>
 
+          {/* Main */}
           <main className="mx-auto max-w-6xl px-4">
             <Suspense fallback={<div className="py-10 text-sm text-slate-500">Cargando…</div>}>
               {children}
             </Suspense>
           </main>
 
-          <footer className="mx-auto max-w-6xl px-4 py-10 text-sm text-slate-500">
-            © {new Date().getFullYear()} ARET3. Todos los derechos reservados.
-          </footer>
+          {/* Footer unificado con redes */}
+          <FooterApp />
 
           <CreditsRefreshHook />
         </Providers>

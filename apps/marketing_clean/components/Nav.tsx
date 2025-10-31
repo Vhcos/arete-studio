@@ -1,4 +1,6 @@
 // apps/marketing_clean/components/Nav.tsx
+"use client";
+
 import React, { useEffect } from "react";
 import Logo from "./Logo";
 import { gtmPush } from "../lib/gtm";
@@ -7,18 +9,24 @@ const APP = process.env.NEXT_PUBLIC_APP_ORIGIN || "https://app.aret3.cl";
 
 export default function Nav() {
   useEffect(() => {
-  gtmPush("view_content", { page_type: "landing", path: window.location.pathname });
-}, []);
+    try {
+      gtmPush("view_content", { page_type: "landing", path: window.location.pathname });
+    } catch {}
+  }, []);
 
   return (
     <header className="mx-auto max-w-6xl px-4 py-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="shrink-0">
-          <Logo />
+        {/* Izquierda: logo + atajos */}
+        <div className="flex items-center gap-4">
+          <a href="/" aria-label="Aret3 (inicio)" className="inline-flex items-center">
+            <Logo />
+          </a>
+
           <a
             href="https://www.youtube-nocookie.com/embed/MF9b8ChhaXA"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             onClick={() => gtmPush("start_test", { source: "nav_tutorial" })}
             className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
           >
@@ -28,14 +36,15 @@ export default function Nav() {
           <a
             href={`${APP}/billing`}
             onClick={() => gtmPush("start_test", { source: "nav_prices" })}
-            className="rounded-lg bg-white-600 px-3 py-1.5 text-sm font-medium text-black hover:opacity-90"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Precios
           </a>
         </div>
 
+        {/* Derecha: CTAs */}
         <nav className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-4 text-sm">
+          <div className="hidden sm:flex items-center gap-4">
             <a
               href={`${APP}/auth/sign-in?callbackUrl=/`}
               onClick={() => gtmPush("start_test", { source: "nav_login" })}
