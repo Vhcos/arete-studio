@@ -130,16 +130,17 @@ export default function Home() {
                 }}
               />
               <div className="aspect-video w-full overflow-hidden rounded-2xl ring-1 ring-black/5 shadow-xl">
-                <iframe
-                  className="h-full w-full"
-                  src="https://www.youtube-nocookie.com/embed/MF9b8ChhaXA"
-                  title="Aret3 en 60 segundos"
-                  loading="lazy"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
+              <iframe
+                 className="h-full w-full"
+                 src="https://www.youtube-nocookie.com/embed/dCrQAvtYTu8"
+                 title="Aret3 — demo actualizada"
+                 loading="lazy"
+                 frameBorder="0"
+                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                 allowFullScreen
+               />
+             </div>
+
             </div>
           </div>
         </section>

@@ -24,14 +24,14 @@ export default function Nav() {
           </a>
 
           <a
-            href="https://www.youtube-nocookie.com/embed/MF9b8ChhaXA"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => gtmPush("start_test", { source: "nav_tutorial" })}
-            className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+          href="https://youtu.be/czo1ekVG5hY"
+           target="_blank"
+           rel="noopener noreferrer"
+           onClick={() => gtmPush("start_test", { source: "nav_tutorial" })}
+          className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
           >
-            Tutorial
-          </a>
+          Tutorial
+         </a>
 
           <a
             href={`${APP}/billing`}
