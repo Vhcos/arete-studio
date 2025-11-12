@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import Logo from "./Logo";
 import { gtmPush } from "../lib/gtm";
 
+
 const APP = process.env.NEXT_PUBLIC_APP_ORIGIN || "https://app.aret3.cl";
 
 export default function Nav() {

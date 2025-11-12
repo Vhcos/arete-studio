@@ -1,20 +1,8 @@
 // apps/marketing_clean/components/Logo.tsx
-import React from "react";
+"use client";
+import Aret3Logo from "./brand/Aret3Logo";
 
-export default function Logo({ className = "" }: { className?: string }) {
-  return (
-    <div className={`flex items-center gap-2 ${className}`}>
-       <span className="text-lg font-semibold italic tracking-tight text-blue-700">
-        Aret3
-      </span>
-      <img
-        src="/aret3-logo.svg"
-        alt="Aret3"
-        className="h-40 w-40"
-        width={70}
-        height={70}
-      />
-     
-    </div>
-  );
+export default function Logo() {
+  // si quieres solo el ícono: <Aret3Logo />
+  return <Aret3Logo wordmark />; // ícono + “aret3”
 }

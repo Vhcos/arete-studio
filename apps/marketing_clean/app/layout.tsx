@@ -4,14 +4,20 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Nav from "../components/Nav";
 import Script from "next/script";
+import Logo from "../components/Logo";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "ARET3 — Valida tu idea en minutos",
   description: "Completa 5 pasos y recibe un informe claro para decidir. Rápido, simple y visual.",
-};
+  openGraph: {
+    title: "aret3 — valida tu idea en 30 minutos",
+    description: "Wizard y reporte financiero simple para cursos y programas.",
+    images: [{ url: "/og-aret3.png", width: 1200, height: 630 }],
+  },
+} satisfies Metadata;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,6 +33,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             })(window,document,'script','dataLayer','GTM-WN7QD875');
           `}
         </Script>
+        <link rel="icon" href="/icon.svg?v=4" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
       </head>
       <body className="min-h-screen bg-white text-slate-900 antialiased">
         {/* noscript recomendado */}

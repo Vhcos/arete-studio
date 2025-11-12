@@ -16,7 +16,16 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "ARET3 — Evalúa tu idea de negocio con IA",
   description: "Rápido, simple y visual.",
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",          // ok para salir del paso
+  },
+  openGraph: {
+    title: "aret3 — valida tu idea en 30 minutos",
+    description: "Wizard y reporte financiero simple para cursos y programas.",
+    images: [{ url: "/og-aret3.png", width: 1200, height: 630 }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
