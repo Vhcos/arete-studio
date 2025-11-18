@@ -463,10 +463,21 @@ export default function Step6Page() {
         }),
       });
 
-      const j = await r.json();
-      if (!r.ok || !j?.ok) {
-        throw new Error(j?.error || `IA no disponible (${r.status})`);
-      }
+      // <--- SOLO MENSAJE, SIN POPUP y SIN “IA:” dentro del estado
+    if (!r.ok) {
+      setAiErr(
+        `Créditos insuficientes revisa nuestros planes y adquiere más créditos (${r.status})`
+      );
+      return;
+    }
+
+    const j = await r.json().catch(() => ({}));
+    if (!j?.ok) {
+      setAiErr(
+        `Créditos insuficientes revisa nuestros planes y adquiere más créditos (500)`
+      );
+      return;
+    }
 
       // Aplica T & C y calcula M y A
       applyIAEstimate(Number(j.ticket_clp) || 0, Number(j.clientes_mensuales) || 0);
@@ -542,9 +553,9 @@ export default function Step6Page() {
           <Badge>{completedCount}/4 listos ✓</Badge>
         </div>
 
-        <h2 className="text-lg md:text-xl font-semibold text-slate-900 text-center">Aquí necesitamos tus ventas</h2>
+        <h2 className="text-lg md:text-xl font-semibold text-slate-900 text-center">Sino  sabes tus ventas “Estimar Con IA”</h2>
         <p className="mt-2 text-sm text-slate-600 text-center">
-          Completa solo  <span className="font-medium">2 de los 4</span> sí necesitas ayuda aplica{" "}
+          “¿No tienes tus ventas claras? Haz clic en <span className="font-medium">‘Estimar con IA’</span>y la aplicación las calcula por ti, en segundos.” sí necesitas ayuda aplica{" "}
           <span className="inline-flex items-center gap-1 font-medium">
             <BotIcon className="h-4 w-4" variant="t3"  glowHue="gold" /> 
           </span>.
@@ -553,21 +564,25 @@ export default function Step6Page() {
         {/* Controles superiores */}
         <div className="mt-3 flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
           <details className="inline-block">
-            <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700">¿Cómo lo calculamos?</summary>
+            <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700">¿Cómo lo calculamos las ventas con IA en Aret3?</summary>
             <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
               <ul className="list-disc space-y-1 pl-4 text-left">
                 <li>
-                  Venta mensual (M) = <strong>Ticket (T)</strong> × <strong>Clientes/mes (C)</strong>
+                  Así estima las ventas <strong>Aret3 con IA</strong>: toma tu idea, rubro y ubicación, busca referencias recientes
+                   (precios promedio, aforos, rotación y casos de competidores). 
+                   
                 </li>
                 <li>
-                  Venta anual (A) = <strong>12 × M</strong>
+                  Con esos datos infiere un <strong>ticket promedio (T) y clientes mensuales (C) </strong>
+                   . Luego aplica la relación base Venta mensual (M) = T × C y Venta anual (A) = 12 × M. 
                 </li>
                 <li>
-                  Ticket: ingreso promedio por compra de un cliente
+                  Ajusta con <strong>plantillas del sector </strong>(costos variables y fijos típicos) y señales locales (demanda, estacionalidad 
+                   y tamaño de mercado) para entregar <strong>rangos plausibles</strong> y una breve explicación con fuentes. 
                   <InfoDot title="Promedio que gasta un cliente por compra." />
                 </li>
                 <li>
-                  Clientes mensuales: personas atendidas en un mes
+                  Los valores se redondean y sirven como punto de partida; debes validarlos con tus datos reales.
                   <InfoDot title="No son visitas: son clientes que compran." />
                 </li>
               </ul>

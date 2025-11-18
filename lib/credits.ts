@@ -1,134 +1,175 @@
-/**
- * lib/credits.ts
- * Manejo de créditos con cantidad variable y whitelist de admins.
- * Mantiene tu esquema: CreditWallet + UsageEvent.
- */
+// lib/credits.ts
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
-/** Admins con crédito ilimitado (no se debita) */
+export type UsageKind = "ai" | "grant" | "refund" | "session_grant" | "session_use";
+
+export class InsufficientCreditsError extends Error {
+  code = "no_credits" as const;
+  status = 402;
+  remaining: number;
+  required: number;
+  userId: string;
+  constructor(p: { userId: string; remaining: number; required: number; message?: string }) {
+    super(p.message || "Créditos insuficientes");
+    this.name = "InsufficientCreditsError";
+    this.userId = p.userId;
+    this.remaining = p.remaining;
+    this.required = p.required;
+  }
+}
+
+export function mapCreditErrorToHttp(err: unknown): { status: number; body: any } | null {
+  if (err instanceof InsufficientCreditsError) {
+    return {
+      status: err.status,
+      body: {
+        ok: false,
+        code: err.code,
+        message: "Créditos insuficientes: revisa nuestros planes y adquiere más créditos",
+        remaining: err.remaining,
+        required: err.required,
+        userId: err.userId,
+      },
+    };
+  }
+  return null;
+}
+
 function getAdminEmails(): Set<string> {
   const raw = process.env.ADMIN_EMAILS || "";
   return new Set(
-    raw
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean)
+    raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
   );
 }
 
 async function getUserEmail(userId: string): Promise<string | null> {
-  const u = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   return u?.email ?? null;
 }
-
-/**
- * Debita 'qty' créditos (default 1).
- * Idempotencia: si usas requestId único en UsageEvent, puedes chequear antes.
- */
-export async function tryDebitCredit(userId: string, requestId: string, qty: number = 1) {
-  // Admin: no debita
+async function isAdmin(userId: string): Promise<boolean> {
   const email = await getUserEmail(userId);
-  if (email && getAdminEmails().has(email.toLowerCase())) return { ok: true, skipped: true };
+  return !!(email && getAdminEmails().has(email.toLowerCase()));
+}
 
-  return await prisma.$transaction(async (tx) => {
-    const w = await tx.creditWallet.findUnique({ where: { userId } });
-    if (!w || w.creditsRemaining < qty) return { ok: false, error: "no_credits" as const };
+type Tx = Prisma.TransactionClient;
 
-    await tx.creditWallet.update({
-      where: { userId },
-      data: { creditsRemaining: { decrement: qty } },
-    });
-
-    await tx.usageEvent.create({
-      data: { userId, qty, kind: "ai", requestId },
-    });
-
-    return { ok: true };
+async function findUsageByRequest(tx: Tx, requestId: string) {
+  return tx.usageEvent.findFirst({ where: { requestId }, select: { id: true } });
+}
+async function recordEvent(tx: Tx, data: { userId: string; qty: number; kind: UsageKind; requestId: string }) {
+  await tx.usageEvent.create({ data });
+}
+async function getOrCreateWallet(tx: Tx, userId: string) {
+  return tx.creditWallet.upsert({
+    where: { userId },
+    create: { userId, creditsRemaining: 0 },
+    update: {},
+    select: { userId: true, creditsRemaining: true },
   });
 }
 
-/**
- * Reembolsa 'qty' créditos (default 1).
- * Si no quieres duplicar reembolsos, puedes guardar y revisar un requestId:refund.
- */
-export async function refundCredit(userId: string, requestId: string, qty: number = 1) {
-  return await prisma.$transaction(async (tx) => {
-    await tx.creditWallet.upsert({
-      where: { userId },
-      create: { userId, creditsRemaining: qty },
-      update: { creditsRemaining: { increment: qty } },
-    });
-    await tx.usageEvent.create({
-      data: { userId, qty, kind: "refund", requestId: `${requestId}:refund` },
-    });
-    return { ok: true };
-  });
-}
-
-/**
- * Otorga 'qty' créditos positivos al usuario (e.g., compra pack).
- * Idempotente por requestId.
- */
-export async function grantCredits(userId: string, requestId: string, qty: number) {
-  if (qty <= 0) return { ok: true, skipped: true as const };
-  return await prisma.$transaction(async (tx) => {
-    const existing = await tx.usageEvent.findFirst({ where: { requestId } }).catch(() => null);
-    if (existing) return { ok: true, skipped: true as const };
-
-    await tx.creditWallet.upsert({
-      where: { userId },
-      create: { userId, creditsRemaining: qty },
-      update: { creditsRemaining: { increment: qty } },
-    });
-    await tx.usageEvent.create({
-      data: { userId, qty, kind: "grant", requestId },
-    });
-    return { ok: true };
-  });
-}
-
-/**
- * Registra add-on de sesión (idempotente).
- */
-export async function incrementSessionEntitlement(userId: string, requestId: string, qty: number = 1) {
-  if (qty <= 0) return { ok: true, skipped: true as const };
-  return await prisma.$transaction(async (tx) => {
-    const existing = await tx.usageEvent.findFirst({ where: { requestId } }).catch(() => null);
-    if (existing) return { ok: true, skipped: true as const };
-    await tx.usageEvent.create({
-      data: { userId, qty, kind: "session_grant", requestId },
-    });
-    return { ok: true };
-  });
-}
-
-/**
- * Consume 1 sesión de asesoría (o la cantidad indicada).
- * Idempotente por requestId (no duplica consumos).
- * Para "refund" usar qty negativa (p.ej., -1) con el mismo requestId o sufijo distinto.
- */
-export async function consumeSessionEntitlement(
+export async function tryDebitCredit(
   userId: string,
   requestId: string,
-  qty: number = 1
-) {
-  if (qty === 0) return { ok: true, skipped: true as const };
+  qty = 1
+): Promise<{ ok: true; newBalance: number; idempotent?: true; skipped?: true }> {
+  if (qty <= 0) {
+    const bal = (await prisma.creditWallet.findUnique({ where: { userId }, select: { creditsRemaining: true } }))?.creditsRemaining ?? 0;
+    return { ok: true, newBalance: bal, skipped: true as const };
+  }
 
-  return await prisma.$transaction(async (tx) => {
-    // Idempotencia: si ya existe exacto ese requestId, no repetir
-    const existing = await tx.usageEvent.findFirst({
-      where: { requestId },
-      select: { id: true },
-    }).catch(() => null);
-    if (existing) return { ok: true, skipped: true as const };
-
-    await tx.usageEvent.create({
-      data: { userId, qty, kind: "session_use", requestId },
+  if (await isAdmin(userId)) {
+    await prisma.$transaction(async (tx) => {
+      const exists = await findUsageByRequest(tx, requestId);
+      if (!exists) await recordEvent(tx, { userId, qty: 0, kind: "ai", requestId });
     });
+    const bal = (await prisma.creditWallet.findUnique({ where: { userId }, select: { creditsRemaining: true } }))?.creditsRemaining ?? 0;
+    return { ok: true, newBalance: bal, skipped: true as const };
+  }
 
+  return prisma.$transaction(async (tx) => {
+    const exists = await findUsageByRequest(tx, requestId);
+    if (exists) {
+      const w = await getOrCreateWallet(tx, userId);
+      return { ok: true, newBalance: w.creditsRemaining, idempotent: true as const };
+    }
+
+    const w = await getOrCreateWallet(tx, userId);
+    if (w.creditsRemaining < qty) {
+      throw new InsufficientCreditsError({ userId, remaining: w.creditsRemaining, required: qty });
+    }
+
+    const updated = await tx.creditWallet.update({
+      where: { userId },
+      data: { creditsRemaining: { decrement: qty } },
+      select: { creditsRemaining: true },
+    });
+    await recordEvent(tx, { userId, qty, kind: "ai", requestId });
+    return { ok: true, newBalance: updated.creditsRemaining };
+  });
+}
+
+export async function refundCredit(userId: string, requestId: string, qty = 1) {
+  if (qty <= 0) {
+    const bal = (await prisma.creditWallet.findUnique({ where: { userId }, select: { creditsRemaining: true } }))?.creditsRemaining ?? 0;
+    return { ok: true, newBalance: bal, idempotent: true as const };
+  }
+  return prisma.$transaction(async (tx) => {
+    const exists = await findUsageByRequest(tx, requestId);
+    if (exists) {
+      const w = await getOrCreateWallet(tx, userId);
+      return { ok: true, newBalance: w.creditsRemaining, idempotent: true as const };
+    }
+    const updated = await tx.creditWallet.upsert({
+      where: { userId },
+      create: { userId, creditsRemaining: qty },
+      update: { creditsRemaining: { increment: qty } },
+      select: { creditsRemaining: true },
+    });
+    await recordEvent(tx, { userId, qty, kind: "refund", requestId });
+    return { ok: true, newBalance: updated.creditsRemaining };
+  });
+}
+
+export async function grantCredits(userId: string, requestId: string, qty: number) {
+  if (qty <= 0) {
+    const bal = (await prisma.creditWallet.findUnique({ where: { userId }, select: { creditsRemaining: true } }))?.creditsRemaining ?? 0;
+    return { ok: true, newBalance: bal, skipped: true as const };
+  }
+  return prisma.$transaction(async (tx) => {
+    const exists = await findUsageByRequest(tx, requestId);
+    if (exists) {
+      const w = await getOrCreateWallet(tx, userId);
+      return { ok: true, newBalance: w.creditsRemaining, idempotent: true as const };
+    }
+    const updated = await tx.creditWallet.upsert({
+      where: { userId },
+      create: { userId, creditsRemaining: qty },
+      update: { creditsRemaining: { increment: qty } },
+      select: { creditsRemaining: true },
+    });
+    await recordEvent(tx, { userId, qty, kind: "grant", requestId });
+    return { ok: true, newBalance: updated.creditsRemaining };
+  });
+}
+
+export async function incrementSessionEntitlement(userId: string, requestId: string, qty = 1) {
+  if (qty <= 0) return { ok: true, idempotent: true as const };
+  return prisma.$transaction(async (tx) => {
+    const exists = await findUsageByRequest(tx, requestId);
+    if (exists) return { ok: true, idempotent: true as const };
+    await recordEvent(tx, { userId, qty, kind: "session_grant", requestId });
+    return { ok: true };
+  });
+}
+
+export async function consumeSessionEntitlement(userId: string, requestId: string, qty = 1) {
+  if (qty === 0) return { ok: true, idempotent: true as const };
+  return prisma.$transaction(async (tx) => {
+    const exists = await findUsageByRequest(tx, requestId);
+    if (exists) return { ok: true, idempotent: true as const };
+    await recordEvent(tx, { userId, qty, kind: "session_use", requestId });
     return { ok: true };
   });
 }

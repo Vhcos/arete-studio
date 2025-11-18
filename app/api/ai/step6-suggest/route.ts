@@ -1,14 +1,13 @@
-// app/api/ai/step6-suggest/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { tryDebitCredit, refundCredit } from "@/lib/credits";
+import { tryDebitCredit, refundCredit, mapCreditErrorToHttp } from "@/lib/credits";
 
 const PPLX_KEY = process.env.PERPLEXITY_API_KEY!;
-const PPLX_MODEL = process.env.PERPLEXITY_MODEL || "sonar"; // ej: sonar, sonar-pro
+const PPLX_MODEL = process.env.PERPLEXITY_MODEL || "sonar"; // sonar, sonar-pro, etc.
 
 type S6Suggest = {
   ticket_clp?: number;
@@ -20,27 +19,33 @@ type S6Suggest = {
 };
 
 function coerceJson<T = any>(s: string): T {
-  const i = s.indexOf("{"),
-    j = s.lastIndexOf("}");
+  const i = s.indexOf("{"), j = s.lastIndexOf("}");
   if (i >= 0 && j > i) {
     const raw = s.slice(i, j + 1);
-    try {
-      return JSON.parse(raw);
-    } catch {}
+    try { return JSON.parse(raw); } catch {}
   }
-  // Fallback mínimo
   return {} as any;
 }
 
 export async function POST(req: Request) {
   const session: any = await getServerSession(authOptions as any);
   const userId = session?.user?.id as string | undefined;
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
-  if (!PPLX_KEY) {
-    return NextResponse.json({ ok: false, error: "PERPLEXITY_API_KEY no configurada" }, { status: 500 });
+
+  if (!userId) {
+    return NextResponse.json(
+      { ok: false, code: "unauthorized", message: "Unauthorized" },
+      { status: 401 }
+    );
   }
 
-  const body = await req.json().catch(() => ({}));
+  if (!PPLX_KEY) {
+    return NextResponse.json(
+      { ok: false, code: "missing_env", message: "PERPLEXITY_API_KEY no configurada" },
+      { status: 500 }
+    );
+  }
+
+  const body = await req.json().catch(() => ({} as any));
   const idea = (body?.idea || "").toString();
   const rubro = (body?.rubro || "").toString();
   const ubicacion = (body?.ubicacion || "Chile").toString();
@@ -50,9 +55,21 @@ export async function POST(req: Request) {
   const DEBIT = 1;
   const SKIP_DEBIT = process.env.SKIP_DEBIT_INTEL === "1";
 
+  // ↓↓↓ Débito con manejo de 402 (insuficientes) en JSON
   if (!SKIP_DEBIT) {
-    const { ok } = await tryDebitCredit(userId, requestId, DEBIT);
-    if (!ok) return NextResponse.json({ ok: false, error: "Créditos insuficientes" }, { status: 402 });
+    try {
+      await tryDebitCredit(userId, requestId, DEBIT);
+    } catch (err) {
+      const mapped = mapCreditErrorToHttp(err);
+      if (mapped) {
+        return NextResponse.json(mapped.body, { status: mapped.status }); // 402 JSON
+      }
+      // Error inesperado en el débito
+      return NextResponse.json(
+        { ok: false, code: "debit_error", message: String((err as any)?.message || err) },
+        { status: 500 }
+      );
+    }
   }
 
   try {
@@ -70,7 +87,7 @@ export async function POST(req: Request) {
       "}",
       "Infiérelo desde el rubro, ejemplos de competidores locales, aforos, tiques promedio y reportes recientes. Usa fuentes confiables/actuales.",
       `Ubicación objetivo: ${ubicacion} (country=${country}).`,
-      "Evita promedios viejos. Explica brevemente la base del cálculo (p.ej., ticket medio en locales similares, aforo x rotación).",
+      "Evita promedios viejos. Explica brevemente la base del cálculo.",
       "No incluyas nada fuera del JSON.",
     ].join("\n");
 
@@ -125,12 +142,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, ...out, requestId, model: j?.model });
   } catch (e: any) {
-    if (!process.env.SKIP_DEBIT_INTEL) {
-      try {
-        await refundCredit(session!.user.id, requestId, DEBIT);
-      } catch {}
+    // Si falló Perplexity u otra cosa, reembolsa el crédito si se debitó
+    if (!SKIP_DEBIT) {
+      try { await refundCredit(userId, requestId, DEBIT); } catch {}
     }
-    return NextResponse.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, code: "step6_error", message: String(e?.message ?? e) },
+      { status: 500 }
+    );
   }
 }
- 

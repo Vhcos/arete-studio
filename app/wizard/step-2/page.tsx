@@ -60,7 +60,7 @@ export default function Step2Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea: txt }),
       });
-      if (!r.ok) throw new Error(`IA no disponible (${r.status})`);
+      if (!r.ok) throw new Error(`Créditos insuficientes revisa nuestros planes y adquiere más créditos (${r.status})`);
       const j = await r.json();
       const improved = (j?.idea ?? j?.text ?? j?.content ?? "").toString().trim();
       if (!improved) throw new Error("Respuesta de IA vacía.");

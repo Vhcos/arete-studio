@@ -52,7 +52,7 @@ export async function POST(req: Request) {
    if (!SKIP_DEBIT) {
    const { ok } = await tryDebitCredit(userId, requestId, DEBIT);
    if (!ok) {
-     return NextResponse.json({ ok: false, error: "Créditos insuficientes" }, { status: 402 });
+     return NextResponse.json({ ok: false, error: "Créditos insuficientes revisa nuestros planes y adquiere más créditos " }, { status: 402 });
    }
   }
 
