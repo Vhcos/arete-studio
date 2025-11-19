@@ -40,7 +40,6 @@ export default function Step6Video() {
               allowFullScreen
               // VIDEO_ID del short de YouTube
               src="https://www.youtube.com/embed/LyRSJ3OLf-0?rel=0&modestbranding=1"
-
               className="h-full w-full"
             />
           </div>

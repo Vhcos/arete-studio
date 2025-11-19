@@ -17,7 +17,7 @@ export default function Home() {
         <title>Aret3 — Evalúa tu idea de negocio con IA</title>
         <meta
           name="description"
-          content="Evalúa tu idea sin saber finanzas. 8 pasos simples, informe visual y guía con IA para tomar decisiones rápido."
+          content="Evalúa tu idea sin saber finanzas. 10 pasos simples, informe visual y guía con IA para tomar decisiones rápido."
         />
         <link rel="canonical" href="https://www.aret3.cl/" />
       </Head>
@@ -57,7 +57,7 @@ export default function Home() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="text-2xl">🎯</div>
-              <h3 className="mt-1 text-base font-semibold text-slate-900">8 pasos simples</h3>
+              <h3 className="mt-1 text-base font-semibold text-slate-900">10 pasos simples</h3>
               <p className="mt-1 text-sm text-slate-600">Preguntas claras, sin jerga financiera.</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
