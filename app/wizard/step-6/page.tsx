@@ -13,6 +13,8 @@ import EconomicHeader from "@/components/wizard/EconomicHeader";
 import { SECTORS } from "@/lib/model/sectors";
 import UpsellBanner from "@/components/wizard/UpsellBanner";
 import BotIcon from "@/components/icons/BotIcon";
+import Step6Video from "./_components/Step6Video";
+
 
 /* ================= Helpers ================= */
 const onlyDigitsComma = (s: string) => s.replace(/[^\d,]/g, "");
@@ -549,17 +551,29 @@ export default function Step6Page() {
         aria-live="polite"
       >
         {/* Badge contador */}
-        <div className="absolute right-3 top-3">
-          <Badge>{completedCount}/4 listos ✓</Badge>
-        </div>
+<div className="absolute right-3 top-3">
+  <Badge>{completedCount}/4 listos ✓</Badge>
+</div>
 
-        <h2 className="text-lg md:text-xl font-semibold text-slate-900 text-center">Sino  sabes tus ventas “Estimar Con IA”</h2>
-        <p className="mt-2 text-sm text-slate-600 text-center">
-          “¿No tienes tus ventas claras? Haz clic en <span className="font-medium">‘Estimar con IA’</span>y la aplicación las calcula por ti, en segundos.” sí necesitas ayuda aplica{" "}
-          <span className="inline-flex items-center gap-1 font-medium">
-            <BotIcon className="h-4 w-4" variant="t3"  glowHue="gold" /> 
-          </span>.
+{/* Bloque principal Step 6: título + texto + video + botón IA */}
+        <div className="space-y-4">
+
+           <h2 className="text-lg md:text-xl font-semibold text-slate-900 text-center">
+             Si no sabes tus ventas, usa “Estimar con IA”
+          </h2>
+
+        <p className="mt-1 text-sm text-slate-600 text-center max-w-2xl mx-auto">
+            ¿No tienes tus ventas claras? Haz clic en{" "}
+        <span className="font-medium">“Estimar con IA”</span> y la aplicación las calcula por ti,
+           en segundos{" "}
+        <span className="inline-flex items-center gap-1 font-medium">
+            <BotIcon className="h-4 w-4" variant="t3" glowHue="gold" />
+        </span>.
         </p>
+
+         {/* Video explicativo */}
+           <Step6Video />
+         </div>
 
         {/* Controles superiores */}
         <div className="mt-3 flex flex-col items-center justify-center gap-2 sm:flex-row sm:justify-between">
@@ -596,10 +610,12 @@ export default function Step6Page() {
             disabled={aiBusy}
             aria-busy={aiBusy}
             className={[
-              "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-sm transition",
-              "border-blue-300 bg-blue-100 text-blue-700 hover:border-blue-400 hover:bg-blue-200 hover:text-blue-800",
-              "disabled:opacity-60 disabled:cursor-not-allowed",
-            ].join(" ")}
+             // más grande
+              "inline-flex items-center gap-2 rounded-lg border px-4 py-3 text-base shadow-sm transition",
+            // borde rojo + fondo azul
+             "border-red-500 bg-blue-100 text-blue-700 hover:border-red-600 hover:bg-blue-200 hover:text-blue-800",
+             "disabled:opacity-60 disabled:cursor-not-allowed",
+           ].join(" ")}
             title="Estimar Ticket y Clientes con IA (consume 1 crédito)"
           >
             {aiBusy ? <Spinner /> : <BotIcon className="h-8 w-8" variant="t3" glowHue="gold" />}
