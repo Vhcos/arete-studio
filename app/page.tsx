@@ -42,6 +42,31 @@ import { useRouter, useSearchParams } from "next/navigation";
 import PanelNavegacion from "@/components/report/PanelNavegacion";
 import Step8Board from "@/components/report/Step8Board";
 
+const COUNTRY_OPTIONS = [
+  { code: "CL", label: "Chile" },
+  { code: "CO", label: "Colombia" },
+  { code: "MX", label: "México" },
+  { code: "AR", label: "Argentina" },
+  { code: "PE", label: "Perú" },
+  { code: "UY", label: "Uruguay" },
+  { code: "PY", label: "Paraguay" },
+  { code: "BO", label: "Bolivia" },
+  { code: "EC", label: "Ecuador" },
+];
+
+function inferCountryCodeFromUbicacion(ubicacion: unknown): string {
+  const raw = String(ubicacion ?? "").trim().toLowerCase();
+  if (!raw) return "CL";
+
+  for (const c of COUNTRY_OPTIONS) {
+    if (raw.endsWith(c.label.toLowerCase())) {
+      return c.code;
+    }
+  }
+  return "CL";
+}
+
+
 // --- helpers para bullets (acepta string[] o filas de tabla) ---
 function normalizeBullets(input: unknown, fallback: string[]): string[] {
   if (!input) return fallback;
@@ -585,23 +610,31 @@ const costoVariableMes =
       </div>
     );
   };
+// === Manejador de evaluación IA NUEVO===
 
   async function handleEvaluateAI() {
-    if (running) return;         // evita doble click
-   setRunning(true);
-   setIaLoading(true);
-   try {
-     const input = baseOut.report.input;
-     const scores = {
-       total: baseOut.totalScore,
-       byKey: Object.fromEntries(baseOut.items.map((it: any) => [it.key, it.score])),
+  if (running) return;         // evita doble click
+  setRunning(true);
+  setIaLoading(true);
+  try {
+    const input = baseOut.report.input;
+    const scores = {
+      total: baseOut.totalScore,
+      byKey: Object.fromEntries(baseOut.items.map((it: any) => [it.key, it.score])),
     };
 
-     const res = await fetch('/api/evaluate', {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({ input, scores }),
+    const countryCode = inferCountryCodeFromUbicacion(
+      (input as any)?.ubicacion || (input as any)?.pais
+    );
+
+    const res = await fetch('/api/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input, scores, country: countryCode }),
     });
+
+  // Manejo de respuesta y errores
+
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
      console.log("[/api/evaluate] payload", data);
@@ -659,19 +692,27 @@ if (plan) {
      console.error('No se pudo obtener plan IA:', e);
    }
 
-  // === Competitive Intel (Perplexity): Mapa competitivo + Checklist ===
+    // === Competitive Intel (Perplexity): Mapa competitivo + Checklist ===
   try {
+    const intelUbicacion = (input as any)?.ubicacion || (input as any)?.pais || "";
+    const intelCountryCode = inferCountryCodeFromUbicacion(intelUbicacion);
+
     const resIntel = await fetch('/api/competitive-intel', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         idea: input?.idea,
         rubro: input?.rubro,
-        ubicacion: input?.ubicacion || input?.pais || 'Chile',
+        ubicacion: intelUbicacion,
+        countryCode: intelCountryCode,
         input, // por si el endpoint quiere más contexto
       }),
     });
     const intel = await resIntel.json().catch(() => null);
+
+// Soportar shapes vistos en pruebas:
+// { ok:true, competencia: [...], regulacion: [...], sources: [...] }
+
     if (resIntel.ok && intel?.ok) {
       setAiPlan((prev: any) => ({
         ...(prev || {}),
@@ -758,24 +799,31 @@ useEffect(() => {
     const meta = (parsed?.meta ?? parsed) ?? {};
 
     // --- Ubicación (con fallback al persist del wizard) ---
-    let ubic: string =
-      (meta as any)?.ubicacion != null ? String((meta as any).ubicacion) : "";
-    if (!ubic) {
-      try {
-        const wraw = localStorage.getItem("wizard");
-        if (wraw) {
-          const w = JSON.parse(wraw);
-          ubic =
-            w?.state?.data?.step1?.ubicacion ??
-            w?.state?.data?.step3?.ubicacion ??
-            "";
-        }
-      } catch {
-        /* silencioso */
-      }
+let ubic: string =
+  (meta as any)?.ubicacion != null ? String((meta as any).ubicacion) : "";
+
+if (!ubic) {
+  try {
+    const wraw = localStorage.getItem("wizard");
+    if (wraw) {
+      const w = JSON.parse(wraw);
+      ubic =
+        w?.state?.data?.step2?.ubicacion ||
+        [w?.state?.data?.step2?.city, w?.state?.data?.step2?.countryCode]
+          .filter(Boolean)
+          .join(", ");
     }
+  } catch {
+    /* silencioso */
+  }
+}
+
+setUbicacion(ubic || "");
+
+
             //HIDRATACION DEL FORM//
-    // --- Inversión inicial (meta -> wizard.step6) ---
+  // --- Inversión inicial (meta -> wizard.step6) ---
+
 
     // --- Capital de trabajo disponible ($) ---
 {

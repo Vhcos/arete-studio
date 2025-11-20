@@ -92,6 +92,55 @@ export function toLegacyForm(input: unknown): LegacyForm {
       : 6;
 
   const mesesPE = s6.mesesPE ?? 6;
+  
+  // Reconstrucción de ubicación desde step2
+
+    const ubicacionFromStep2 = (() => {
+    const s2any = s2 as any;
+    if (!s2any) return "";
+
+    // 1) Si ya viene ubicacion y no está vacía, úsala tal cual
+    if (s2any.ubicacion && String(s2any.ubicacion).trim()) {
+      return String(s2any.ubicacion).trim();
+    }
+
+    // 2) Intentar reconstruir con ciudad + país
+    const city =
+      s2any.city ||
+      s2any.ciudad ||
+      "";
+
+    const countryCodeRaw =
+      (s2any.countryCode || s2any.pais || "").toString().toUpperCase();
+
+    const COUNTRY_NAMES: Record<string, string> = {
+      CL: "Chile",
+      CO: "Colombia",
+      MX: "México",
+      AR: "Argentina",
+      PE: "Perú",
+      UY: "Uruguay",
+      PY: "Paraguay",
+      BO: "Bolivia",
+      EC: "Ecuador",
+    };
+
+    const countryName =
+      COUNTRY_NAMES[countryCodeRaw] ||
+      (typeof s2any.pais === "string" ? s2any.pais : "");
+
+    const parts = [city, countryName].filter(Boolean);
+
+    if (parts.length) {
+      return parts.join(", ");
+    }
+
+    // 3) Último recurso: region o vacío
+    return (s2any.region as string) || "";
+  })();
+
+// Construcción del objeto legacy
+
 
   const legacy: LegacyForm = {
     // Cabecera
@@ -104,7 +153,8 @@ export function toLegacyForm(input: unknown): LegacyForm {
     ventajaTexto: s2?.ventajaTexto ?? "",
     sectorId: s2?.sectorId ?? "",
     rubro: s2?.rubro ?? "",
-    ubicacion: (s2 as any)?.ubicacion ?? (s2 as any)?.region ?? "",
+    ubicacion: ubicacionFromStep2,
+
     
     // Cualitativos (opcional)
     urgencia: s5?.urgencia,

@@ -19,6 +19,20 @@ export function buildInvestorNarrative(input: any, meta: any): string {
                     .format(Math.max(0, Math.round(n||0)));
   const fN  = (n:number)=> new Intl.NumberFormat('es-CL',{ maximumFractionDigits:0 })
                     .format(Math.max(0, Math.round(n||0)));
+                    
+    const ubicacionTxt = (() => {
+    if (input?.ubicacion) return txt(input.ubicacion);
+    // si no hay "ubicacion", intenta reconstruir con otros campos posibles
+    const partes = [
+      input?.ciudad,
+      input?.city,
+      input?.comuna,
+      input?.region,
+      input?.pais,
+      input?.countryName,
+    ].filter(Boolean);
+    return partes.length ? partes.join(', ') : '—';
+  })();
 
   // ——— Resumen ejecutivo (ES) ———
   // Normaliza rubro a español si viene como slug/inglés; si ya viene en ES, lo respeta
@@ -74,7 +88,7 @@ export function buildInvestorNarrative(input: any, meta: any): string {
   const ventasPE        = Number(meta?.ventasPE ?? 0);
   const clientsPE       = Number(meta?.clientsPE ?? 0);
   return [
-    `Estás incursionando en ${rubroTxt} en ${txt(input?.ubicacion || '—')}.`,
+        `Estás incursionando en ${rubroTxt} en ${ubicacionTxt}.`,
     `Tu ticket promedio es $${fCL(price)} y el margen de contribución por unidad se estima en $${fCL(mcUnit)}.`,
     `Con tus supuestos (primer objetivo), proyectamos ${fN(uMes)} clientes/mes (~${fN(uMes * 12)} al año) y ventas anuales por $${fCL((vMens || 0) * 12)}.`,
     `El resultado anual estimado (antes de impuestos) es $${fCL(resAn)}.`,

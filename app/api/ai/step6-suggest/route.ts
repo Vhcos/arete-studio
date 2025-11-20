@@ -124,7 +124,7 @@ export async function POST(req: Request) {
       '  "explicacion": string,',
       '  "fuentes": [{"title": string, "url": string}]',
       "}",
-           "Infiérelo desde el rubro, ejemplos de competidores locales, aforos, tickets promedio y reportes recientes. Usa fuentes confiables y actuales dando prioridad a fuentes del país objetivo.",
+           "Infiérelo desde el rubro, ejemplos de competidores locales, aforos, tickets promedio y reportes recientes. Usa fuentes confiables y        actuales dando prioridad a fuentes del país objetivo.",
       `Ubicación objetivo: ${ubicacion}. Toda la explicación debe estar coherente con ${pais} y su mercado local.`,
       "Evita promedios viejos. Explica brevemente la base del cálculo.",
       `Prioriza fuentes actuales del ${pais}. Si no encuentras suficientes, puedes usar también fuentes de Latam o fuentes globales reconocidas (por ejemplo Euromonitor, OCDE, cámaras de comercio, bancos centrales).`,

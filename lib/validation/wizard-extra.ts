@@ -69,8 +69,14 @@ export const Step2Schema = z.object({
   sectorId: z.string().optional().default(""),
   rubro: z.string().optional().default(""),
 
+  // NUEVOS CAMPOS para alinear con Step-3
+  ubicacion: z.string().optional().default(""),
+  city: z.string().optional().default(""),
+  countryCode: z.string().optional().default(""),
+  template: z.string().optional().default("default"),
 });
 export type Step2 = z.infer<typeof Step2Schema>;
+
 
 /* Paso 3 (VHC) */
 export const Step3Schema = z.object({

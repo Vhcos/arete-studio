@@ -77,8 +77,17 @@ export async function POST(req: Request) {
     const input = body?.input ?? body;
 
     // país/sector si vienen (no invento ids)
-    const countryCode = (body?.country ?? body?.pais ?? "CL").toString().toUpperCase();
-    const sectorId = body?.sectorId ?? body?.sector;
+const rawCountry =
+  body?.country ??
+  body?.countryCode ??
+  body?.pais ??
+  (input as any)?.countryCode ??
+  (input as any)?.country ??
+  (input as any)?.pais ??
+  "CL";
+
+const countryCode = String(rawCountry).toUpperCase();
+const sectorId = body?.sectorId ?? body?.sector;
 
     // Mapeo simple de código de país -> nombre "humano"
     const COUNTRY_NAMES: Record<string, string> = {
@@ -101,35 +110,57 @@ export async function POST(req: Request) {
 
     // Prompt: exigimos JSON con tus claves mínimas para que la UI no reviente
         // Prompt: exigimos JSON con tus claves mínimas para que la UI no reviente
+        const extraGeoRules =
+      countryCode === "CL"
+        ? [
+            "Puedes usar ejemplos específicos de Chile, instituciones chilenas y datos públicos del país cuando aporte valor directo.",
+          ]
+        : [
+            "No presentes a Chile como caso principal. Solo puedes mencionarlo como una comparación muy breve (máximo 1 frase) si realmente aporta valor.",
+            "Prioriza SIEMPRE datos, instituciones y ejemplos del país objetivo (no de Chile).",
+          ];
+
     const system = [
-      "Eres un analista senior. Escribe un informe profesional, claro e inspirador que termine en acción.",
-      "Debes DEVOLVER SOLO JSON (sin texto fuera del JSON).",
+      "Eres un analista senior especialista en rubros, industrias y emprendimientos de América Latina.",
+      "Escribe un informe profesional, claro y motivador, contextualizado para el país y ciudad recibidos, usando SOLO JSON estricto.",
       "",
-      `Contexto geográfico: todo el análisis debe estar situado en ${countryName}.`,
-      "Usa ejemplos, cifras y contexto coherentes con ese país.",
-      "Si el país objetivo no es Chile, no centres el análisis en Chile; solo compáralo brevemente si realmente aporta valor.",
-      "",
-      "El JSON DEBE contener, como mínimo, estas claves y estructura EXACTA:",
+      "Estructura JSON obligatoria:",
       "{",
       '  "sections": {',
-      '    "industryBrief": string,',
-      '    "competitionLocal": string,',
-      '    "swotAndMarket": string,',
-      '    "finalVerdict": string',
+      '    "industryBrief": string,          // resumen del sector/rubro, contexto actual y oportunidad/reto principal',
+      '    "competitionLocal": string,       // competencia relevante local (nombres, diferenciadores, rango de precios, presencia digital) y comparación internacional solo si aporta valor; incluye ejemplos cuando sea posible',
+      '    "swotAndMarket": string,          // análisis FODA (fortalezas, oportunidades, debilidades, amenazas), tamaño/tendencias del mercado local y supuestos explícitos',
+      '    "finalVerdict": string            // evaluación clara, consejos motivadores y 3 próximos pasos concretos para avanzar, con responsables y plazos cuando sea posible',
       "  },",
-      '  "ranking": { "score": number, "constraintsOK": boolean, "reasons": string[] }',
+      '  "ranking": {',
+      '    "score": number,                  // puntaje global sobre 100 (objetividad, viabilidad, datos, proyección)',
+      '    "constraintsOK": boolean,         // si los datos permiten avanzar y ejecutar, true/false',
+      '    "reasons": [string]               // motivos que validan la puntuación y resumen de restricciones',
+      "  }",
       "}",
       "",
+      `Contexto geográfico: todo el análisis debe estar situado en ${countryName}.`,
+      "Centra todo el análisis y los ejemplos en el país y ciudad objetivo, usando el contexto real actual.",
+      "Compara con otros países solo si aporta valor directo y en máximo 1–2 menciones breves (Latam o globales).",
+      ...extraGeoRules,
+      "",
       "Reglas:",
-      "- Usa y CITA explícitamente los datos de entrada y los derivados si existen.",
-      "- Si faltan datos, declara supuestos en el texto (p. ej. “asumimos CAC de X…”).",
-      "- Tono ejecutivo y motivador; cada bloque debe cerrar con una acción concreta.",
-      "- No entregues nada fuera del JSON; no uses markdown.",
+      "- Usa los DATOS DE ENTRADA y las variables derivadas siempre que existan.",
+      '- Si faltan datos, declara supuestos explícitos (por ejemplo: "asumimos ticket promedio de X..." o "asumimos CAC de Y...").',
+      "- El tono debe ser ejecutivo, claro y motivador.",
+      "- Cada bloque debe cerrar con una idea accionable o próximos pasos concretos.",
+      "- El informe debe permitir rápidamente tomar decisiones de negocio o inversión.",
+      "- No entregues nada fuera del JSON y no uses markdown.",
+      "- No inventes URLs ni dominios web. Si mencionas fuentes, hazlo solo por nombre de institución o informe (por ejemplo, “un estudio de la Cámara de Comercio de Bogotá” o “datos del Banco Mundial”), sin links.",
+      "- Si los datos de entrada son escasos, explica siempre los supuestos y menciona qué tipo de fuentes sería recomendable consultar.",
+      "",
+      "Ejemplo de campos, referencias y comentarios deben estar incluidos en la explicación, no en la estructura del JSON.",
     ].join("\n");
 
 
-        const userMsg = [
-      "DATOS DE ENTRADA DEL USUARIO (no inventes nombres; usa tal cual existan):",
+
+            const userMsg = [
+      "Datos de entrada del usuario:",
       JSON.stringify(
         {
           countryCode,
@@ -141,14 +172,15 @@ export async function POST(req: Request) {
         2
       ),
       "",
-      "DERIVADOS CALCULADOS (usar solo si existen):",
+      "Variables derivadas calculadas (si existen):",
       JSON.stringify(derived, null, 2),
       "",
-      "Objetivo: devolver el JSON mínimo exigido con contenido específico (no genérico).",
-      `Sitúa siempre el análisis en ${countryName}.`,
-      "En 'finalVerdict' cierra con 3 próximos pasos concretos.",
-      "El 'score' es 0..100. 'constraintsOK' refleja si los datos permiten ejecutar.",
+      "Objetivo:",
+      "Devuelve el JSON mínimo exigido con contenido específico y relevante para ese país, sector y ciudad.",
+      "En 'finalVerdict', cierra con consejos claros y 3 próximos pasos concretos accionables.",
+      "En 'score', califica objetivamente la viabilidad del negocio con rango 0–100 y justifica tu evaluación en 'reasons'.",
     ].join("\n");
+
 
 
     const completion = await openai.chat.completions.create({

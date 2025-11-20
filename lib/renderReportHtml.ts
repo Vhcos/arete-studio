@@ -272,12 +272,13 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
     "Evita competir en todo; elige 2–3 atributos clave y sé n°1 allí.",
   ]);
   const regBullets = normalizeBullets(aiPlan?.regulacion, [
-    "Constitución / formalización (SpA o EIRL).",
-    "Inicio de actividades en SII y emisión electrónica.",
-    "Patente municipal (domicilio comercial).",
-    "Protección de datos si captas leads/clientes.",
-    "Prevención de riesgos / seguridad laboral según tamaño.",
-  ]);
+  "Formalización legal de la empresa (escoger la figura societaria adecuada según la legislación local).",
+  "Inscripción en el servicio de impuestos interno/nacional y habilitación para emitir comprobantes electrónicos.",
+  "Permisos y licencias municipales o locales para operar en la dirección comercial.",
+  "Cumplimiento de normativa de protección de datos personales si captas leads o información de clientes.",
+  "Requisitos de seguridad laboral y prevención de riesgos según el tamaño y rubro del negocio.",
+]);
+
 
   return `<!doctype html>
 <html lang="es">
