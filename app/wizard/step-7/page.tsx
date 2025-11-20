@@ -268,7 +268,8 @@ const clientesObjetivoMes =
           Conoce a tu cliente <span className="text-slate-500 font-normal">(mientras más grande el numero menos visitas.)</span>
         </h2>
         <p className="text-sm text-slate-600">
-          Con dos datos simples proyectamos cuántas visitas necesitas para alcanzar tus clientes meta.
+          A cuantos clientes debes llegar con tus campañas de marketing , (redes sociales,  publicidad tradicional, etc.)
+          Con dos datos simples proyectamos tu gasto en marketing por cliente.
         </p>
 
         {/* fila: conversión + clientes meta + tráfico */}

@@ -87,7 +87,7 @@ export default function Step4Page() {
     <main className="mx-auto max-w-7xl px-3 py-8">
       <EconomicHeader
         title="Paso 4 · Tu ventaja diferenciadora"
-        subtitle="Cuéntanos qué harás distinto, cuál será tu impacto y dónde operarás. Puedes mejorarla con IA Aret3"
+        subtitle="Cuéntanos qué harás distinto, cuál será tu impacto y dónde operarás. Sino sabes que anotar deja que la IA de aret3 lo haga por ti solo aprieta el botón "
       />
 
       <section className="mx-auto mt-6 max-w-2xl rounded-xl border-2 border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5 p-6">

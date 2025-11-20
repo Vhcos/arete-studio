@@ -119,7 +119,7 @@ export default function Step2Page() {
           </h1>
           <p className="mx-auto mt-1 max-w-2xl text-sm text-slate-600">
             Escribe una oración clara que explique de qué se trata tu idea, qué ofreces y para quién es.
-            Puedes mejorarla con <span className="font-medium">IA Aret3</span> las veces que quieras.
+            Sino sabes que anotar deja que la <span className="font-medium">IA Aret3</span>  lo haga por ti solo aprieta el botón  las veces que quieras.
           </p>
         </header>
 
