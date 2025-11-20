@@ -16,6 +16,7 @@ type IntelOut = {
   sources?: { title?: string; url: string }[];
 };
 
+
 function coerceJson<T=any>(s: string): T {
   // intenta extraer el primer bloque JSON “válido”
   const i = s.indexOf("{"), j = s.lastIndexOf("}");

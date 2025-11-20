@@ -50,8 +50,44 @@ export async function POST(req: Request) {
   const idea = (body?.idea || "").toString();
   const rubro = (body?.rubro || "").toString();
   const ubicacion = (body?.ubicacion || "Chile").toString();
-  const country = (body?.country || "CL").toString();
+  
+    // Inferir país y moneda a partir de la ubicación (muy simple pero suficiente para LATAM)
+  const loc = ubicacion.toLowerCase();
+  let pais = "Chile";
+  let moneda = "CLP";
 
+  if (loc.includes("colombia") || loc.includes("medellín") || loc.includes("medellin") || loc.includes("bogotá") || loc.includes("bogota")) {
+    pais = "Colombia";
+    moneda = "COP";
+  } else if (loc.includes("méxico") || loc.includes("mexico") || loc.includes("cdmx") || loc.includes("ciudad de méxico")) {
+    pais = "México";
+    moneda = "MXN";
+  } else if (loc.includes("argentina") || loc.includes("buenos aires") || loc.includes("cordoba") || loc.includes("córdoba")) {
+    pais = "Argentina";
+    moneda = "ARS";
+  } else if (loc.includes("perú") || loc.includes("peru") || loc.includes("lima")) {
+    pais = "Perú";
+    moneda = "PEN";
+  } else if (loc.includes("chile") || loc.includes("santiago")) {
+    pais = "Chile";
+    moneda = "CLP";
+  } else if (loc.includes("uruguay") || loc.includes("montevideo")) {
+    pais = "Uruguay";
+    moneda = "UYU";
+  } else if (loc.includes("paraguay") || loc.includes("asunción") || loc.includes("asuncion")) {
+    pais = "Paraguay";
+    moneda = "PYG";
+  } else if (loc.includes("bolivia") || loc.includes("la paz") || loc.includes("santa cruz")) {
+    pais = "Bolivia";
+    moneda = "BOB";
+  } else if (loc.includes("ecuador") || loc.includes("quito") || loc.includes("guayaquil")) {
+    pais = "Ecuador";
+    moneda = "USD";
+  }
+
+  // A partir de aquí, usamos SIEMPRE `pais` y `moneda`
+
+  
   const requestId = crypto.randomUUID();
   const DEBIT = 1;
   const SKIP_DEBIT = process.env.SKIP_DEBIT_INTEL === "1";
@@ -74,9 +110,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const system = [
-      "Eres un analista con acceso web que devuelve SOLO JSON.",
-      "Moneda: CLP (peso chileno). Si hay otras monedas, conviértelas a CLP con una tasa razonable y actual.",
+      const system = [
+      "Eres un analista de mercado con acceso web y base de datos internacional que responde SOLO en JSON estricto.",
+      `País objetivo: ${pais}. Moneda local objetivo: ${moneda}.`,
+      "Usa SIEMPRE esa moneda local. No conviertas a otra divisa.",
+      "Todos los valores numéricos del JSON deben ir como números puros: sin símbolo de moneda, sin separador de miles y sin texto adicional.",
       "Formato de salida (JSON estricto, sin texto extra):",
       "{",
       '  "ticket_clp": number,',
@@ -86,18 +124,32 @@ export async function POST(req: Request) {
       '  "explicacion": string,',
       '  "fuentes": [{"title": string, "url": string}]',
       "}",
-      "Infiérelo desde el rubro, ejemplos de competidores locales, aforos, tiques promedio y reportes recientes. Usa fuentes confiables/actuales.",
-      `Ubicación objetivo: ${ubicacion} (country=${country}).`,
+           "Infiérelo desde el rubro, ejemplos de competidores locales, aforos, tickets promedio y reportes recientes. Usa fuentes confiables y actuales dando prioridad a fuentes del país objetivo.",
+      `Ubicación objetivo: ${ubicacion}. Toda la explicación debe estar coherente con ${pais} y su mercado local.`,
       "Evita promedios viejos. Explica brevemente la base del cálculo.",
+      `Prioriza fuentes actuales del ${pais}. Si no encuentras suficientes, puedes usar también fuentes de Latam o fuentes globales reconocidas (por ejemplo Euromonitor, OCDE, cámaras de comercio, bancos centrales).`,
+      "Nunca  inventes nombres de instituciones ni URLs. Si no sabes la URL exacta, usa la URL raíz oficial (por ejemplo \"https://www.euromonitor.com\") o deja la URL vacía.",
+      `Si el país objetivo no es Chile, no menciones a Chile en la explicación ni en las fuentes.`,
       "No incluyas nada fuera del JSON.",
+      "Nunca pongas como fuente el propio sistema, localhost, wizard ni rutas internas. Filtra las fuentes para mostrar solo enlaces públicos, oficiales y accesibles de actualidad real."
     ].join("\n");
 
-    const user = [
+            const user = [
       `Idea: ${idea || "(sin detalle)"}`,
       `Rubro/sector: ${rubro || "(sin rubro)"}`,
-      "Devuelve valores redondeados para CLP y un rango plausible.",
+      `Ciudad o ubicación principal: {ubicacion || "(sin ubicación)"}`,
+      "Proporciona estas estimaciones claras:",
+      `1) Ticket promedio por cliente en ${moneda} (valor numérico redondeado).`,
+      `2) Rango plausible del ticket promedio por cliente en ${moneda} (array de 2 números redondeados: mínimo y máximo).`,
+      `3) Número de clientes mensuales esperados (valor numérico redondeado).`,
+      `4) Rango plausible de clientes mensuales (array de 2 números redondeados: mínimo y máximo).`,
+      "5) Explicación breve de la base del cálculo (string).",
+      "6) Fuentes usadas (array de objetos con 'title' y 'url').",
+      "",
+      "Devuelve valores redondeados en la MONEDA LOCAL indicada en el sistema y un rango plausible.",
       "Para clientes mensuales: usa aforo, horas pico y rotación como guía si es pertinente.",
-      "Incluye 3–6 fuentes (reportes/medios/competidores/oficiales).",
+      "Incluye hasta 2–6 fuentes (reportes/medios/competidores/oficiales). Prioriza el país objetivo y, si no hay suficientes, usa también Latinoamérica o fuentes globales reconocidas.",
+
     ].join("\n");
 
     const resp = await fetch("https://api.perplexity.ai/chat/completions", {
@@ -137,8 +189,23 @@ export async function POST(req: Request) {
         Array.isArray(parsed.clientes_rango) && parsed.clientes_rango.length === 2
           ? [Math.round(Number(parsed.clientes_rango[0]) || 0), Math.round(Number(parsed.clientes_rango[1]) || 0)]
           : undefined,
-      explicacion: parsed.explicacion || "",
-      fuentes: Array.isArray(parsed.fuentes) ? parsed.fuentes.slice(0, 6) : [],
+            explicacion: parsed.explicacion || "",
+      fuentes: (() => {
+        let fuentes = Array.isArray(parsed.fuentes) ? parsed.fuentes : [];
+
+        // Si el país NO es Chile, filtramos fuentes que claramente son de Chile
+        if (pais !== "Chile") {
+          fuentes = fuentes.filter((f) => {
+            const title = (f.title || "").toLowerCase();
+            const url = (f.url || "").toLowerCase();
+            const mencionaChile = title.includes("chile") || url.includes("chile");
+            const dominioCl = url.includes(".cl/");
+            return !mencionaChile && !dominioCl;
+          });
+        }
+
+        return fuentes.slice(0, 6);
+      })(),
     };
 
     return NextResponse.json({ ok: true, ...out, requestId, model: j?.model });

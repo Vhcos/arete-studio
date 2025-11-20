@@ -73,20 +73,42 @@ export async function POST(req: Request) {
   }
 
   try {
-    // inputs que YA tienes (no invento nombres; paso lo que llegue)
+        // inputs que YA tienes (no invento nombres; paso lo que llegue)
     const input = body?.input ?? body;
 
     // país/sector si vienen (no invento ids)
-    const country = body?.country ?? body?.pais ?? "CL";
+    const countryCode = (body?.country ?? body?.pais ?? "CL").toString().toUpperCase();
     const sectorId = body?.sectorId ?? body?.sector;
+
+    // Mapeo simple de código de país -> nombre "humano"
+    const COUNTRY_NAMES: Record<string, string> = {
+      CL: "Chile",
+      CO: "Colombia",
+      MX: "México",
+      AR: "Argentina",
+      PE: "Perú",
+      UY: "Uruguay",
+      PY: "Paraguay",
+      BO: "Bolivia",
+      EC: "Ecuador",
+    };
+
+    const countryName =
+      COUNTRY_NAMES[countryCode] || `tu país o región objetivo (${countryCode})`;
 
     // derivados a partir de los nombres reales si existen
     const derived = derive(input);
 
     // Prompt: exigimos JSON con tus claves mínimas para que la UI no reviente
+        // Prompt: exigimos JSON con tus claves mínimas para que la UI no reviente
     const system = [
       "Eres un analista senior. Escribe un informe profesional, claro e inspirador que termine en acción.",
       "Debes DEVOLVER SOLO JSON (sin texto fuera del JSON).",
+      "",
+      `Contexto geográfico: todo el análisis debe estar situado en ${countryName}.`,
+      "Usa ejemplos, cifras y contexto coherentes con ese país.",
+      "Si el país objetivo no es Chile, no centres el análisis en Chile; solo compáralo brevemente si realmente aporta valor.",
+      "",
       "El JSON DEBE contener, como mínimo, estas claves y estructura EXACTA:",
       "{",
       '  "sections": {',
@@ -105,17 +127,29 @@ export async function POST(req: Request) {
       "- No entregues nada fuera del JSON; no uses markdown.",
     ].join("\n");
 
-    const userMsg = [
+
+        const userMsg = [
       "DATOS DE ENTRADA DEL USUARIO (no inventes nombres; usa tal cual existan):",
-      JSON.stringify({ country, sectorId, input }, null, 2),
+      JSON.stringify(
+        {
+          countryCode,
+          countryName,
+          sectorId,
+          input,
+        },
+        null,
+        2
+      ),
       "",
       "DERIVADOS CALCULADOS (usar solo si existen):",
       JSON.stringify(derived, null, 2),
       "",
       "Objetivo: devolver el JSON mínimo exigido con contenido específico (no genérico).",
+      `Sitúa siempre el análisis en ${countryName}.`,
       "En 'finalVerdict' cierra con 3 próximos pasos concretos.",
       "El 'score' es 0..100. 'constraintsOK' refleja si los datos permiten ejecutar.",
     ].join("\n");
+
 
     const completion = await openai.chat.completions.create({
       model: MODEL,

@@ -52,28 +52,53 @@ export async function POST(req: Request) {
 
   // 3) llamar a OpenAI
   try {
-    const { input, objetivo = "6w" } = body;
+       const { input, objetivo = "6w" } = body;
 
-    const system = [
-  "Eres un asesor que arma un plan de acción conciso EN ESPAÑOL.",
-  "Devuelves SOLO JSON con este shape:",
-  `{
+    // País (si viene); por defecto Chile
+    const countryCode = (body?.country ?? body?.pais ?? "CL").toString().toUpperCase();
+
+    const COUNTRY_NAMES: Record<string, string> = {
+      CL: "Chile",
+      CO: "Colombia",
+      MX: "México",
+      AR: "Argentina",
+      PE: "Perú",
+      UY: "Uruguay",
+      PY: "Paraguay",
+      BO: "Bolivia",
+      EC: "Ecuador",
+    };
+
+    const countryName =
+      COUNTRY_NAMES[countryCode] || `tu país o región objetivo (${countryCode})`;
+
+
+        const system = [
+      "Eres un asesor que arma un plan de acción conciso EN ESPAÑOL.",
+      `Contexto geográfico: el negocio opera en ${countryName}.`,
+      "Cuando hables de competencia y regulación, céntrate en la realidad de ese país.",
+      "Devuelves SOLO JSON con este shape:",
+      `{
     "plan100": string,
     "bullets": string[],
     "competencia": string[],
     "regulacion": string[]
   }`,
-  "Reglas:",
-  "- Nada fuera del JSON.",
-  "- No inventes datos numéricos que no estén en el contexto.",
-  "- 'bullets' deben ser SEMANALES (no meses): etiqueta cada ítem como 'Semana N: …'."
-].join("\n");
-// evita sombrear 'u'/'user' de la DB
-    const userMsg = [
-      `Arma un plan de acción para ${objetivo}.`,
-      "Contexto del negocio:",
-      JSON.stringify(input)
+      "Reglas:",
+      "- Nada fuera del JSON.",
+      "- No inventes datos numéricos que no estén en el contexto.",
+      "- 'bullets' deben ser SEMANALES (no meses): etiqueta cada ítem como 'Semana N: …'."
     ].join("\n");
+
+   
+// evita sombrear 'u'/'user' de la DB
+        const userMsg = [
+      `Arma un plan de acción para ${objetivo}.`,
+      `El negocio está pensado para operar en ${countryName}.`,
+      "Contexto del negocio (usa solo lo que veas aquí, no inventes estructura nueva):",
+      JSON.stringify({ countryCode, countryName, input }, null, 2),
+    ].join("\n");
+
 
     const completion = await openai.chat.completions.create({
       model: MODEL,

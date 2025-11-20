@@ -153,8 +153,12 @@ export default function Step6Page() {
 
   const [aiBusy, setAiBusy] = useState(false);
   const [aiErr, setAiErr] = useState<string | null>(null);
-  const [aiExplain, setAiExplain] = useState<string>("");
-  const [aiSources, setAiSources] = useState<{ title?: string; url: string }[]>([]);
+  const [aiExplain, setAiExplain] = useState<string>(
+    () => (data as any)?.step6?.ventasIAExplicacion ?? ""
+   );
+  const [aiSources, setAiSources] = useState<{ title?: string; url: string }[]>(
+    () => (data as any)?.step6?.ventasIAFuentes ?? []
+   );
   const [flashIA, setFlashIA] = useState(false); // destello visual tras aplicar IA
 
   // Locks
@@ -395,10 +399,14 @@ export default function Step6Page() {
         throw new Error(first?.message || "Revisa los campos");
       }
 
-      const s6ToStore = {
+           const s6ToStore = {
         ...s6ForValidation,
         ventaAnio1: ventaAnualNum,
+        // guardamos lo que devolvió la IA para usarlo en el informe final
+        ventasIAExplicacion: aiExplain || undefined,
+        ventasIAFuentes: aiSources && aiSources.length ? aiSources : undefined,
       };
+
 
       setStep6(s6ToStore as any);
 
@@ -450,20 +458,21 @@ export default function Step6Page() {
         (data as any)?.step2?.idea ||
         "";
       const ubicacion =
+        (data as any)?.step3?.ubicacion ||  // Paso 3 manda primero
         (data as any)?.step1?.ubicacion ||
-        (data as any)?.step3?.ubicacion ||
-        "Chile";
+        (data as any)?.step2?.ubicacion ||
+       "Chile";
 
-      const r = await fetch("/api/ai/step6-suggest", {
+           const r = await fetch("/api/ai/step6-suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idea,
           rubro: sectorLabel,
           ubicacion,
-          country: "CL",
         }),
       });
+
 
       // <--- SOLO MENSAJE, SIN POPUP y SIN “IA:” dentro del estado
     if (!r.ok) {
