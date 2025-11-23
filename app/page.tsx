@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import InformePreview from "@/components/informe/InformePreview";
+import BotIcon from "@/components/icons/BotIcon";
 import { getTemplateForSector } from "@/lib/model/step6-distributions";
 import type { SectorId } from "@/lib/model/sectors";
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
@@ -66,7 +67,65 @@ function inferCountryCodeFromUbicacion(ubicacion: unknown): string {
   return "CL";
 }
 
+// --- Spinner minimal ---
+function Spinner({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg
+      className={`animate-spin ${className}`}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
+    </svg>
+  );
+}
+// --- Iconos mini para botones ---
+function MailMiniIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M4 7l8 6 8-6" />
+    </svg>
+  );
+}
 
+function PdfMiniIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M7 3h7l5 5v13H7z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 17h6" />
+      <path d="M9 13h2" />
+    </svg>
+  );
+}
+// --- conversor HTML a PDF usando Puppeteer ---
 // --- helpers para bullets (acepta string[] o filas de tabla) ---
 function normalizeBullets(input: unknown, fallback: string[]): string[] {
   if (!input) return fallback;
@@ -326,6 +385,8 @@ const [redApoyo, setRedApoyo] = useState(2);
 
   // Email
   const [emailSending, setEmailSending] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+
   type SendOpts = { 
     to?: string; 
     silent?: boolean; 
@@ -394,8 +455,59 @@ const [redApoyo, setRedApoyo] = useState(2);
     console.warn('[email-report] error de red:', e);
     return false;
   }
-}
-  
+} 
+    /**
+   * Genera y descarga el PDF del informe llamando a /api/report/pdf
+   * Reutiliza el MISMO payload que usamos para el email.
+   */
+  async function downloadPdfReport(args: {
+    summary?: string;
+    preAI?: string;
+    report?: any;
+    aiPlan?: any;
+    user?: {
+      projectName?: string;
+      founderName?: string;
+      email?: string;
+      idea?: string;
+      rubro?: string;
+      ubicacion?: string;
+    };
+    viewUrl?: string;
+  }) {
+    try {
+      setPdfDownloading(true);
+
+      const res = await fetch("/api/report/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      });
+
+      if (!res.ok) {
+        console.error("[pdf-report] error HTTP:", res.status, await res.text());
+        alert("No se pudo generar el PDF. Inténtalo nuevamente.");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "informe-aret3.pdf";
+      a.click();
+
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn("[pdf-report] error de red:", e);
+      alert("No se pudo generar el PDF.");
+    } finally {
+      setPdfDownloading(false);
+    }
+  }
+// -------------------- FIN Formulario --------------------
+// -------------------- Cálculo --------------------
   //Campos: Proyecto, Emprendedor y Email (obligatorio)
   const [projectName, setProjectName] = useState('');
   const [founderName, setFounderName] = useState('');
@@ -1758,98 +1870,177 @@ useEffect(() => {
                     {/* ZONA DE BOTONES EN INFORME*/}
           {/* REPORT */}
           <TabsContent value="explain">
-            <Card className="border-none shadow-sm">
-              <CardHeader><CardTitle>Informe</CardTitle>
-              <p className="mt-4 text-xs text-slate-500 flex items-center gap-1">
-        Nota: La generación con IA resta 3 créditos.
-      </p></CardHeader>
+                <Card className="border-none shadow-sm">
+                 <CardHeader className="no-print flex flex-col items-center text-center gap-1 pb-2">
+                    <CardTitle className="text-xl font-extrabold tracking-tight">
+                    Genera tu informe final
+                  </CardTitle>
+
+                   <p className="text-sm text-slate-600">
+                   Haz clic en <span className="font-semibold">“Informe con IA Aret3”</span> para crear el informe completo.
+                   </p>
+
+                   <p className="text-xs text-slate-500">
+                   La generación con IA resta 3 créditos.
+                   </p>
+                 </CardHeader>
+
               <CardContent>
-                 <div className="no-print mb-4 flex w-full items-center justify-between gap-3">
-                <Button
-              onClick={handleEvaluateAI}
-              disabled={!isAIEnabled}
-              className={
-                isAIEnabled
-                 ? "bg-red-600 hover:bg-red-700 text-white"
-                 : "bg-slate-900 text-white/70 opacity-60 cursor-not-allowed"
-              }
-               title={!isAIEnabled ? "Agrega al menos 5 caracteres en ‘Idea’ para habilitar la IA" : undefined}
-              >
-               {iaLoading ? "Evaluando…" : "Generar Informe con IA Aret3"}
-               </Button>
+             <div className="no-print mb-4 flex w-full items-center justify-between gap-3">
+               <button
+               type="button"
+               onClick={handleEvaluateAI}
+               disabled={!isAIEnabled || iaLoading}
+               title={
+               !isAIEnabled
+               ? "Agrega al menos 5 caracteres en ‘Idea’ para habilitar la IA"
+               : "Generar informe con IA (resta 1 crédito)"
+               }
+               aria-busy={iaLoading}
+               className={[
+               "mt-1 shrink-0 w-[80px] rounded-xl border px-3 py-2",
+               "flex flex-col items-center justify-center",
+               "text-[11px] font-semibold text-center",
+               "transition-colors duration-150",
+               "bg-blue-100 border-red-300 text-blue-700",
+               "hover:bg-blue-200 hover:border-blue-400 hover:text-blue-800",
+               "active:bg-blue-300 active:border-blue-500",
+               "shadow-sm hover:shadow",
+               "disabled:opacity-60 disabled:cursor-not-allowed",
+             ].join(" ")}
+            >
+            {iaLoading ? (
+            <Spinner className="h-5 w-5" />
+             ) : (
+             <BotIcon className="h-8 w-8" variant="t3" glowHue="gold" />
+             )}
+            <span className="mt-1 text-[10px] leading-none">
+            Informe con IA Aret3
+           </span>
+          </button>
+
 
              <div className="ml-auto flex items-center gap-2"></div>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className={[
-                     "inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm transition",
-                     "bg-white text-slate-900 border-2 border-blue-600",
-                     "hover:bg-blue-50 hover:border-blue-700 hover:shadow-md",
-                     "active:translate-y-[1px] active:shadow-none",
-                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400"
-                 ].join(" ")}
-                >
-                 Imprimir informe
-               </button>
 
-                 <Button
-               onClick={() =>
-                 sendReportEmail({
-  preAI: preAIRef?.current?.innerHTML || "",
-    to: email,
-  reason: 'user-asked',
-  // El mismo informe que ves: prioriza IA; si no, el base
-  report: aiReport ?? nonAIReport,
+            <div className="ml-auto flex items-center gap-2">
+              {/* Botón: Informe a mi email */}
+              <button
+                type="button"
+                onClick={() => {
+                  const payload = {
+                    preAI: preAIRef?.current?.innerHTML || "",
+                    to: email,
+                    reason: "user-asked",
+                    report: aiReport ?? nonAIReport,
+                    aiPlan,
+                    // Resumen narrativo (ya con datos de P.E. y curva)
+                    summary: buildInvestorNarrative(
+                      baseOut.report.input,
+                      {
+                        ...(outputs?.report?.meta || {}),
+                        peCurve: outputs?.peCurve,
+                        pe: outputs?.pe,
+                      }
+                    ),
+                    // Datos para el encabezado del informe
+                    user: {
+                      projectName,
+                      founderName,
+                      email,
+                      idea,
+                      rubro,
+                      ubicacion,
+                    },
+                    // URL opcional de vista
+                    ...(typeof window !== "undefined"
+                      ? { viewUrl: window.location.href }
+                      : {}),
+                  };
 
-  // Resumen narrativo (ya con datos de P.E. y curva)
-  summary: buildInvestorNarrative(
-    baseOut.report.input,
-    { ...(outputs?.report?.meta || {}), peCurve: outputs?.peCurve, pe: outputs?.pe }
-  ),
+                  void sendReportEmail(payload as any);
+                }}
+                disabled={!emailOK || emailSending}
+                className={[
+                  "shrink-0 w-[72px] rounded-xl border px-3 py-2",
+                  "flex flex-col items-center justify-center",
+                  "text-[10px] font-medium text-center",
+                  "transition-colors duration-150",
+                  "bg-emerald-50 border-emerald-200 text-emerald-700",
+                  "hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-800",
+                  "active:bg-emerald-200 active:border-emerald-400",
+                  "shadow-sm hover:shadow",
+                  "disabled:opacity-60 disabled:cursor-not-allowed",
+                ].join(" ")}
+                title={
+                  !emailOK
+                    ? "Completa un email válido para enviar el informe"
+                    : "Enviar el informe completo a tu correo"
+                }
+              >
+                {emailSending ? (
+                  <Spinner className="h-4 w-4" />
+                ) : (
+                  <MailMiniIcon className="h-4 w-4" />
+                )}
+                <span className="mt-1 leading-tight">
+                  Informe a mi email
+                </span>
+              </button>
 
-  // Bloque “pre-AI” para renderizar en el correo lo mismo que el tablero
-  preAIJson: {
-    items: outputs?.items || [],
-    meta:  { ...(outputs?.report?.meta || {}), mesesPE, N: (outputs?.report?.meta?.clientsUsed ?? 0) },
-    pe:    outputs?.pe,
-    peCurve: outputs?.peCurve,
-    // métricas de marketing usadas en la Brújula
-    mkt: {
-      mode,
-      N, Q,
-      M_requerido: Number.isFinite(M_requerido) ? Math.round(M_requerido) : 0,
-      CPL: Number.isFinite(CPL_implicito) ? Math.round(CPL_implicito) : (Number.isFinite(CPL_objetivo) ? Math.round(CPL_objetivo) : 0),
-      CAC: Number.isFinite(CAC_implicito) ? Math.round(CAC_implicito) : (Number.isFinite(CAC_target) ? Math.round(CAC_target) : 0),
-    },
-    // EERR anual (los mismos que ves en el panel)
-    eerr: {
-      ventas:          Number.isFinite(ventasAnual) ? Math.round(ventasAnual) : 0,
-      costoVariable:   Number.isFinite(costoVariableAnual) ? Math.round(costoVariableAnual) : 0,
-      gastosFijos:     Number.isFinite(gastosFijosAnual) ? Math.round(gastosFijosAnual) : 0,
-      marketing:       Number.isFinite(marketingAnual) ? Math.round(marketingAnual) : 0,
-      rai:             Number.isFinite(resultadoAnual) ? Math.round(resultadoAnual) : 0,
-    },
-  },
+              {/* Botón: PDF */}
+              <button
+                type="button"
+                onClick={() => {
+                  const payload = {
+                    preAI: preAIRef?.current?.innerHTML || "",
+                    report: aiReport ?? nonAIReport,
+                    summary: buildInvestorNarrative(
+                      baseOut.report.input,
+                      {
+                        ...(outputs?.report?.meta || {}),
+                        peCurve: outputs?.report?.meta?.peCurve ?? outputs?.peCurve,
+                        pe: outputs?.pe,
+                      }
+                    ),
+                    aiPlan,
+                    user: {
+                      projectName,
+                      founderName,
+                      email,
+                      idea,
+                      rubro,
+                      ubicacion,
+                    },
+                    ...(typeof window !== "undefined"
+                      ? { viewUrl: window.location.href }
+                      : {}),
+                  };
 
-            // 👇 Tablas/plan de la IA para “Mapa competitivo” + “Checklist regulatorio” + Plan 100
-                   aiPlan,
-            // 👇 Metadatos del usuario que usamos en el encabezado del email
-                     user: {
-                     projectName,
-                     founderName,
-                     email,
-                     idea,        // tu idea actual (la de la pantalla)
-                     rubro,       // rubro/sector
-                     ubicacion,   // ubicación (país/ciudad)
-                   },
-                 })
-              }
-                  disabled={!emailOK || emailSending}
-                 >
-                 Informe a mi email
-               </Button>
-               </div>
+                  void downloadPdfReport(payload);
+                }}
+                disabled={pdfDownloading}
+                className={[
+                  "shrink-0 w-[64px] rounded-xl border px-3 py-2",
+                  "flex flex-col items-center justify-center",
+                  "text-[10px] font-medium text-center",
+                  "transition-colors duration-150",
+                  "bg-indigo-50 border-indigo-200 text-indigo-700",
+                  "hover:bg-indigo-100 hover:border-indigo-300 hover:text-indigo-800",
+                  "active:bg-indigo-200 active:border-indigo-400",
+                  "shadow-sm hover:shadow",
+                  "disabled:opacity-60 disabled:cursor-not-allowed",
+                ].join(" ")}
+                title="Descargar el informe completo en PDF"
+              >
+                {pdfDownloading ? (
+                  <Spinner className="h-4 w-4" />
+                ) : (
+                  <PdfMiniIcon className="h-4 w-4" />
+                )}
+                <span className="mt-1 leading-tight">PDF</span>
+              </button>
+            </div>
+          </div>
 
 
                <div className="rounded-lg border bg-white p-5 md:p-6 shadow-sm space-y-4 text-[15px] leading-relaxed">
