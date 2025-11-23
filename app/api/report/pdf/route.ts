@@ -104,14 +104,16 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: any) {
-    console.error("[pdf-report] error en servidor:", err);
+  console.error("[pdf-report] error en servidor:", err);
 
-    return NextResponse.json(
-      {
-        error:
-          "Ocurrió un error generando el PDF del informe. Revisa los logs del servidor.",
-      },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    {
+      error:
+        err?.message ||
+        "Ocurrió un error generando el PDF del informe en el servidor.",
+      stack: err?.stack || null,
+    },
+    { status: 500 }
+  );
+}
 }
