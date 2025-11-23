@@ -2,31 +2,57 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { renderReportEmailHtml } from "@/lib/renderReportHtml";
-import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium-min";
+import puppeteer, { type Browser } from "puppeteer-core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Convierte HTML en un Buffer de PDF usando Puppeteer.
+ * Lanza un navegador:
+ * - En producción / Vercel: puppeteer-core + chromium-min
+ * - En local: puppeteer normal (Chrome que ya tienes instalado)
+ */
+async function launchBrowser(): Promise<Browser> {
+  const isServerless =
+    !!process.env.VERCEL || !!process.env.AWS_REGION || process.env.NODE_ENV === "production";
+
+  if (isServerless) {
+    const executablePath = await chromium.executablePath();
+
+    if (!executablePath) {
+      throw new Error("No se encontró executablePath de chromium en entorno serverless.");
+    }
+
+    return await puppeteer.launch({
+      args: chromium.args,
+      executablePath,
+      headless: true,
+    });
+  }
+
+  // Modo local: usamos puppeteer completo (trae su propio Chrome)
+  const puppeteerLocal = await import("puppeteer");
+  return (await puppeteerLocal.default.launch({
+    headless: true,
+  })) as unknown as Browser;
+}
+
+/**
+ * Convierte HTML en Buffer de PDF
  */
 async function htmlToPdfBuffer(html: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+  const browser = await launchBrowser();
 
   try {
     const page = await browser.newPage();
 
     await page.setContent(html, {
-        // con "domcontentloaded" cargamos más rápido y evitamos
-       // quedarnos esperando requests de Next.js en dev
-          waitUntil: "domcontentloaded",
+      // suficiente para nuestro caso, y evita esperas eternas
+      waitUntil: "domcontentloaded",
     });
 
-
-    const pdfUint8Array = await page.pdf({
+    const pdfUint8 = await page.pdf({
       format: "A4",
       printBackground: true,
       margin: {
@@ -37,10 +63,7 @@ async function htmlToPdfBuffer(html: string): Promise<Buffer> {
       },
     });
 
-    // Convert Uint8Array to Buffer for compatibility
-    const pdfBuffer = Buffer.from(pdfUint8Array);
-
-    return pdfBuffer;
+    return Buffer.from(pdfUint8);
   } finally {
     await browser.close();
   }
@@ -48,15 +71,12 @@ async function htmlToPdfBuffer(html: string): Promise<Buffer> {
 
 /**
  * POST /api/report/pdf
- *
- * Espera un JSON con la misma forma que usas para el email:
- * { summary, preAI, report, aiPlan, user, viewUrl? }
+ * Body esperado: { summary, preAI, report, aiPlan, user, viewUrl? }
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
 
-    // Usamos EXACTAMENTE el mismo helper que el correo
     const html = renderReportEmailHtml({
       summary: body.summary,
       preAI: body.preAI,
@@ -75,7 +95,6 @@ export async function POST(req: Request) {
 
     const pdfBuffer = await htmlToPdfBuffer(html);
 
-    // 👇 Aquí está el cambio clave: casteamos el Buffer a any
     return new NextResponse(pdfBuffer as any, {
       status: 200,
       headers: {
@@ -85,7 +104,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: any) {
-    console.error("[report/pdf] Error generando PDF:", err);
+    console.error("[pdf-report] error en servidor:", err);
 
     return NextResponse.json(
       {
