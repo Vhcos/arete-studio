@@ -3,15 +3,15 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { renderReportEmailHtml } from "@/lib/renderReportHtml";
 import chromium from "@sparticuz/chromium-min";
-import puppeteer, { type Browser } from "puppeteer-core";
+import puppeteerCore, { type Browser } from "puppeteer-core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * Lanza un navegador:
- * - En producción / Vercel: puppeteer-core + chromium-min
- * - En local: puppeteer normal (Chrome que ya tienes instalado)
+ * - En producción / Vercel: puppeteer-core + chromium-min (bin empaquetado)
+ * - En local: puppeteer normal (Chrome local)
  */
 async function launchBrowser(): Promise<Browser> {
   const isServerless =
@@ -24,10 +24,11 @@ async function launchBrowser(): Promise<Browser> {
       throw new Error("No se encontró executablePath de chromium en entorno serverless.");
     }
 
-    return await puppeteer.launch({
+    return await puppeteerCore.launch({
       args: chromium.args,
       executablePath,
-      headless: true, // aquí NO usamos chromium.headless para evitar problemas de tipos
+      headless: true,
+      // 👇 nada más, sin defaultViewport ni ignoreHTTPSErrors
     });
   }
 
@@ -37,6 +38,7 @@ async function launchBrowser(): Promise<Browser> {
     headless: true,
   })) as unknown as Browser;
 }
+
 
 /**
  * Convierte HTML en Buffer de PDF
@@ -48,7 +50,6 @@ async function htmlToPdfBuffer(html: string): Promise<Buffer> {
     const page = await browser.newPage();
 
     await page.setContent(html, {
-      // suficiente para nuestro caso, y evita esperas eternas
       waitUntil: "domcontentloaded",
     });
 
@@ -71,7 +72,6 @@ async function htmlToPdfBuffer(html: string): Promise<Buffer> {
 
 /**
  * POST /api/report/pdf
- * Body esperado: { summary, preAI, report, aiPlan, user, viewUrl? }
  */
 export async function POST(req: Request) {
   try {
@@ -111,8 +111,10 @@ export async function POST(req: Request) {
         error:
           err?.message ||
           "Ocurrió un error generando el PDF del informe en el servidor.",
+        stack: err?.stack || null,
       },
       { status: 500 }
     );
   }
 }
+

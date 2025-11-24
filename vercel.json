@@ -1,0 +1,9 @@
+{
+  "functions": {
+    "app/api/report/pdf/route.ts": {
+      "includeFiles": [
+        "node_modules/@sparticuz/chromium-min/bin/**"
+      ]
+    }
+  }
+}
