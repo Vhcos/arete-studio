@@ -27,7 +27,7 @@ async function launchBrowser(): Promise<Browser> {
     return await puppeteer.launch({
       args: chromium.args,
       executablePath,
-      headless: true,
+      headless: true, // aquí NO usamos chromium.headless para evitar problemas de tipos
     });
   }
 
@@ -104,16 +104,15 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: any) {
-  console.error("[pdf-report] error en servidor:", err);
+    console.error("[pdf-report] error en servidor:", err);
 
-  return NextResponse.json(
-    {
-      error:
-        err?.message ||
-        "Ocurrió un error generando el PDF del informe en el servidor.",
-      stack: err?.stack || null,
-    },
-    { status: 500 }
-  );
-}
+    return NextResponse.json(
+      {
+        error:
+          err?.message ||
+          "Ocurrió un error generando el PDF del informe en el servidor.",
+      },
+      { status: 500 }
+    );
+  }
 }
