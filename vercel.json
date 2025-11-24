@@ -1,10 +1,7 @@
 {
   "functions": {
-    "app/api/report/pdf/route.ts": {
-      "includeFiles": [
-        "node_modules/@sparticuz/chromium/bin/**"
-      ],
-      "maxDuration": 60
+    "app/api/report/pdf/route.js": {
+      "includeFiles": "node_modules/@sparticuz/chromium-min/bin/**"
     }
   }
 }
