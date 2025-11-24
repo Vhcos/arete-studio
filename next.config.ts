@@ -8,17 +8,16 @@ const nextConfig: NextConfig = {
 
   transpilePackages: ["@arete-studio/ui"],
 
-  experimental: {
+    experimental: {
     optimizePackageImports: ["@arete-studio/ui"],
-
-    // 👇 MUY IMPORTANTE PARA EL PDF EN VERCEL
-    // Le decimos a Next que estos paquetes de servidor se mantengan externos
-    // y no intente “bundlearlos” de forma rara en la lambda.
-    serverComponentsExternalPackages: [
-      "@sparticuz/chromium-min",
-      "puppeteer-core",
-    ],
   },
+
+  // 👇 Esta es la opción que afecta a las rutas /api en runtime
+  serverExternalPackages: [
+    "@sparticuz/chromium-min",
+    "puppeteer-core",
+  ],
+
 
   // Redirecciones legacy para rutas antiguas
   async redirects() {
