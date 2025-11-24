@@ -2,18 +2,19 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { renderReportEmailHtml } from "@/lib/renderReportHtml";
-import chromium from "@sparticuz/chromium-min";
-import puppeteerCore from "puppeteer-core";
+
+import chromium from "@sparticuz/chromium";
+import puppeteerCore, { type Browser } from "puppeteer-core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * Lanza un navegador:
- * - En Vercel / serverless: puppeteer-core + chromium-min
- * - En local: puppeteer completo
+ * - En Vercel / serverless: puppeteer-core + @sparticuz/chromium
+ * - En local: puppeteer normal (con Chrome local)
  */
-async function launchBrowser() {
+async function launchBrowser(): Promise<Browser> {
   const isServerless = !!process.env.VERCEL || !!process.env.AWS_REGION;
 
   if (isServerless) {
@@ -25,27 +26,25 @@ async function launchBrowser() {
       );
     }
 
-    const browser = await puppeteerCore.launch({
+    // Cast a any UNA VEZ y usamos ese objeto
+    const chromiumAny = chromium as any;
+
+    return (await puppeteerCore.launch({
       args: chromium.args,
       executablePath,
-      // TS no reconoce estas props en el tipo, así que casteamos
       defaultViewport:
-        (chromium as any).defaultViewport ?? { width: 1280, height: 720 },
-      headless: (chromium as any).headless ?? true,
+        chromiumAny.defaultViewport ?? { width: 1280, height: 720 },
+      headless: chromiumAny.headless ?? true,
       ignoreHTTPSErrors: true,
-    } as any);
-
-    return browser;
+    } as any)) as Browser;
   }
 
   // ---- Modo local: puppeteer completo ----
   const puppeteer = (await import("puppeteer")).default;
 
-  const browser = await puppeteer.launch({
+  return await puppeteer.launch({
     headless: true,
   });
-
-  return browser;
 }
 
 /**
