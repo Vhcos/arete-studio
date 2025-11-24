@@ -7,11 +7,12 @@ const nextConfig: NextConfig = {
 
   transpilePackages: ["@arete-studio/ui"],
 
-  // importante para puppeteer + chromium en Vercel
-  serverExternalPackages: ["@sparticuz/chromium-min", "puppeteer-core"],
-
   experimental: {
     optimizePackageImports: ["@arete-studio/ui"],
+    serverComponentsExternalPackages: [
+      "@sparticuz/chromium",
+      "puppeteer-core",
+    ],
   },
 
   async redirects() {

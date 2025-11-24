@@ -3,45 +3,53 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { renderReportEmailHtml } from "@/lib/renderReportHtml";
 import chromium from "@sparticuz/chromium-min";
-import puppeteerCore, { type Browser } from "puppeteer-core";
+import puppeteerCore from "puppeteer-core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * Lanza un navegador:
- * - En producción / Vercel: puppeteer-core + chromium-min (bin empaquetado)
- * - En local: puppeteer normal (Chrome local)
+ * - En Vercel / serverless: puppeteer-core + chromium-min
+ * - En local: puppeteer completo
  */
-async function launchBrowser(): Promise<Browser> {
-  const isServerless =
-    !!process.env.VERCEL || !!process.env.AWS_REGION || process.env.NODE_ENV === "production";
+async function launchBrowser() {
+  const isServerless = !!process.env.VERCEL || !!process.env.AWS_REGION;
 
   if (isServerless) {
     const executablePath = await chromium.executablePath();
 
     if (!executablePath) {
-      throw new Error("No se encontró executablePath de chromium en entorno serverless.");
+      throw new Error(
+        "chromium.executablePath() devolvió null/undefined en entorno serverless"
+      );
     }
 
-    return await puppeteerCore.launch({
+    const browser = await puppeteerCore.launch({
       args: chromium.args,
       executablePath,
-      headless: true,
-      // 👇 nada más, sin defaultViewport ni ignoreHTTPSErrors
-    });
+      // TS no reconoce estas props en el tipo, así que casteamos
+      defaultViewport:
+        (chromium as any).defaultViewport ?? { width: 1280, height: 720 },
+      headless: (chromium as any).headless ?? true,
+      ignoreHTTPSErrors: true,
+    } as any);
+
+    return browser;
   }
 
-  // Modo local: usamos puppeteer completo (trae su propio Chrome)
-  const puppeteerLocal = await import("puppeteer");
-  return (await puppeteerLocal.default.launch({
+  // ---- Modo local: puppeteer completo ----
+  const puppeteer = (await import("puppeteer")).default;
+
+  const browser = await puppeteer.launch({
     headless: true,
-  })) as unknown as Browser;
+  });
+
+  return browser;
 }
 
-
 /**
- * Convierte HTML en Buffer de PDF
+ * Convierte HTML en un Buffer de PDF usando el navegador anterior.
  */
 async function htmlToPdfBuffer(html: string): Promise<Buffer> {
   const browser = await launchBrowser();
@@ -72,6 +80,7 @@ async function htmlToPdfBuffer(html: string): Promise<Buffer> {
 
 /**
  * POST /api/report/pdf
+ * Body esperado: { summary, preAI, report, aiPlan, user, viewUrl? }
  */
 export async function POST(req: Request) {
   try {
@@ -117,4 +126,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
