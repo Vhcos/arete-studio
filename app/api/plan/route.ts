@@ -30,8 +30,11 @@ function toJson<T>(s: string | null | undefined): T {
 export async function POST(req: Request) {
   // 1) sesión y userId
   const session: any = await getServerSession(authOptions as any);
-  const email = session?.user?.email as string | undefined;
-  if (!email) {
+
+  const userId = session?.user?.id as string | undefined;
+  const clientId = (session?.user as any)?.clientId as string | null | undefined;
+
+  if (!userId) {
     return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
       status: 401,
     });
@@ -40,16 +43,6 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const requestId = body?.requestId || crypto.randomUUID();
 
-  const u = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-  if (!u) {
-    return new Response(JSON.stringify({ ok: false, error: "no_user" }), {
-      status: 401,
-    });
-  }
-  const userId = u.id; // 👈 usar en catch
 
   // 2) debitar (Opción A: 1 crédito por /api/plan)
   const DEBIT = Number(process.env.DEBIT_PER_PLAN ?? "1") || 1;
@@ -215,6 +208,7 @@ export async function POST(req: Request) {
       : [];
 
     // Asegura 6 bullets y las etiqueta SEMANA 1..6
+        // Asegura 6 bullets y las etiqueta SEMANA 1..6
     if (Array.isArray(data?.bullets)) {
       data.bullets = data.bullets
         .filter(Boolean)
@@ -232,12 +226,43 @@ export async function POST(req: Request) {
         });
     }
 
+    // Guardar informe tipo “plan” si el usuario pertenece a un cliente
+    if (clientId) {
+      try {
+        const projectName =
+          (input as any)?.ideaName ??
+          (input as any)?.nombre ??
+          (input as any)?.name ??
+          null;
+
+        const summary =
+          typeof data?.plan100 === "string"
+            ? data.plan100.slice(0, 400)
+            : null;
+
+        await prisma.report.create({
+          data: {
+            clientId,
+            userId,
+            projectName,
+            kind: "plan",
+            summary,
+            driveFileId: null,
+          },
+        });
+      } catch (e) {
+        console.error("[/api/plan] error al crear Report:", e);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       data,
       usage: completion.usage,
       model: completion.model,
     });
+
+
   } catch (err: unknown) {
     // Reembolso si la IA falla
     await refundCredit(

@@ -398,16 +398,35 @@ const [redApoyo, setRedApoyo] = useState(2);
 
    // para el scroll al enviar email
    const preAIRef = useRef<HTMLDivElement>(null);
+   
+   // Convierte un Blob (PDF) en string base64 (sin el prefijo data:)
+   function blobToBase64(blob: Blob): Promise<string> {
+     return new Promise((resolve, reject) => {
+       const reader = new FileReader();
+       reader.onloadend = () => {
+         const result = reader.result;
+         if (typeof result === "string") {
+           const base64 = result.split(",")[1] || "";
+           resolve(base64);
+         } else {
+           resolve("");
+         }
+       };
+       reader.onerror = reject;
+       reader.readAsDataURL(blob);
+     });
+   }
 
-  async function sendReportEmail(args: {
+// Envía el email con el informe (llama a /api/email-report)
+async function sendReportEmail(args: {
   to?: string;
   reason?: string;
   report?: any;
   aiPlan?: any;
   silent?: boolean; // si true, no muestra alerts
-  summary?: string; // <-- add this line
+  summary?: string;
   preAI?: any;
-  preAIJson?: any;      // <-- add this line to allow preAI property
+  preAIJson?: any;
   user?: {
     projectName?: string;
     founderName?: string;
@@ -418,44 +437,99 @@ const [redApoyo, setRedApoyo] = useState(2);
   };
 }) {
   try {
-    const res = await fetch('/api/email-report', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(args),
+    // 1) Partimos del payload original
+    let payload: any = { ...args };
+
+    // 2) Intentamos generar el PDF llamando al MISMO endpoint que usa el botón "Descargar PDF"
+    try {
+      const pdfRes = await fetch("/api/report/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summary: args.summary,
+          // usamos preAI si viene, y si no, preAIJson (por compatibilidad)
+          preAI: args.preAI ?? args.preAIJson,
+          report: args.report,
+          aiPlan: args.aiPlan,
+          user: args.user,
+          ...(typeof window !== "undefined"
+            ? { viewUrl: window.location.href }
+            : {}),
+        }),
+      });
+
+      if (!pdfRes.ok) {
+        console.error(
+          "[email-report] error HTTP al generar PDF:",
+          pdfRes.status,
+          await pdfRes.text()
+        );
+      } else {
+        const blob = await pdfRes.blob();
+        const pdfBase64 = await blobToBase64(blob);
+
+        payload = {
+          ...payload,
+          pdfBase64,
+          pdfFilename: "informe-aret3.pdf",
+        };
+      }
+    } catch (e) {
+      console.warn(
+        "[email-report] error al generar PDF para adjuntar:",
+        e
+      );
+      // seguimos sin adjunto
+    }
+
+    // 3) Enviamos el email (con o sin pdfBase64 según lo anterior)
+    const res = await fetch("/api/email-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
     // puede venir 500 con HTML si hay proxy; evita crash del JSON
     let j: any = {};
-    try { j = await res.json(); } catch { /* noop */ }
+    try {
+      j = await res.json();
+    } catch {
+      /* noop */
+    }
 
     const ok = res.ok && (j?.ok ?? true);
 
     if (args.silent) {
       // modo silencioso: no alerts
-      if (!ok) console.warn('[email-report] fallo (silencioso):', j);
-      else console.log('[email-report] enviado (silencioso):', j);
+      if (!ok) console.warn("[email-report] fallo (silencioso):", j);
+      else console.log("[email-report] enviado (silencioso):", j);
       return ok;
     }
 
     // modo visible para el usuario (cuando él pulsa "Enviar a mi email")
     if (ok) {
-      alert(j.to && j.to !== args.to
-        ? 'Enviado (modo test) al correo.'
-        : 'Informe enviado.');
+      alert(
+        j.to && j.to !== args.to
+          ? "Enviado (modo test) al correo."
+          : "Informe enviado."
+      );
     } else if (j.preview) {
-      alert('Email en modo preview (dev).');
+      alert("Email en modo preview (dev).");
     } else if (j.skipped) {
-      alert('Email desactivado (skipped). Revisa variables de entorno.');
+      alert("Email desactivado (skipped). Revisa variables de entorno.");
     } else {
-      alert('No se pudo enviar el email.');
+      alert("No se pudo enviar el email.");
     }
     return ok;
   } catch (e) {
-    if (!args.silent) alert('No se pudo enviar el email.');
-    console.warn('[email-report] error de red:', e);
+    if (!args.silent) alert("No se pudo enviar el email.");
+    console.warn("[email-report] error de red:", e);
     return false;
   }
-} 
+}
+// Guarda el plan generado en la base de datos
+
+   // -------------------- Helpers de envío de email --------------------
     /**
    * Genera y descarga el PDF del informe llamando a /api/report/pdf
    * Reutiliza el MISMO payload que usamos para el email.
@@ -1924,41 +1998,46 @@ useEffect(() => {
 
             <div className="ml-auto flex items-center gap-2">
               {/* Botón: Informe a mi email */}
-              <button
-                type="button"
-                onClick={() => {
-                  const payload = {
-                    preAI: preAIRef?.current?.innerHTML || "",
-                    to: email,
-                    reason: "user-asked",
-                    report: aiReport ?? nonAIReport,
-                    aiPlan,
-                    // Resumen narrativo (ya con datos de P.E. y curva)
-                    summary: buildInvestorNarrative(
-                      baseOut.report.input,
-                      {
-                        ...(outputs?.report?.meta || {}),
-                        peCurve: outputs?.peCurve,
-                        pe: outputs?.pe,
-                      }
-                    ),
-                    // Datos para el encabezado del informe
-                    user: {
-                      projectName,
-                      founderName,
-                      email,
-                      idea,
-                      rubro,
-                      ubicacion,
-                    },
-                    // URL opcional de vista
-                    ...(typeof window !== "undefined"
-                      ? { viewUrl: window.location.href }
-                      : {}),
-                  };
+               <button
+                  type="button"
+                   onClick={async () => {
+                     if (!emailOK || emailSending) return;
 
-                  void sendReportEmail(payload as any);
-                }}
+                    const payload = {
+                     preAI: preAIRef?.current?.innerHTML || "",
+                     to: email,
+                     reason: "user-asked",
+                     report: aiReport ?? nonAIReport,
+                     aiPlan,
+               // Resumen narrativo (ya con datos de P.E. y curva)
+                  summary: buildInvestorNarrative(baseOut.report.input, {
+                   ...(outputs?.report?.meta || {}),
+                    peCurve: outputs?.peCurve,
+                    pe: outputs?.pe,
+                  }),
+                // Datos para el encabezado del informe
+                   user: {
+                   projectName,
+                   founderName,
+                   email,
+                   idea,
+                   rubro,
+                   ubicacion,
+                 },
+               // URL opcional de vista
+                   ...(typeof window !== "undefined"
+                   ? { viewUrl: window.location.href }
+                 : {}),
+                 };
+
+                try {
+                 setEmailSending(true);
+                 await sendReportEmail(payload as any);
+               } finally {
+                 setEmailSending(false);
+               }
+              }}
+
                 disabled={!emailOK || emailSending}
                 className={[
                   "shrink-0 w-[72px] rounded-xl border px-3 py-2",
