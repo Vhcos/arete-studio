@@ -50,18 +50,16 @@ function derive(input: any) {
 export async function POST(req: Request) {
   // sesión
   const session: any = await getServerSession(authOptions as any);
-  const email = session?.user?.email as string | undefined;
-  if (!email) return new NextResponse("Unauthorized", { status: 401 });
 
-  // userId
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-  if (!user) return NextResponse.json({ ok: false, error: "no_user" }, { status: 401 });
-  const userId = user.id;
+  const userId = session?.user?.id as string | undefined;
+  const clientId = (session?.user as any)?.clientId as string | null | undefined;
+
+  if (!userId) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
 
   // body + requestId
+
   const body = await req.json().catch(() => ({}));
   const requestId = body?.requestId || crypto.randomUUID();
 
@@ -209,12 +207,46 @@ const sectorId = body?.sectorId ?? body?.sector;
     if (typeof data.ranking.constraintsOK !== "boolean") data.ranking.constraintsOK = false;
     if (!Array.isArray(data.ranking.reasons)) data.ranking.reasons = ["Normalizado por faltantes."];
 
+        // Guardar informe en Report si el usuario pertenece a un cliente
+    if (clientId) {
+      try {
+        const projectName =
+          (input as any)?.ideaName ??
+          (input as any)?.nombre ??
+          (input as any)?.name ??
+          null;
+
+        const finalVerdict =
+          (data as any)?.sections?.finalVerdict as string | undefined;
+
+        const summary =
+          typeof finalVerdict === "string"
+            ? finalVerdict.slice(0, 400)
+            : null;
+
+        await prisma.report.create({
+          data: {
+            clientId,
+            userId,
+            projectName,
+            kind: "evaluate",
+            summary,
+            driveFileId: null,
+          },
+        });
+      } catch (e) {
+        console.error("[/api/evaluate] error al crear Report:", e);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       data,
       usage: completion.usage,
       model: completion.model,
     });
+
+
   } catch (err: unknown) {
     // Reembolso si falla
     await refundCredit(userId, requestId, DEBIT);

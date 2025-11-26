@@ -46,19 +46,35 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
 
-    /** 2) Adjunta contador y plan al objeto de sesión */
+    //** 2) Adjunta datos de wallet y cliente al objeto de sesión */
     async session({ session, user, token }) {
       const userId = user?.id || (token?.sub as string | undefined);
+
       if (userId) {
-        const w = await prisma.creditWallet.findUnique({
-          where: { userId },
-        });
-        (session as any).user = { ...(session as any).user, id: userId };
-        (session as any).creditsRemaining = w?.creditsRemaining ?? 0;
-        (session as any).plan = w?.plan ?? "free";
+        const [wallet, dbUser] = await Promise.all([
+          prisma.creditWallet.findUnique({
+            where: { userId },
+          }),
+          prisma.user.findUnique({
+            where: { id: userId },
+            include: { client: true },
+          }),
+        ]);
+
+        (session as any).user = {
+          ...(session as any).user,
+          id: userId,
+          clientId: dbUser?.clientId ?? null,
+          clientSlug: dbUser?.client?.slug ?? null,
+        };
+
+        (session as any).creditsRemaining = wallet?.creditsRemaining ?? 0;
+        (session as any).plan = wallet?.plan ?? "free";
       }
+
       return session;
     },
+
 
     /** 3) Redirect seguro: permite rutas relativas y mismo host */
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
