@@ -15,6 +15,7 @@ model User {
   emailVerified DateTime?
   name          String?
   image         String?
+  
 
   // Multi-tenant: usuario pertenece (opcionalmente) a un cliente
   clientId String?
@@ -26,6 +27,7 @@ model User {
   creditWallet CreditWallet?
   usageEvents  UsageEvent[]
   reports      Report[]
+  newsPosts    NewsPost[]
 }
 
 
@@ -134,4 +136,24 @@ model UsageEvent {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model NewsPost {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  subtitle    String?
+  content     String   // Markdown o texto largo para el cuerpo de la noticia
+  imageUrl    String?
+  status      String   @default("draft") // draft | published
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  authorId   String?
+  authorName String?
+
+  author User? @relation(fields: [authorId], references: [id])
+
+  @@index([status, publishedAt])
 }

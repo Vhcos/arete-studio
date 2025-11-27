@@ -1,16 +1,46 @@
+// apps/marketing_clean/pages/index.tsx
 import Head from "next/head";
+import type { GetStaticProps } from "next";
 import dynamic from "next/dynamic";
 import Nav from "../components/Nav";
 import Hero from "../components/sections/Hero";
 import Footer from "../components/sections/Footer";
 import React from "react";
 import ReportExample from "../components/sections/ReportExample";
+import Link from "next/link";
+
+
 
 const NewsletterForm = dynamic(() => import("../components/NewsletterForm"), { ssr: false });
 
 const APP = process.env.NEXT_PUBLIC_APP_ORIGIN || "https://app.aret3.cl";
 
-export default function Home() {
+type NewsItem = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  imageUrl: string | null;
+  publishedAt: string | null;
+  authorName: string | null;
+};
+
+type HomeProps = {
+  news: NewsItem[];
+};
+
+function formatDate(value: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-CL", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export default function Home({ news }: HomeProps) {
   return (
     <>
       <Head>
@@ -25,32 +55,85 @@ export default function Home() {
       <Nav />
 
       {/* Sticky CTA siempre visible */}
+                  {/* Sticky CTA siempre visible */}
       <aside className="sticky top-0 z-40 w-full border-b border-slate-200/70 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2">
-          <p className="text-xs text-slate-600">
-            🌟 Empieza gratis. Toma menos de <span className="font-medium">2 minutos</span>.
-          </p>
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
+          {/* Recuadro de mensaje, estilo tarjeta */}
+          <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+            <p className="text-[11px] leading-snug text-slate-600">
+              <span className="font-medium text-slate-900">Imagina una buena idea sin barreras: aret3 
+                convierte sueños en realidad con planes de negocio rápidos y sencillos.</span>{" "}
+              y es perfecto para instituciones {" "}
+              <span className="font-medium">con programas de emprendimiento.</span>
+            </p>
+          </div>
+
+          {/* Botones: Noticias + Acceder */}
+          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+            {/* Botón Noticias (con bot reportero) */}
             <a
-              href="#ejemplo"
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              href="#noticias"
+              className={`
+                flex flex-col items-center justify-center gap-0.5
+                rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-slate-900
+                px-3.5 py-1.5 text-[11px] font-medium text-white shadow-md
+                transition-all duration-300
+                hover:from-emerald-500 hover:to-emerald-700
+                active:scale-[0.98]
+                sm:flex-row sm:gap-2
+              `}
             >
-              Ver ejemplo de informe
+              <div className="flex items-center gap-1.5">
+                <img
+                  src="/logo-report-2.png"
+                  alt="Bot reportero Aret3"
+                  className="h-8 w-8 rounded-full shadow-[0_0_6px_rgba(56,189,248,0.9)]"
+                  loading="lazy"
+                />
+                <span className="whitespace-nowrap">Noticias Aret3</span>
+              </div>
+              <span className="mt-0.5 text-[10px] font-light text-amber-200 sm:mt-0">
+                IA con ojos de reportero
+              </span>
             </a>
+
+                        {/* Botón Acceder (look azul) */}
             <a
               href={`${APP}/auth/sign-in?callbackUrl=/`}
-              className="rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white hover:opacity-90"
+              className={`
+                flex flex-col items-center justify-center gap-0.5
+                rounded-xl bg-gradient-to-r from-sky-500 via-blue-600 to-slate-900
+                px-3.5 py-1.5 text-[11px] font-medium text-white shadow-md
+                transition-all duration-300
+                hover:from-sky-400 hover:via-blue-500 hover:to-slate-800
+                active:scale-[0.98]
+                sm:flex-row sm:gap-2
+              `}
             >
-              Empieza gratis
+              <div className="flex items-center gap-1.5">
+                {/* Icono A de acceso: cuando tengas el nuevo PNG, usa esa ruta */}
+                <img
+                  src="/icon-acceso.png"
+                  alt="Acceder a tu cuenta Aret3"
+                  className="h-8 w-8 rounded-full shadow-[0_0_6px_rgba(59,130,246,0.9)]"
+                  loading="lazy"
+                />
+                <span className="whitespace-nowrap">Acceso</span>
+              </div>
+              <span className="mt-0.5 text-[10px] font-light text-sky-100 sm:mt-0">
+                Entra a Aret3 y haz tu informe
+              </span>
             </a>
+
           </div>
         </div>
       </aside>
 
+
+
       <main>
         {/* Hero existente */}
         <Hero />
-       
 
         {/* Micro-beneficios muy claros */}
         <section className="mx-auto max-w-6xl px-4 pb-6 pt-2">
@@ -130,17 +213,16 @@ export default function Home() {
                 }}
               />
               <div className="aspect-video w-full overflow-hidden rounded-2xl ring-1 ring-black/5 shadow-xl">
-              <iframe
-                 className="h-full w-full"
-                 src="https://www.youtube-nocookie.com/embed/dCrQAvtYTu8"
-                 title="Aret3 — demo actualizada"
-                 loading="lazy"
-                 frameBorder="0"
-                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                 allowFullScreen
-               />
-             </div>
-
+                <iframe
+                  className="h-full w-full"
+                  src="https://www.youtube-nocookie.com/embed/dCrQAvtYTu8"
+                  title="Aret3 — demo actualizada"
+                  loading="lazy"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -165,8 +247,8 @@ export default function Home() {
             </div>
           </div>
         </section>
-        
-                <ReportExample />
+
+        <ReportExample />
 
         {/* Testimonio simple y visual */}
         <section className="mx-auto max-w-6xl px-4 py-12">
@@ -204,7 +286,8 @@ export default function Home() {
                 Enseña planificación y finanzas de forma práctica. Licencias educativas y para ONGs con descuento.
               </p>
               <p className="mt-2 text-slate-700">
-                Si estás generando un impacto positivo, nos gustaría apoyarte. Ofrecemos un descuento especial para escuelas de negocios, universidades, empresas B y organizaciones sin fines de lucro.
+                Si estás generando un impacto positivo, nos gustaría apoyarte. Ofrecemos un descuento especial para escuelas de negocios,
+                universidades, empresas B y organizaciones sin fines de lucro.
               </p>
               <a
                 href="mailto:vhc@aret3.cl?subject=Licencia%20ARET3%20para%20instituci%C3%B3n"
@@ -241,6 +324,91 @@ export default function Home() {
             </a>
           </div>
         </section>
+
+                {/* Noticias para SEO / contenido dinámico */}
+        {news && news.length > 0 && (
+          <section id="noticias" className="mx-auto max-w-6xl px-4 py-12">
+            {/* Título + logo bot */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-300">
+                    <img
+                      src="/logo-report-2.png"
+                      alt="Bot reportero Aret3"
+                      className="h-9 w-9 rounded-full"
+                      loading="lazy"
+                    />
+                  </span>
+                  <span>Noticias y análisis para emprendedores</span>
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Contexto breve para entender qué está pasando y cómo puede impactar tus decisiones al emprender.
+                </p>
+              </div>
+              {/* Botón "Ver todas" */}
+                    <a
+                     href="/noticias"
+                       className={`
+                         inline-flex flex-col items-center justify-center gap-0.5
+                         rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-slate-900
+                         px-3.5 py-1.5 text-[11px] font-medium text-white shadow-md
+                         transition-all duration-300
+                         hover:from-emerald-500 hover:to-emerald-700
+                         active:scale-[0.98]
+                         sm:flex-row sm:gap-2
+                       `}
+                     >
+                       <div className="flex items-center gap-1.5">
+                       <img
+                       src="/logo-report-2.png"
+                       alt="Bot reportero Aret3"
+                       className="h-7 w-7 rounded-full shadow-[0_0_6px_rgba(56,189,248,0.9)]"
+                       loading="lazy"
+                     />
+                       <span className="whitespace-nowrap">Ver todas las noticias</span>
+                       </div>
+                    </a>
+            </div>
+
+            {/* Tarjetas */}
+                        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+              {news.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/noticias/${item.slug}`}
+                  className="group relative flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg"
+                >
+                  <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-400 via-sky-400 to-blue-500 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-blue-700">
+                    {formatDate(item.publishedAt)}
+                  </p>
+                  <h3 className="mt-1 text-base font-semibold text-slate-900">
+                    {item.title}
+                  </h3>
+                  {item.subtitle && (
+                    <p className="mt-2 line-clamp-3 text-sm text-slate-600">
+                      {item.subtitle}
+                    </p>
+                  )}
+
+                  <div className="mt-3 flex-1" />
+
+                  <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>{item.authorName || "Equipo Aret3"}</span>
+                    <span className="inline-flex items-center gap-1 text-emerald-600 group-hover:text-emerald-700">
+                      <span>Ver más</span>
+                      <span aria-hidden>↗</span>
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+          </section>
+        )}
+
 
         {/* FAQ breve para no expertos */}
         <section className="mx-auto max-w-6xl px-4 py-10">
@@ -319,3 +487,33 @@ export default function Home() {
     </>
   );
 }
+
+export const getStaticProps: GetStaticProps<HomeProps> = async () => {
+  const base =
+    process.env.NEXT_PUBLIC_APP_ORIGIN ||
+    (process.env.NODE_ENV === "development"
+      ? "http://localhost:3000"
+      : "https://app.aret3.cl");
+
+  try {
+    const res = await fetch(`${base}/api/news?limit=3`);
+    if (!res.ok) {
+      throw new Error(`Error al obtener noticias: ${res.status}`);
+    }
+    const data = await res.json();
+    return {
+      props: {
+        news: (data.items ?? []) as NewsItem[],
+      },
+      revalidate: 60,
+    };
+  } catch (error) {
+    console.error("Error en getStaticProps de marketing /:", error);
+    return {
+      props: {
+        news: [],
+      },
+      revalidate: 60,
+    };
+  }
+};
