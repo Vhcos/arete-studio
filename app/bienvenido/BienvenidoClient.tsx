@@ -1,3 +1,4 @@
+// app/bienvenido/BienvenidoClient.tsx
 "use client";
 
 import * as React from "react";
@@ -17,10 +18,24 @@ export default function BienvenidoClient() {
   const email = get("email") ?? get("e");
 
   // Destino y comportamiento
-  const next = get("next") || "/wizard/step-1";
+  // ORG (slug de la organización) si viene en la URL
+  const org = get("org");
+
+  // Destino base y comportamiento
+  const nextRaw = get("next") || "/wizard/step-1";
+
+  // Si viene ?org=..., lo arrastramos al next (sin duplicarlo)
+  const next = React.useMemo(() => {
+    if (!org) return nextRaw;
+    if (nextRaw.includes("org=")) return nextRaw;
+    const sep = nextRaw.includes("?") ? "&" : "?";
+    return `${nextRaw}${sep}org=${encodeURIComponent(org)}`;
+  }, [nextRaw, org]);
+
   const delayRaw = get("delay");
-  const delayMs = delayRaw ? Number(delayRaw) : 8000; // 8s por defecto
+  const delayMs = delayRaw ? Number(delayRaw) : 16000; // 8s por defecto
   const auto = get("auto") !== "0"; // permitir desactivar con ?auto=0
+
 
   // Persistencia opcional de token/email si vinieran en el link
   React.useEffect(() => {

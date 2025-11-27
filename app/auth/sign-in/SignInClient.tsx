@@ -1,108 +1,135 @@
 // app/auth/sign-in/SignInClient.tsx
 "use client";
 
-import * as React from "react";
+import { useState, FormEvent, useMemo } from "react";
 import { signIn } from "next-auth/react";
-import {
-  Button,
-  Input,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@arete-studio/ui";
-import { gtmPush } from "@/app/lib/gtm";
+import BotIcon from "@/components/icons/BotIcon";
+type Props = {
+  initialEmail?: string;
+  initialOrg?: string; // 👈 viene desde la URL (?org=slug)
+};
 
+export default function SignInClient({ initialEmail = "", initialOrg = "" }: Props) {
+  const [email, setEmail] = useState(initialEmail);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
-function mapError(code?: string) {
-  switch (code) {
-    case "EmailSignin":
-      return "No pudimos enviar el correo. Verifica el email e intenta nuevamente.";
-    case "Configuration":
-      return "Falta configurar el proveedor de email (Resend/SMTP).";
-    case "AccessDenied":
-      return "Acceso denegado.";
-    default:
-      return code || null;
-  }
+  // 👇 Construimos callbackUrl dinámico
+  const callbackUrl = useMemo(() => {
+    const base = "/bienvenido?next=/wizard/step-1";
+    if (!initialOrg) return base;
+    return `${base}&org=${encodeURIComponent(initialOrg)}`;
+  }, [initialOrg]);
+
+  // --- Spinner minimal ---
+function Spinner({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg
+      className={`animate-spin ${className}`}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
+    </svg>
+  );
 }
-
-export default function SignInClient({ initialEmail = "" }: { initialEmail?: string }) {
-  const [email, setEmail] = React.useState(initialEmail);
-  const [loading, setLoading] = React.useState(false);
-  const [sent, setSent] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  async function onSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setLoading(true);
+    setSent(false);
 
-    // 🚫 No envíes PII a GA4. Deriva solo el dominio del correo.
-    const email_domain = (email.split("@")[1] || "").toLowerCase();
+    try {
+      const res = await signIn("email", {
+        email,
+        callbackUrl,
+        redirect: false, // el redirect real pasa al hacer clic en el link del correo
+      });
 
-    // ✅ Evento GA4 vía GTM
-    gtmPush("lead_email", {
-      source: "app_login_form",
-      email_domain, // útil para segmentar B2B vs B2C (opcional)
-    });
-   
-
-    // La pantalla de bienvenida guardará token/email y auto-redirigirá
-    const callbackUrl = "/bienvenido?next=/wizard/step-1";
-
-    const res = await signIn("email", {
-      email,
-      redirect: false,       // mostramos confirmación aquí mismo
-      callbackUrl,           // el enlace del mail apuntará a /bienvenido
-    });
-
-    setLoading(false);
-
-    if (res?.error) {
-      setError(mapError(res.error));
-      return;
+      if (res?.error) {
+        setError(res.error);
+      } else {
+        setSent(true);
+      }
+    } catch (err: any) {
+      setError(String(err.message || err));
+    } finally {
+      setLoading(false);
     }
-    setSent(true);
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Accede con tu email</CardTitle>
-        <CardDescription>
-          Te enviaremos un enlace de acceso. No necesitas contraseña.
-        </CardDescription>
-      </CardHeader>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <label className="block text-sm font-medium text-slate-700">
+        Email
+        <input
+          type="email"
+          required
+          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+        />
+      </label>
 
-      <CardContent>
-        {sent ? (
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-            <p>✅ Enviamos un enlace a <b>{email}</b>. Revisa tu buzón y spam.</p>
-            <p className="mt-2 text-xs text-zinc-500">
-              Al abrir el enlace verás una pantalla de bienvenida y serás redireccionado automáticamente para comenzar.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={onSubmit} className="space-y-3">
-            <label className="text-sm font-medium">Correo electrónico</label>
-            <Input
-              name="email"
-              type="email"
-              placeholder="tucorreo@dominio.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoFocus
-            />
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Enviando…" : "Enviar enlace"}
-            </Button>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-          </form>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+      {initialOrg && (
+        <p className="text-xs text-slate-500">
+          Te estás registrando dentro de la organización{" "}
+          <strong>{initialOrg}</strong>.
+        </p>
+      )}
+
+      {error && <p className="text-xs text-rose-600">{error}</p>}
+      {sent && !error && (
+        <p className="text-xs text-emerald-600">
+          Revisa tu correo, te enviamos un enlace de acceso.
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={loading}
+         className={`
+           w-full flex flex-col items-center justify-center gap-1
+           rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-slate-900
+           px-4 py-3 text-sm font-medium text-white shadow-md
+           transition-all duration-300
+           hover:from-emerald-500 hover:to-emerald-700
+           active:scale-[0.98]
+           disabled:opacity-60 disabled:cursor-not-allowed
+         `}
+      >
+           {loading ? (
+              <div className="flex items-center gap-2">
+              <Spinner className="h-5 w-5 animate-spin text-white" />
+              <span>Enviando enlace...</span>
+              </div>
+          ) : (
+         <>
+            <div className="flex items-center gap-2">
+            <BotIcon className="h-6 w-6 text-amber-300 drop-shadow-[0_0_4px_gold]" variant="t3" glowHue="gold" />
+            <span>Enviar enlace de acceso</span>
+            </div>
+            <span className="text-[12px] font-light text-amber-200 mt-1">
+            Acceso rápido y seguro con IA Aret3
+          </span>
+         </>
+          )}
+        </button>
+
+       </form>
+     );
+  }

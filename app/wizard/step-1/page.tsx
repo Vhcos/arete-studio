@@ -1,7 +1,7 @@
 // app/wizard/step-1/page.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useWizardStore } from "@/lib/state/wizard-store";
@@ -15,6 +15,7 @@ const CURRENT_STEP = 1;
 
 export default function Step1Page() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // NUNCA es null en App Router
   const { data, setStep1 } = useWizardStore();
   const { data: session } = useSession();
   const s1: any = data.step1 ?? {};
@@ -33,6 +34,43 @@ export default function Step1Page() {
   const [helpProject, setHelpProject] = useState(false);
   const [helpFounder, setHelpFounder] = useState(false);
   const [helpEmail, setHelpEmail] = useState(false);
+
+  // --- NUEVO: bind de organización por ?org=slug ---
+  // --- NUEVO: bind de organización por ?org=slug ---
+  const orgFromUrl = searchParams?.get("org") ?? null;
+  const [orgBindState, setOrgBindState] = useState<
+   "idle" | "binding" | "ok" | "error"
+   >("idle");
+
+
+  useEffect(() => {
+    // Si no viene ?org, no hacemos nada
+    if (!orgFromUrl) return;
+    // Evitamos repetir la llamada
+    if (orgBindState !== "idle") return;
+
+    setOrgBindState("binding");
+
+    void fetch("/api/client/bind", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ org: orgFromUrl }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          console.error("[step-1] fallo bind client:", data);
+          setOrgBindState("error");
+          return;
+        }
+        setOrgBindState("ok");
+      })
+      .catch((err) => {
+        console.error("[step-1] error de red en bind client:", err);
+        setOrgBindState("error");
+      });
+  }, [orgFromUrl, orgBindState]);
+  // --- FIN NUEVO ---
 
   // Autofill desde sesión si falta
   useEffect(() => {
