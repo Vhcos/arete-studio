@@ -1,4 +1,4 @@
-// components/icons/BotIcon.tsx
+// components/icons/BotIcon.tsx 
 "use client";
 
 import * as React from "react";

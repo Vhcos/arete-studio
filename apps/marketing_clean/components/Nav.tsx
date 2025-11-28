@@ -5,62 +5,84 @@ import React, { useEffect } from "react";
 import Logo from "./Logo";
 import { gtmPush } from "../lib/gtm";
 
-
 const APP = process.env.NEXT_PUBLIC_APP_ORIGIN || "https://app.aret3.cl";
 
 export default function Nav() {
   useEffect(() => {
     try {
-      gtmPush("view_content", { page_type: "landing", path: window.location.pathname });
+      gtmPush("view_content", {
+        page_type: "landing",
+        path: window.location.pathname,
+      });
     } catch {}
   }, []);
 
   return (
     <header className="mx-auto max-w-6xl px-4 py-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Izquierda: logo + atajos */}
-        <div className="flex items-center gap-4">
-          <a href="/" aria-label="Aret3 (inicio)" className="inline-flex items-center">
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href="/"
+            aria-label="Aret3 (inicio)"
+            className="inline-flex items-center"
+          >
             <Logo />
           </a>
 
+          {/* Tutorial */}
           <a
-          href="https://youtu.be/czo1ekVG5hY"
-           target="_blank"
-           rel="noopener noreferrer"
-           onClick={() => gtmPush("start_test", { source: "nav_tutorial" })}
-          className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            href="https://youtu.be/czo1ekVG5hY"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => gtmPush("start_test", { source: "nav_tutorial" })}
+            className={`
+              inline-flex items-center gap-1.5
+              rounded-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700
+              px-3.5 py-1.5 text-xs font-medium text-white shadow-sm
+              transition-all duration-200
+              hover:from-emerald-400 hover:to-emerald-700
+              active:scale-[0.98]
+            `}
           >
-          Tutorial
-         </a>
+            <span className="text-[13px]">▶</span>
+            <span>Tutorial</span>
+          </a>
 
+          {/* Precios */}
           <a
             href={`${APP}/billing`}
             onClick={() => gtmPush("start_test", { source: "nav_prices" })}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className={`
+              inline-flex items-center gap-1.5
+              rounded-full border border-slate-200 bg-white
+              px-3.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm
+              transition-all duration-200
+              hover:border-slate-300 hover:bg-slate-50
+              active:scale-[0.98]
+            `}
           >
-            Precios
+            <span className="text-[13px]">💳</span>
+            <span>Precios</span>
           </a>
         </div>
 
-        {/* Derecha: CTAs */}
+        {/* Derecha: CTA principal */}
         <nav className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-4">
-            <a
-              href={`${APP}/auth/sign-in?callbackUrl=/`}
-              onClick={() => gtmPush("start_test", { source: "nav_login" })}
-              className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-            >
-              Acceder
-            </a>
-          </div>
-
           <a
             href={`${APP}/auth/sign-in?callbackUrl=/`}
             onClick={() => gtmPush("start_test", { source: "nav_cta" })}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+            className={`
+              inline-flex items-center gap-1.5
+              rounded-full bg-gradient-to-r from-sky-600 via-indigo-600 to-slate-900
+              px-4 py-1.75 text-xs font-semibold text-white shadow-md
+              transition-all duration-200
+              hover:from-sky-500 hover:via-indigo-500 hover:to-slate-800
+              active:scale-[0.98]
+            `}
           >
-            Empieza gratis
+            <span className="text-[13px]">🚀</span>
+            <span>Empieza gratis</span>
           </a>
         </nav>
       </div>
