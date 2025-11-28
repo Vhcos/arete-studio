@@ -1951,7 +1951,7 @@ useEffect(() => {
                   </CardTitle>
 
                    <p className="text-sm text-slate-600">
-                   Haz clic en <span className="font-semibold">“Informe con IA Aret3”</span> para crear el informe completo.
+                   Haz clic en <span className="font-semibold">“Solicita Informe con IA”</span> para crear el informe completo.
                    </p>
 
                    <p className="text-xs text-slate-500">
@@ -1960,166 +1960,189 @@ useEffect(() => {
                  </CardHeader>
 
               <CardContent>
-             <div className="no-print mb-4 flex w-full items-center justify-between gap-3">
-               <button
-               type="button"
-               onClick={handleEvaluateAI}
-               disabled={!isAIEnabled || iaLoading}
-               title={
-               !isAIEnabled
-               ? "Agrega al menos 5 caracteres en ‘Idea’ para habilitar la IA"
-               : "Generar informe con IA (resta 1 crédito)"
-               }
-               aria-busy={iaLoading}
-               className={[
-               "mt-1 shrink-0 w-[80px] rounded-xl border px-3 py-2",
-               "flex flex-col items-center justify-center",
-               "text-[11px] font-semibold text-center",
-               "transition-colors duration-150",
-               "bg-blue-100 border-red-300 text-blue-700",
-               "hover:bg-blue-200 hover:border-blue-400 hover:text-blue-800",
-               "active:bg-blue-300 active:border-blue-500",
-               "shadow-sm hover:shadow",
-               "disabled:opacity-60 disabled:cursor-not-allowed",
-             ].join(" ")}
-            >
-            {iaLoading ? (
-            <Spinner className="h-5 w-5" />
-             ) : (
-             <BotIcon className="h-8 w-8" variant="t3" glowHue="gold" />
-             )}
-            <span className="mt-1 text-[10px] leading-none">
-            Informe con IA Aret3
-           </span>
-          </button>
-
-
-             <div className="ml-auto flex items-center gap-2"></div>
-
-            <div className="ml-auto flex items-center gap-2">
-              {/* Botón: Informe a mi email */}
-               <button
-                  type="button"
-                   onClick={async () => {
-                     if (!emailOK || emailSending) return;
-
-                    const payload = {
-                     preAI: preAIRef?.current?.innerHTML || "",
-                     to: email,
-                     reason: "user-asked",
-                     report: aiReport ?? nonAIReport,
-                     aiPlan,
-               // Resumen narrativo (ya con datos de P.E. y curva)
-                  summary: buildInvestorNarrative(baseOut.report.input, {
-                   ...(outputs?.report?.meta || {}),
-                    peCurve: outputs?.peCurve,
-                    pe: outputs?.pe,
-                  }),
-                // Datos para el encabezado del informe
-                   user: {
-                   projectName,
-                   founderName,
-                   email,
-                   idea,
-                   rubro,
-                   ubicacion,
-                 },
-               // URL opcional de vista
-                   ...(typeof window !== "undefined"
-                   ? { viewUrl: window.location.href }
-                 : {}),
-                 };
-
-                try {
-                 setEmailSending(true);
-                 await sendReportEmail(payload as any);
-               } finally {
-                 setEmailSending(false);
-               }
-              }}
-
-                disabled={!emailOK || emailSending}
-                className={[
-                  "shrink-0 w-[72px] rounded-xl border px-3 py-2",
-                  "flex flex-col items-center justify-center",
-                  "text-[10px] font-medium text-center",
-                  "transition-colors duration-150",
-                  "bg-emerald-50 border-emerald-200 text-emerald-700",
-                  "hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-800",
-                  "active:bg-emerald-200 active:border-emerald-400",
-                  "shadow-sm hover:shadow",
-                  "disabled:opacity-60 disabled:cursor-not-allowed",
-                ].join(" ")}
-                title={
-                  !emailOK
-                    ? "Completa un email válido para enviar el informe"
-                    : "Enviar el informe completo a tu correo"
-                }
-              >
-                {emailSending ? (
-                  <Spinner className="h-4 w-4" />
-                ) : (
-                  <MailMiniIcon className="h-4 w-4" />
-                )}
-                <span className="mt-1 leading-tight">
-                  Informe a mi email
+           <div className="no-print mb-4 flex w-full flex-col gap-3 md:flex-row md:items-stretch md:justify-between">
+             {/* COLUMNA IZQUIERDA: FLECHA + BOTÓN IA */}
+               <div className="flex flex-1 flex-col">
+                     {/* Flecha roja que llama la atención */}
+                 <div className="mb-1 flex justify-center">
+                 <span className="text-3xl leading-none text-red-500 drop-shadow-[0_0_6px_rgba(248,113,113,0.9)] animate-pulse">
+                   👇
                 </span>
-              </button>
 
-              {/* Botón: PDF */}
-              <button
-                type="button"
-                onClick={() => {
-                  const payload = {
-                    preAI: preAIRef?.current?.innerHTML || "",
-                    report: aiReport ?? nonAIReport,
-                    summary: buildInvestorNarrative(
-                      baseOut.report.input,
-                      {
-                        ...(outputs?.report?.meta || {}),
-                        peCurve: outputs?.report?.meta?.peCurve ?? outputs?.peCurve,
-                        pe: outputs?.pe,
-                      }
-                    ),
-                    aiPlan,
-                    user: {
-                      projectName,
-                      founderName,
-                      email,
-                      idea,
-                      rubro,
-                      ubicacion,
-                    },
-                    ...(typeof window !== "undefined"
-                      ? { viewUrl: window.location.href }
-                      : {}),
-                  };
+               </div>
 
-                  void downloadPdfReport(payload);
-                }}
-                disabled={pdfDownloading}
-                className={[
-                  "shrink-0 w-[64px] rounded-xl border px-3 py-2",
-                  "flex flex-col items-center justify-center",
-                  "text-[10px] font-medium text-center",
-                  "transition-colors duration-150",
-                  "bg-indigo-50 border-indigo-200 text-indigo-700",
-                  "hover:bg-indigo-100 hover:border-indigo-300 hover:text-indigo-800",
-                  "active:bg-indigo-200 active:border-indigo-400",
-                  "shadow-sm hover:shadow",
-                  "disabled:opacity-60 disabled:cursor-not-allowed",
-                ].join(" ")}
-                title="Descargar el informe completo en PDF"
-              >
-                {pdfDownloading ? (
-                  <Spinner className="h-4 w-4" />
-                ) : (
-                  <PdfMiniIcon className="h-4 w-4" />
-                )}
-                <span className="mt-1 leading-tight">PDF</span>
-              </button>
-            </div>
-          </div>
+    <button
+      type="button"
+      onClick={handleEvaluateAI}
+      disabled={!isAIEnabled || iaLoading}
+      title={
+        !isAIEnabled
+          ? "Agrega al menos 5 caracteres en ‘Idea’ para habilitar la IA"
+          : "Generar informe con IA (resta 3 créditos)" // ajusta el número si usas 1 crédito
+      }
+      aria-busy={iaLoading}
+      className={[
+        // tamaño / layout
+        "w-full max-w-md",
+        "flex items-center gap-3",
+        // estilo visual
+        "rounded-2xl border border-sky-500/80",
+        "bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-700",
+        "px-4 py-3",
+        "text-left text-white shadow-md",
+        // animaciones
+        "transition-all duration-200",
+        "hover:from-sky-400 hover:via-blue-500 hover:to-indigo-600 hover:shadow-lg",
+        "active:scale-[0.98]",
+        // disabled
+        "disabled:opacity-60 disabled:cursor-not-allowed",
+      ].join(" ")}
+    >
+      {iaLoading ? (
+        <Spinner className="h-6 w-6 flex-none" />
+      ) : (
+        <img
+          src="/icon-ia-hero.png" // A superhéroe con capa/escudo
+          alt="Informe con IA de Aret3"
+          className="h-12 w-12 flex-none drop-shadow-[0_0_6px_rgba(59,130,246,0.9)]"
+          loading="lazy"
+        />
+      )}
+
+      <div className="flex flex-col">
+        <span className="text-xs font-semibold uppercase tracking-wide">
+          solicita informe con IA Aprieta aquí
+        </span>
+        <span className="text-[11px] leading-snug text-sky-100">
+          Aret3 mejora tu informe con análisis y recomendaciones claras.
+        </span>
+        <span className="mt-1 text-[10px] font-medium text-amber-200">
+          Paso recomendado antes de enviar o descargar.
+        </span>
+      </div>
+    </button>
+  </div>
+
+  {/* COLUMNA DERECHA: EMAIL + PDF */}
+  <div className="flex shrink-0 flex-col items-stretch gap-2 md:w-[150px]">
+    {/* Botón: Informe a mi email */}
+    <button
+      type="button"
+      onClick={async () => {
+        if (!emailOK || emailSending) return;
+
+        const payload = {
+          preAI: preAIRef?.current?.innerHTML || "",
+          to: email,
+          reason: "user-asked",
+          report: aiReport ?? nonAIReport,
+          aiPlan,
+          // Resumen narrativo (ya con datos de P.E. y curva)
+          summary: buildInvestorNarrative(baseOut.report.input, {
+            ...(outputs?.report?.meta || {}),
+            peCurve: outputs?.peCurve,
+            pe: outputs?.pe,
+          }),
+          // Datos para el encabezado del informe
+          user: {
+            projectName,
+            founderName,
+            email,
+            idea,
+            rubro,
+            ubicacion,
+          },
+          // URL opcional de vista
+          ...(typeof window !== "undefined"
+            ? { viewUrl: window.location.href }
+            : {}),
+        };
+
+        try {
+          setEmailSending(true);
+          await sendReportEmail(payload as any);
+        } finally {
+          setEmailSending(false);
+        }
+      }}
+      disabled={!emailOK || emailSending}
+      className={[
+        "w-full rounded-2xl border px-3 py-2",
+        "flex flex-col items-center justify-center",
+        "text-[10px] font-medium text-center",
+        "transition-colors duration-150",
+        "bg-emerald-50 border-emerald-200 text-emerald-700",
+        "hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-800",
+        "active:bg-emerald-200 active:border-emerald-400",
+        "shadow-sm hover:shadow",
+        "disabled:opacity-60 disabled:cursor-not-allowed",
+      ].join(" ")}
+      title={
+        !emailOK
+          ? "Completa un email válido para enviar el informe"
+          : "Enviar el informe completo a tu correo"
+      }
+    >
+      {emailSending ? (
+        <Spinner className="h-4 w-4" />
+      ) : (
+        <MailMiniIcon className="h-4 w-4" />
+      )}
+      <span className="mt-1 leading-tight">Informe a mi email</span>
+    </button>
+
+    {/* Botón: PDF */}
+    <button
+      type="button"
+      onClick={() => {
+        const payload = {
+          preAI: preAIRef?.current?.innerHTML || "",
+          report: aiReport ?? nonAIReport,
+          summary: buildInvestorNarrative(baseOut.report.input, {
+            ...(outputs?.report?.meta || {}),
+            peCurve:
+              outputs?.report?.meta?.peCurve ?? outputs?.peCurve,
+            pe: outputs?.pe,
+          }),
+          aiPlan,
+          user: {
+            projectName,
+            founderName,
+            email,
+            idea,
+            rubro,
+            ubicacion,
+          },
+          ...(typeof window !== "undefined"
+            ? { viewUrl: window.location.href }
+            : {}),
+        };
+
+        void downloadPdfReport(payload);
+      }}
+      disabled={pdfDownloading}
+      className={[
+        "w-full rounded-2xl border px-3 py-2",
+        "flex flex-col items-center justify-center",
+        "text-[10px] font-medium text-center",
+        "transition-colors duration-150",
+        "bg-indigo-50 border-indigo-200 text-indigo-700",
+        "hover:bg-indigo-100 hover:border-indigo-300 hover:text-indigo-800",
+        "active:bg-indigo-200 active:border-indigo-400",
+        "shadow-sm hover:shadow",
+        "disabled:opacity-60 disabled:cursor-not-allowed",
+      ].join(" ")}
+      title="Descargar el informe completo en PDF"
+    >
+      {pdfDownloading ? (
+        <Spinner className="h-4 w-4" />
+      ) : (
+        <PdfMiniIcon className="h-4 w-4" />
+      )}
+      <span className="mt-1 leading-tight">PDF</span>
+    </button>
+  </div>
+</div>
 
 
                <div className="rounded-lg border bg-white p-5 md:p-6 shadow-sm space-y-4 text-[15px] leading-relaxed">
