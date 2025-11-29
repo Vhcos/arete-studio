@@ -35,15 +35,53 @@ function formatDate(value: string | null) {
 }
 
 export default function NewsListPage({ items }: Props) {
+  // Por seguridad, solo mostramos noticias publicadas
+  const publishedItems = items.filter((item) => item.status === "published");
+
   return (
     <>
       <Head>
-        <title>Noticias Aret3 — contexto para emprender</title>
+        <title>Noticias para emprendedores — Aret3</title>
+
+        {/* Description principal */}
         <meta
           name="description"
-          content="Noticias y análisis para entender cómo la economía, la política y la tecnología impactan a quienes emprenden."
+          content="Noticias y análisis breves para emprendedores: contexto económico, político y tecnológico explicado en simple, para tomar mejores decisiones con tu idea o negocio."
         />
+
+        {/* Canonical */}
         <link rel="canonical" href="https://www.aret3.cl/noticias" />
+
+        {/* Open Graph */}
+        <meta
+          property="og:title"
+          content="Noticias para emprendedores — Aret3"
+        />
+        <meta
+          property="og:description"
+          content="Archivo de noticias y análisis preparados por el equipo editorial de Aret3 para entender cómo los cambios económicos, políticos y tecnológicos impactan a quienes emprenden."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.aret3.cl/noticias" />
+        <meta
+          property="og:image"
+          content="https://www.aret3.cl/landing-banner.png"
+        />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+          name="twitter:title"
+          content="Noticias para emprendedores — Aret3"
+        />
+        <meta
+          name="twitter:description"
+          content="Noticias y análisis breves para emprendedores, con foco en decisiones de negocio."
+        />
+        <meta
+          name="twitter:image"
+          content="https://www.aret3.cl/landing-banner.png"
+        />
       </Head>
 
       <Nav />
@@ -63,7 +101,9 @@ export default function NewsListPage({ items }: Props) {
               <span>Noticias Aret3</span>
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Archivo de noticias y análisis preparados por nuestro equipo editorial.
+              Archivo de noticias y análisis preparados por nuestro equipo
+              editorial para ayudarte a leer el contexto y tomar mejores
+              decisiones al emprender.
             </p>
           </div>
           <a
@@ -74,13 +114,13 @@ export default function NewsListPage({ items }: Props) {
           </a>
         </div>
 
-        {items.length === 0 ? (
+        {publishedItems.length === 0 ? (
           <p className="text-sm text-slate-500">
             Aún no hay noticias publicadas. Vuelve pronto.
           </p>
         ) : (
           <div className="space-y-3">
-            {items.map((item) => (
+            {publishedItems.map((item) => (
               <Link
                 key={item.id}
                 href={`/noticias/${item.slug}`}
@@ -93,7 +133,7 @@ export default function NewsListPage({ items }: Props) {
                   {item.title}
                 </h2>
                 {item.subtitle && (
-                  <p className="mt-1 text-sm text-slate-600 line-clamp-2">
+                  <p className="mt-1 line-clamp-2 text-sm text-slate-600">
                     {item.subtitle}
                   </p>
                 )}

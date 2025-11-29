@@ -41,12 +41,73 @@ export default function NewsDetailPage({ item }: Props) {
     (item.content || "").slice(0, 150).replace(/\s+\S*$/, "") + "…";
 
   return (
-    <>
+          <>
       <Head>
         <title>{item.title} — Noticias Aret3</title>
+
+        {/* Description principal */}
         <meta name="description" content={description} />
-        <link rel="canonical" href={`https://www.aret3.cl/noticias/${item.slug}`} />
+
+        {/* Canonical */}
+        <link
+          rel="canonical"
+          href={`https://www.aret3.cl/noticias/${item.slug}`}
+        />
+
+        {/* Opcional: no indexar si no está publicada (por seguridad) */}
+        {item.status !== "published" && (
+          <meta name="robots" content="noindex" />
+        )}
+
+        {/* Open Graph para compartir como artículo */}
+        <meta
+          property="og:title"
+          content={`${item.title} — Noticias Aret3`}
+        />
+        <meta property="og:description" content={description} />
+        <meta property="og:type" content="article" />
+        <meta
+          property="og:url"
+          content={`https://www.aret3.cl/noticias/${item.slug}`}
+        />
+        {item.publishedAt && (
+          <meta
+            property="article:published_time"
+            content={item.publishedAt}
+          />
+        )}
+        {item.authorName && (
+          <meta name="author" content={item.authorName} />
+        )}
+
+        {/* Imagen OG / Twitter: usa la de la noticia o un fallback */}
+        {item.imageUrl ? (
+          <>
+            <meta property="og:image" content={item.imageUrl} />
+            <meta name="twitter:image" content={item.imageUrl} />
+          </>
+        ) : (
+          <>
+            <meta
+              property="og:image"
+              content="https://www.aret3.cl/landing-banner.png"
+            />
+            <meta
+              name="twitter:image"
+              content="https://www.aret3.cl/landing-banner.png"
+            />
+          </>
+        )}
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+          name="twitter:title"
+          content={`${item.title} — Noticias Aret3`}
+        />
+        <meta name="twitter:description" content={description} />
       </Head>
+
 
       <Nav />
 
