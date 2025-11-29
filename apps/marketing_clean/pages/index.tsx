@@ -43,7 +43,7 @@ function formatDate(value: string | null) {
 export default function Home({ news }: HomeProps) {
   return (
     <>
-            <Head>
+       <Head>
         <title>Aret3 — Evalúa tu idea o negocio con IA</title>
 
         {/* Description principal (única) */}
@@ -85,7 +85,66 @@ export default function Home({ news }: HomeProps) {
           name="twitter:image"
           content="https://www.aret3.cl/landing-banner.png"
         />
+
+        {/* JSON-LD: Organización + App */}
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(
+              {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                name: "Aret3",
+                url: "https://www.aret3.cl/",
+                logo: "https://www.aret3.cl/icon.svg",
+                sameAs: [
+                  "https://web.facebook.com/victorhurtadocos",
+                  "https://www.instagram.com/victorhurtadocos/",
+                  "https://www.tiktok.com/@victorhurtadocos",
+                  "https://x.com/HurtadoVictorE",
+                  "https://www.linkedin.com/in/victor-hurtado-cosmelli-6a9924190/",
+                ],
+              },
+              null,
+              2
+            ),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(
+              {
+                "@context": "https://schema.org",
+                "@type": "SoftwareApplication",
+                name: "Aret3",
+                applicationCategory: "BusinessApplication",
+                operatingSystem: "Web",
+                url: "https://www.aret3.cl/",
+                description:
+                  "Software para emprendedores que ayuda a evaluar ideas y negocios en menos de 30 minutos, con 10 pasos simples y la Regla del 8 %.",
+                offers: {
+                  "@type": "Offer",
+                  price: "0",
+                  priceCurrency: "CLP",
+                  description:
+                    "Prueba gratis con opción de escalar a planes pagados.",
+                },
+                publisher: {
+                  "@type": "Organization",
+                  name: "Aret3",
+                  url: "https://www.aret3.cl/",
+                },
+              },
+              null,
+              2
+            ),
+          }}
+        />
       </Head>
+
 
 
       <Nav />
