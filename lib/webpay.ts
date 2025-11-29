@@ -13,6 +13,7 @@ function baseUrl(env: TbkEnv) {
   return "integration";
  }
 
+
  function tbkHeaders() {
    const apiKeyId = (process.env.TBK_API_KEY_ID || "").trim();
    const apiKeySecret = (process.env.TBK_API_KEY_SECRET || "").trim();
@@ -81,13 +82,13 @@ export function getFinalUrl() {
 }
 
 export function packPriceClp() {
-  const n = Number(process.env.PACK_200CRED_CLP ?? "5000");
-  return Number.isFinite(n) && n > 0 ? Math.round(n) : 5000;
+  const n = Number(process.env.PACK_200CRED_CLP ?? "10000");
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 10000;
 }
 
 export function addonPriceClp() {
-  const n = Number(process.env.ADDON_SESSION_30M_CLP ?? "30000");
-  return Number.isFinite(n) && n > 0 ? Math.round(n) : 30000;
+  const n = Number(process.env.ADDON_SESSION_30M_CLP ?? "40000");
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 40000;
 }
 
 // Utils cortos

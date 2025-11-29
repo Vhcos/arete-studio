@@ -44,11 +44,12 @@ export default function Home({ news }: HomeProps) {
   return (
     <>
       <Head>
-        <title>Aret3 — Evalúa tu idea de negocio con IA</title>
+        <title>Aret3 — Evalúa tu idea o negocio con IA</title>
         <meta
-          name="description"
-          content="Evalúa tu idea sin saber finanzas. 10 pasos simples, informe visual y guía con IA para tomar decisiones rápido."
-        />
+         name="description"
+         content="Evalúa una idea nueva o un negocio en marcha sin saber finanzas. 10 pasos simples, informe visual y guía con IA para tomar mejores decisiones."
+       />
+
         <link rel="canonical" href="https://www.aret3.cl/" />
       </Head>
 
@@ -141,17 +142,17 @@ export default function Home({ news }: HomeProps) {
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="text-2xl">🎯</div>
               <h3 className="mt-1 text-base font-semibold text-slate-900">10 pasos simples</h3>
-              <p className="mt-1 text-sm text-slate-600">Preguntas claras, sin jerga financiera.</p>
+              <p className="mt-1 text-sm text-slate-600">Para evaluar una idea o tu negocio en marcha,  de manera global y sin jerga financiera.</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="text-2xl">⏱️</div>
               <h3 className="mt-1 text-base font-semibold text-slate-900">Menos de 15 minutos</h3>
-              <p className="mt-1 text-sm text-slate-600">Obtén un informe visual para decidir.</p>
+              <p className="mt-1 text-sm text-slate-600">Termina con un informe visual que puedes compartir con socios, equipo o banco.</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="text-2xl">🧠</div>
               <h3 className="mt-1 text-base font-semibold text-slate-900">IA que guía, no complica</h3>
-              <p className="mt-1 text-sm text-slate-600">Mejora tu idea y entiende tus números.</p>
+              <p className="mt-1 text-sm text-slate-600">Visualizas si debes mejorar  precio, costos y clientes para acercarte al 8 % de utilidad.</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="text-2xl">🔒</div>
@@ -224,6 +225,59 @@ export default function Home({ news }: HomeProps) {
                 />
               </div>
             </div>
+          </div>
+        </section>
+         
+                 {/* Producto: idea vs negocio en marcha */}
+        <section className="mx-auto max-w-6xl px-4 py-10">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-semibold text-slate-900">
+              Un mismo plan para ideas y negocios en marcha
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Aret3 traduce tu idea o tus números actuales en un plan simple: 
+              cuánto deberías vender, qué margen necesitas y si vale la pena seguir, 
+              ajustar o frenar.
+            </p>
+
+            <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+              {/* Columna: etapa idea */}
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                    IDEA
+                  </span>
+                  <span>Si estás en la etapa de idea 💡</span>
+                </h3>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  <li>• Escribes tu idea con tus palabras, sin tecnicismos.</li>
+                  <li>• Definimos un precio estimado y cuántos clientes podrías conseguir.</li>
+                  <li>• Aret3 muestra si tiene sentido seguir, mejorarla o descartarla.</li>
+                  <li>• Te deja un plan de acción de 6 semanas para avanzar sin perderte.</li>
+                </ul>
+              </div>
+
+              {/* Columna: negocio funcionando */}
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                    MIPYME
+                  </span>
+                  <span>Si ya tienes un negocio funcionando 📊</span>
+                </h3>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  <li>• Ingresas ventas promedio, costos y precios actuales.</li>
+                  <li>• Aret3 recalcula tu punto de equilibrio y la “Regla del 8 %”.</li>
+                  <li>• Ves dónde se está yendo la plata: volumen, precios o costos.</li>
+                  <li>• Sugiere ajustes concretos para mejorar tu utilidad.</li>
+                </ul>
+              </div>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-500">
+              En menos de 30 minutos tienes un diagnóstico numérico y un plan concreto, 
+              sin ser experto en finanzas.
+            </p>
           </div>
         </section>
 

@@ -17,6 +17,13 @@ class MyDocument extends Document {
           <link rel="alternate icon" href="/favicon.ico?v=2" />
           <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
           <meta name="theme-color" content="#0b64fe" />
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600&family=Comic+Neue:wght@400;700&display=swap"/>
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&display=swap"
+          />
         </Head>
         <body>
           {/* GTM noscript */}
