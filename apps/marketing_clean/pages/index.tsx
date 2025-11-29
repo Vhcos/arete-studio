@@ -43,15 +43,50 @@ function formatDate(value: string | null) {
 export default function Home({ news }: HomeProps) {
   return (
     <>
-      <Head>
+            <Head>
         <title>Aret3 — Evalúa tu idea o negocio con IA</title>
-        <meta
-         name="description"
-         content="Evalúa una idea nueva o un negocio en marcha sin saber finanzas. 10 pasos simples, informe visual y guía con IA para tomar mejores decisiones."
-       />
 
+        {/* Description principal (única) */}
+        <meta
+          name="description"
+          content="Aret3 es un software para emprendedores que te ayuda a evaluar tu idea o negocio en menos de 30 minutos. 10 pasos simples, informe visual y la Regla del 8 % para tomar mejores decisiones."
+        />
+
+        {/* Canonical */}
         <link rel="canonical" href="https://www.aret3.cl/" />
+
+        {/* Open Graph (para compartir en redes) */}
+        <meta
+          property="og:title"
+          content="Aret3 — Evalúa tu idea o negocio con IA"
+        />
+        <meta
+          property="og:description"
+          content="Evalúa tu idea o negocio en menos de 30 minutos con 10 pasos simples, informe visual y la Regla del 8 %. Ideal para emprendedores y programas de emprendimiento."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.aret3.cl/" />
+        <meta
+          property="og:image"
+          content="https://www.aret3.cl/landing-banner.png"
+        />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+          name="twitter:title"
+          content="Aret3 — Evalúa tu idea o negocio con IA"
+        />
+        <meta
+          name="twitter:description"
+          content="Evalúa tu idea o negocio en menos de 30 minutos con 10 pasos simples, informe visual y la Regla del 8 %."
+        />
+        <meta
+          name="twitter:image"
+          content="https://www.aret3.cl/landing-banner.png"
+        />
       </Head>
+
 
       <Nav />
 
@@ -146,8 +181,10 @@ export default function Home({ news }: HomeProps) {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="text-2xl">⏱️</div>
-              <h3 className="mt-1 text-base font-semibold text-slate-900">Menos de 15 minutos</h3>
-              <p className="mt-1 text-sm text-slate-600">Termina con un informe visual que puedes compartir con socios, equipo o banco.</p>
+              <h3 className="mt-1 text-base font-semibold text-slate-900">Menos de 30 minutos</h3>
+                     <p className="mt-1 text-sm text-slate-600">
+                    En menos de 30 minutos terminas con un informe visual que puedes compartir con socios, equipo o banco.
+                     </p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="text-2xl">🧠</div>
@@ -235,10 +272,11 @@ export default function Home({ news }: HomeProps) {
               Un mismo plan para ideas y negocios en marcha
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Aret3 traduce tu idea o tus números actuales en un plan simple: 
-              cuánto deberías vender, qué margen necesitas y si vale la pena seguir, 
-              ajustar o frenar.
-            </p>
+               Aret3 traduce tu idea o tus números actuales en un plan de negocios simple y accionable:
+               cuánto deberías vender, qué margen necesitas y si vale la pena seguir,
+               ajustar o frenar.
+           </p>
+
 
             <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Columna: etapa idea */}
@@ -498,8 +536,8 @@ export default function Home({ news }: HomeProps) {
           </div>
         </section>
 
-        {/* Ejemplo de informe (ancla para el CTA) */}
-        <section id="ejemplo" className="px-4 pb-16">
+                {/* Imagen extra del informe (sin usar el ancla principal para evitar ID duplicado) */}
+        <section id="ejemplo-banner" className="px-4 pb-16">
           <div className="mx-auto max-w-3xl">
             <img
               src="/landing-banner.png"
@@ -509,6 +547,7 @@ export default function Home({ news }: HomeProps) {
             />
           </div>
         </section>
+
 
         {/* CTA final */}
         <section className="mx-auto max-w-6xl px-4 pb-20">
