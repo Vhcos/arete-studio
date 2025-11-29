@@ -43,7 +43,7 @@ function formatDate(value: string | null) {
 export default function Home({ news }: HomeProps) {
   return (
     <>
-       <Head>
+             <Head>
         <title>Aret3 — Evalúa tu idea o negocio con IA</title>
 
         {/* Description principal (única) */}
@@ -86,7 +86,7 @@ export default function Home({ news }: HomeProps) {
           content="https://www.aret3.cl/landing-banner.png"
         />
 
-        {/* JSON-LD: Organización + App */}
+        {/* JSON-LD: Organización */}
         <script
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger
@@ -111,6 +111,8 @@ export default function Home({ news }: HomeProps) {
             ),
           }}
         />
+
+        {/* JSON-LD: App web */}
         <script
           type="application/ld+json"
           // eslint-disable-next-line react/no-danger
@@ -143,7 +145,58 @@ export default function Home({ news }: HomeProps) {
             ),
           }}
         />
+
+        {/* JSON-LD: FAQ */}
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(
+              {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: [
+                  {
+                    "@type": "Question",
+                    name: "¿Debo pagar para probar?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "No. Puedes empezar gratis y luego escalar cuando quieras.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "¿Necesito saber finanzas?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "No. Te guiamos con IA y ejemplos. Son pasos simples pensados para personas sin formación financiera.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "¿Funciona solo en Chile?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "No. Puedes usarlo en tu país; los conceptos de precios, costos, clientes y utilidad son universales.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "¿Qué pasa si no llego al 8 %?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Te sugerimos ajustes de precio, costos o volumen de clientes para acercarte a la Regla del 8 % y mejorar tu resultado.",
+                    },
+                  },
+                ],
+              },
+              null,
+              2
+            ),
+          }}
+        />
       </Head>
+
 
 
 
