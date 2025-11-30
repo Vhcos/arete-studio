@@ -63,7 +63,11 @@ export default function Nav() {
             </a>
             <a
               href={`${APP}/billing`}
-              onClick={() => gtmPush("start_test", { source: "nav_prices" })}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() =>
+                gtmPush("start_test", { source: "nav_prices_landing" })
+              }
               className="rounded-full px-2 py-1 hover:bg-slate-100"
             >
               Precios
@@ -142,6 +146,8 @@ export default function Nav() {
         </a>
         <a
           href={`${APP}/billing`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="rounded-full bg-slate-50 px-3 py-1"
         >
           Precios
