@@ -50,10 +50,20 @@ export default function Nav() {
               Producto
             </a>
             <a
-              href={`${APP}/billing`}
+              href="/instituciones"
               onClick={() =>
-                gtmPush("start_test", { source: "nav_prices" })
+                gtmPush("click_nav", {
+                  link: "instituciones",
+                  source: "nav_main",
+                })
               }
+              className="rounded-full px-2 py-1 hover:bg-slate-100"
+            >
+              Instituciones
+            </a>
+            <a
+              href={`${APP}/billing`}
+              onClick={() => gtmPush("start_test", { source: "nav_prices" })}
               className="rounded-full px-2 py-1 hover:bg-slate-100"
             >
               Precios
@@ -124,11 +134,11 @@ export default function Nav() {
         <a href="/" className="rounded-full bg-slate-50 px-3 py-1">
           Inicio
         </a>
-        <a
-          href="/producto"
-          className="rounded-full bg-slate-50 px-3 py-1"
-        >
+        <a href="/producto" className="rounded-full bg-slate-50 px-3 py-1">
           Producto
+        </a>
+        <a href="/instituciones" className="rounded-full bg-slate-50 px-3 py-1">
+          Instituciones
         </a>
         <a
           href={`${APP}/billing`}
@@ -136,10 +146,7 @@ export default function Nav() {
         >
           Precios
         </a>
-        <a
-          href="/noticias"
-          className="rounded-full bg-slate-50 px-3 py-1"
-        >
+        <a href="/noticias" className="rounded-full bg-slate-50 px-3 py-1">
           Noticias
         </a>
         <a

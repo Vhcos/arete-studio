@@ -1,4 +1,4 @@
-// pages/producto/index.tsx
+//apps/marketing_clean/pages/producto.tsx
 import Head from "next/head";
 import Nav from "../components/Nav";
 import Footer from "../components/sections/Footer";
