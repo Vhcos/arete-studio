@@ -340,3 +340,159 @@ Cada vez que se toque la landing o las noticias:
 ---
 
 Con esto, cualquier cambio futuro en `apps/marketing_clean` tiene una guía clara para mantener **coherencia de mensaje** y **SEO sólido**.
+
+## Página para instituciones y navegación hacia Precios
+
+Esta sección documenta la creación de la página **/instituciones** y el ajuste en la navegación para el enlace **Precios**, para mantener coherencia entre el sitio público (aret3.cl) y la app (app.aret3.cl).
+
+---
+
+### 1. Página `/instituciones` (B2B)
+
+**Archivo:** `apps/marketing_clean/pages/instituciones.tsx`  
+**URL:** `https://www.aret3.cl/instituciones`
+
+Objetivo: explicar Aret3 a **incubadoras, universidades y programas municipales** con un layout similar al home, pero en clave B2B y fácil de escanear (inspirado en IdeaBuddy).
+
+#### 1.1. Mensaje clave
+
+- Aret3 sirve tanto para **ideas** como para **negocios en funcionamiento**.
+- Ayuda a que los programas de emprendimiento sean **más claros y medibles**.
+- Genera **informes comparables** y ofrece un **módulo de financiamiento** para apoyar postulaciones a fondos (Sercotec, Corfo, programas municipales, etc.).
+- Mantiene el mismo relato que la home:
+  - 10 pasos.
+  - Menos de 30 minutos.
+  - Regla del 8 % (utilidad mínima).
+
+#### 1.2. Estructura de la página
+
+La página se organiza en bloques cortos, no en texto largo tipo “tesis”:
+
+1. **Hero B2B**
+   - Badge: “Para incubadoras, universidades y programas municipales”.
+   - Título: “Haz tus programas de emprendimiento más claros y medibles”.
+   - Subtítulo explicando ideas + negocios en marcha.
+   - CTA principal: “Agendar demo de 30 minutos”.
+   - CTA secundaria: “Ver ejemplo de informe” → `/#ejemplo`.
+   - En desktop, card visual a la derecha con una mini “vista de cohorte”.
+
+2. **Bloque “Problema que resuelve”**
+   - Título: “Defiende mejores programas sin ahogarte en planillas”.
+   - Explica que Aret3 unifica la información de los proyectos en el mismo esquema.
+   - Lista de beneficios:
+     - Ideas y negocios en marcha con el mismo formato.
+     - Un informe por emprendedor que se puede actualizar.
+     - Menos tiempo leyendo documentos, más tiempo acompañando.
+
+3. **Bloque “Lo que pasa con los emprendedores”**
+   - Dos tarjetas:
+     - “Enseña a tus emprendedores a pensar como negocios”.
+     - “Modelación financiera sin hojas de cálculo”.
+   - Recalca:
+     - 10 pasos simples.
+     - Lenguaje cotidiano, sin tecnicismos.
+     - Proyecciones básicas y foco en la Regla del 8 %.
+     - Informe en PDF para emprendedor e institución.
+
+4. **Bloque “Módulo de financiamiento”**
+   - Título: “Del informe interno a borradores para Sercotec, Corfo y fondos locales”.
+   - Explica en lenguaje simple el módulo diseñado (wizard F0–F5):
+     - Usa el informe + algunas preguntas extra (perfil, etapa, monto, uso, fondos).
+     - Genera borradores de respuestas para fondos públicos.
+   - Card lateral describiendo ejemplos de fondos (Capital Semilla, Abeja, Semilla Inicia/Expande, programas municipales) y recordando que el emprendedor responde una vez y se generan varios borradores.
+
+5. **Bloque “Piloto 4–8 semanas”**
+   - Timeline de 4 cards:
+     - Semana 1: Onboarding.
+     - Semanas 2–3: uso en talleres o de forma autónoma.
+     - Semana 4: revisión de informes.
+     - Semanas 6–8: ajustes + módulo de financiamiento + métricas.
+   - Texto final: se entrega un reporte de uso y sugerencias para escalar.
+
+6. **CTA final**
+   - Bloque oscuro (similar al cierre de la home) con:
+     - Mensaje final: acompañar mejor a emprendedores con ideas y negocios en marcha, medir programas y mejorar postulaciones.
+     - Botón: “Agendar demo de 30 minutos”.
+
+#### 1.3. SEO de `/instituciones`
+
+En el `<Head>` de `instituciones.tsx`:
+
+- `title`:  
+  `Aret3 para instituciones — incubadoras, universidades y programas municipales`
+- `meta description`:  
+  Explica que Aret3 evalúa ideas y negocios en funcionamiento en menos de 30 minutos, con informes comparables y apoyo para financiamiento.
+- `canonical`: `https://www.aret3.cl/instituciones`.
+- Open Graph y Twitter:
+  - `og:title` / `twitter:title` iguales al title.
+  - `og:description` / `twitter:description` adaptadas al contexto B2B.
+  - `og:image` / `twitter:image` → `https://www.aret3.cl/landing-banner.png`.
+
+---
+
+### 2. Navegación y enlace a **Precios**
+
+**Archivo:** `apps/marketing_clean/components/Nav.tsx`
+
+Se tomó la decisión de separar claramente:
+
+- **Mundo marketing:** `https://www.aret3.cl` (landing, producto, instituciones, noticias, contacto).
+- **Mundo app:** `https://app.aret3.cl` (login, wizard, tablero, informes, billing).
+
+Para no romper el flujo de trabajo dentro de la app (wizard, informes), el enlace de **Precios** en el nav del sitio público se comporta así:
+
+- En `Nav.tsx`, el link **Precios** apunta a:
+  - `${APP}/billing` con:
+    - `target="_blank"`
+    - `rel="noopener noreferrer"`
+- Esto aplica tanto en desktop como en el menú móvil.
+
+**Motivación:**
+
+- Si alguien está en la landing (por ejemplo, en `/instituciones`) y hace clic en **Precios**, se abre **una nueva pestaña** con `app.aret3.cl/billing`.
+- La pestaña original de la landing permanece abierta, evitando que el usuario “pierda” la página de información.
+- En la app no se replica el nav de marketing (para no ofrecer botones como Inicio/Producto/Instituciones) y así no se saca al usuario de su contexto de trabajo dentro del wizard o tablero.
+
+Este patrón se mantiene como estándar:
+
+- **Landing / marketing:** Nav completo (Inicio, Producto, Instituciones, Precios, Noticias, Contacto).
+- **App interna:** Nav propio, centrado en trabajo (logo → home interno, secciones internas; sin enlaces a aret3.cl salvo que se haga explícito en algún texto o footer).
+
+## Módulo de Financiamiento (wizard post-informe)
+
+El módulo de financiamiento permite que, después de generar el informe de aret3, la persona complete un mini-wizard adicional y obtenga borradores de formularios de postulación a fondos de financiamiento (Sercotec, Corfo, Start-Up Chile, fondos municipales, etc.).
+
+### Flujo de usuario
+
+1. El usuario completa el wizard normal y genera su informe.
+2. En la pantalla del informe aparece un botón:
+   - “Preparar solicitud de financiamiento (3 créditos)”.
+3. Al hacer clic, se muestra una pantalla introductoria:
+   - Explica qué fondos se cubren, qué entregables obtiene y el costo en créditos.
+   - Solo si el usuario confirma se descuentan **3 créditos** (una sola vez por informe).
+4. Se crea o reutiliza una `FundingSession` y se inicia un nuevo wizard de 5 pasos:
+   - **F1 – Perfil del postulante:** datos personales o de la empresa.
+   - **F2 – Estado del negocio y tracción:** etapa, ventas y clientes.
+   - **F3 – Monto y uso de fondos:** cuánto pretende solicitar, aporte propio y en qué se usará.
+   - **F4 – Fondos objetivo:** selección de instrumentos (Sercotec, Corfo, etc.).
+   - **F5 – Links y confirmación:** video pitch, pitch deck, redes y revisión final.
+
+Cada paso guarda los datos en servidor para no perder la información si el usuario sale o recarga.
+
+### Persistencia y créditos
+
+- Se introduce el modelo `FundingSession` asociado a:
+  - `userId`, `clientId` y `reportId`.
+- `FundingSession` guarda el estado del wizard y un flag `creditsCharged`.
+- Los **3 créditos** se descuentan solo al iniciar la primera `FundingSession` para ese informe.
+- Si el usuario vuelve más tarde, se reutiliza la misma sesión sin volver a cobrar.
+
+### Outputs esperados (Fase 1)
+
+A partir de la `FundingSession` + el `Report`:
+
+- Se generan bloques de texto por fondo y por pregunta, listos para copiar/pegar.
+- Se generan uno o más **PDF** de “Borrador de postulación”, reutilizando el motor de PDF actual (sin tocar la integración de `@sparticuz/chromium`).
+- En fases posteriores se podrá añadir exportación a `.docx` u otros formatos editables.
+
+Este módulo está pensado para escalar sin afectar el rendimiento de la app: solo añade formularios ligeros, llamadas simples a la API y una tabla nueva, sin nuevas dependencias pesadas.
