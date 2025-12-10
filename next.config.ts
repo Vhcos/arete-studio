@@ -2,17 +2,24 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: { ignoreDuringBuilds: true },
+  // ⚠️ Ojo: ya no se soporta configuración de eslint aquí, la sacamos.
+  // eslint: { ignoreDuringBuilds: true },
+
+  // Mantienes esto si quieres que el build no se caiga por errores de TS
   typescript: { ignoreBuildErrors: true },
 
+  // Paquete UI interno
   transpilePackages: ["@arete-studio/ui"],
 
+  // Nuevo nombre y nueva ubicación para lo que antes era experimental.serverComponentsExternalPackages
+  serverExternalPackages: [
+    "@sparticuz/chromium",
+    "puppeteer-core",
+  ],
+
   experimental: {
+    // Esto sí puede seguir aquí
     optimizePackageImports: ["@arete-studio/ui"],
-    serverComponentsExternalPackages: [
-      "@sparticuz/chromium",
-      "puppeteer-core",
-    ],
   },
 
   async redirects() {

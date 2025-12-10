@@ -496,3 +496,577 @@ A partir de la `FundingSession` + el `Report`:
 - En fases posteriores se podrá añadir exportación a `.docx` u otros formatos editables.
 
 Este módulo está pensado para escalar sin afectar el rendimiento de la app: solo añade formularios ligeros, llamadas simples a la API y una tabla nueva, sin nuevas dependencias pesadas.
+Perfecto, con los archivos que subiste ya puedo escribir el README sin inventarme nada. Te dejo un texto listo para pegar, por ejemplo en `docs/funding-module.md` o al final de tu `README.md`.
+
+---
+
+## Módulo de financiamiento (flujo post-informe)
+
+Este módulo permite que, una vez generado el **informe con IA**, el usuario pueda avanzar a un flujo de **financiamiento** donde aret3 pre-llena borradores de postulaciones a fondos (Sercotec, Corfo, fondos municipales, etc.).
+
+La integración actual tiene dos partes:
+
+1. **CTA en la pantalla de informe** (`/`, `app/page.tsx`).
+2. **Pantalla de introducción al módulo de financiamiento** (`/funding/intro`, `app/funding/intro/page.tsx`) + endpoint `/api/funding-session/start`.
+
+---
+
+### 1. Archivos involucrados
+
+* `app/page.tsx`
+  Pantalla principal de **informe** (tabs Formulario / Tablero / Informe). Aquí se muestra el informe con IA y el nuevo bloque “¿Listo para buscar financiamiento?”.
+
+* `app/funding/intro/page.tsx` 
+  Pantalla de **intro** al módulo de financiamiento. Recibe parámetros por querystring y permite iniciar una `FundingSession` vía API.
+
+* `app/api/funding-session/start/route.ts`
+  Endpoint API (POST) que crea una sesión de financiamiento a partir de un `reportId` y devuelve un objeto `session`. Maneja errores de auth, créditos y reporte no encontrado.
+
+* `prisma/schema.prisma`
+
+  * Modelos existentes: `User`, `Client`, `Report`, `CreditWallet`, `UsageEvent`, etc. (ya usados por el resto de la app).
+  * Nuevo modelo **`FundingSession`** y/o cambios relacionados (ver `add_funding_session` en `prisma/migrations/...`), que permiten asociar una sesión de financiamiento a un reporte y a un usuario/cliente.
+
+---
+
+### 2. Flujo desde la pantalla de informe (`app/page.tsx`)
+
+En `app/page.tsx`:
+
+* Se importa el router y los search params:
+
+```ts
+import { useRouter, useSearchParams } from "next/navigation";
+```
+
+* Al final del componente, dentro de la sección de **Informe**, después del bloque donde se muestra `aiReport`, se agregó un nuevo bloque:
+
+````tsx
+{aiReport && (
+  <>
+    {/* ... Evaluación (IA), ReportView, etc. ... */}
+
+    {/* NUEVO bloque: paso siguiente → financiamiento */}
+    <div className="mt-4 border-t pt-4">
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        ¿Listo para buscar financiamiento? (Se activa tras generar informe con IA)
+      </h3>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        Con el informe que generes aquí, aret3 puede pre-llenar por ti los
+        formularios de fondos como Sercotec, Corfo y aceleradoras, para que
+        solo tengas que revisar y enviar.
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleStartFunding}
+          disabled={!aiReport}
+          className={`border border-black/70 text-black ${
+            !aiReport ? "opacity-100 cursor-not-allowed" : ""
+          }`}
+        >
+          <BotIcon className="mr-2 h-4 w-4" />
+          Seguir a formulario de financiamiento
+        </Button>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        Este paso usa <strong>3 créditos</strong> una sola vez para este
+        proyecto, y podrás volver cuando quieras sin perder la información.
+      </p>
+    </div>
+  </>
+)}
+``` :contentReference[oaicite:1]{index=1}  
+
+- Este bloque:
+  - **Siempre se renderiza bajo el informe con IA**, pero
+  - El botón está **deshabilitado** mientras `aiReport` sea `null`.
+
+- Lógica del botón `handleStartFunding`:
+
+```ts
+const router = useRouter();
+const search = useSearchParams();
+
+const handleStartFunding = () => {
+  // Seguridad: solo si ya hay informe IA
+  if (!aiReport) return;
+
+  const params = new URLSearchParams();
+
+  // Info que queremos llevar a la intro (opcional)
+  if (idea) params.set("idea", String(idea));
+  if (rubro) params.set("rubro", String(rubro));
+  if (ubicacion) params.set("ubicacion", String(ubicacion));
+
+  // TODO: conectar con el id real del Report (reportId) cuando esté disponible
+  // params.set("reportId", String(report.id));
+
+  router.push(`/funding/intro?${params.toString()}`);
+};
+``` :contentReference[oaicite:2]{index=2}  
+
+> **Importante:** hoy el código envía solo `idea`, `rubro` y `ubicacion`. El `reportId` se conectará cuando el endpoint que genera el informe con IA devuelva y/o guarde el id del `Report` en base de datos.
+
+---
+
+### 3. Pantalla `/funding/intro` (`app/funding/intro/page.tsx`)
+
+`FundingIntroPage` es un componente cliente que:
+
+1. Lee los parámetros de la URL (`reportId`, `idea`, `rubro`, `ubicacion`). :contentReference[oaicite:3]{index=3}  
+2. Muestra una tarjeta de introducción al módulo.
+3. Permite iniciar una sesión de financiamiento llamando a `/api/funding-session/start`.
+
+Fragmentos clave:
+
+```ts
+// app/funding/intro/page.tsx
+"use client";
+
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { BotIcon, ArrowLeftIcon } from "lucide-react";
+
+export default function FundingIntroPage() {
+  const router = useRouter();
+  const search = useSearchParams();
+  const reportId = search?.get("reportId") ?? null;
+  const idea = search?.get("idea") ?? null;
+  const rubro = search?.get("rubro") ?? null;
+  const ubicacion = search?.get("ubicacion") ?? null;
+
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+````
+
+#### 3.1. Caso sin `reportId`
+
+Si la URL **no** trae `reportId`, se muestra un mensaje de error guiando al usuario de vuelta al informe:
+
+````tsx
+if (!reportId) {
+  return (
+    <main className="container max-w-2xl mx-auto py-8">
+      <Card>
+        <CardHeader>
+          <h1 className="text-xl font-semibold">Módulo de financiamiento</h1>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            No encontramos el informe asociado a esta pantalla.
+          </p>
+          <p className="text-sm">
+            Vuelve al panel principal, genera tu informe con IA y luego usa el botón
+            <strong> "Seguir a formulario de financiamiento"</strong>.
+          </p>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeftIcon className="mr-2 h-4 w-4" />
+            Volver
+          </Button>
+        </CardFooter>
+      </Card>
+    </main>
+  );
+}
+``` :contentReference[oaicite:4]{index=4}  
+
+#### 3.2. Caso con `reportId`
+
+Si el `reportId` está presente, se muestra:
+
+- Título del módulo.
+- Badges con tipos de fondos (Sercotec, Corfo, etc.).
+- Explicación del flujo.
+- Resumen rápido con `idea`, `rubro` y `ubicacion` (si vienen en la URL).
+- Mensajes de error (créditos, auth, etc.).
+- Botones: “Volver al informe” y “Comenzar (usar 3 créditos)”.
+
+```tsx
+<CardHeader className="space-y-2">
+  <div className="flex items-center gap-2">
+    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+      <BotIcon className="h-4 w-4 text-primary" />
+    </span>
+    <div>
+      <h1 className="text-xl font-semibold">
+        Prepara tu postulación a fondos con aret3
+      </h1>
+      <p className="text-xs text-muted-foreground">
+        Activar este módulo usa <strong>3 créditos</strong> una sola vez para este
+        proyecto.
+      </p>
+    </div>
+  </div>
+
+  <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+    <Badge variant="outline">Sercotec</Badge>
+    <Badge variant="outline">Corfo</Badge>
+    <Badge variant="outline">Fondos municipales</Badge>
+    <Badge variant="outline">Start-Up Chile</Badge>
+  </div>
+</CardHeader>
+``` :contentReference[oaicite:5]{index=5}  
+
+El botón de confirmación llama a `handleConfirm`:
+
+```ts
+const handleConfirm = async () => {
+  if (!reportId) return;
+  setLoading(true);
+  setErrorMsg(null);
+
+  try {
+    const res = await fetch("/api/funding-session/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reportId }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const code = data?.error || "unknown";
+
+      if (res.status === 401) {
+        setErrorMsg("Necesitas iniciar sesión para usar esta función.");
+      } else if (res.status === 402 || code === "no_credits") {
+        setErrorMsg("No tienes créditos suficientes para activar el módulo de financiamiento.");
+      } else if (code === "report_not_found") {
+        setErrorMsg("No encontramos el informe asociado. Vuelve atrás e inténtalo de nuevo.");
+      } else {
+        setErrorMsg("Ocurrió un problema al iniciar el módulo de financiamiento.");
+      }
+
+      setLoading(false);
+      return;
+    }
+
+    const json = await res.json();
+    const session = json?.session;
+
+    if (!session?.id) {
+      setErrorMsg("No se pudo crear la sesión de financiamiento.");
+      setLoading(false);
+      return;
+    }
+
+    // Ir al wizard de financiamiento con el id de la FundingSession
+    router.push(`/funding/${session.id}`);
+  } catch (err) {
+    console.error("Error starting funding session:", err);
+    setErrorMsg("Error de conexión al iniciar el módulo de financiamiento.");
+    setLoading(false);
+  }
+};
+``` :contentReference[oaicite:6]{index=6}  
+
+---
+
+### 4. Endpoint `/api/funding-session/start`
+
+Aunque el detalle está en `app/api/funding-session/start/route.ts`, desde el lado del cliente la **contrato** actual es:
+
+- **Endpoint:** `POST /api/funding-session/start`
+- **Body JSON:**
+
+```json
+{ "reportId": "<id del Report>" }
+````
+
+* **Respuestas esperadas:**
+
+  * `200 OK` con:
+
+    ```json
+    { "session": { "id": "<id FundingSession>", ... } }
+    ```
+
+    → El cliente redirige a `/funding/<session.id>`.
+
+  * Errores:
+
+    * `401` → usuario no autenticado.
+    * `402` o `error = "no_credits"` → sin créditos suficientes.
+    * `error = "report_not_found"` → el `reportId` no existe o no pertenece al usuario/cliente.
+    * Otros → mensaje genérico “Ocurrió un problema al iniciar el módulo de financiamiento”.
+
+---
+
+### 5. Limitaciones actuales / TODO
+
+1. **Persistencia del informe con IA**
+
+   * Hoy, si el usuario genera el informe con IA, navega a `/funding/intro` y luego vuelve al informe, puede perder el `aiReport` en memoria.
+   * Para que esto no ocurra, el flujo debería:
+
+     * Guardar el informe en la tabla `Report` cuando se llama al endpoint que genera el informe con IA.
+     * Devolver el `reportId` desde la API y guardarlo en el estado de la página.
+     * Rehidratar `aiReport` desde back-end al entrar de nuevo a la pestaña **Informe** (por ejemplo, vía `GET /api/report?id=...`).
+
+2. **Conectar `reportId` en `handleStartFunding`**
+
+   * El botón actualmente no envía `reportId` en la URL; solo `idea`, `rubro` y `ubicacion`.
+   * Una vez que el endpoint de generación de informe guarde y devuelva el `id` del `Report`, se debe:
+
+     * Guardar ese `id` junto con `aiReport`.
+     * Actualizar `handleStartFunding` para hacer:
+
+       ```ts
+       const report = aiReport as any;
+       if (!report?.id) return;
+       params.set("reportId", String(report.id));
+       ```
+
+3. **Wizard de financiamiento**
+
+   * La redirección actual es a `/funding/{session.id}`.
+   * Falta implementar las pantallas de esa ruta (pasos del wizard de financiamiento) y el consumo de la `FundingSession` para generar los textos pre-llenados.
+
+---
+Perfecto, dejamos el bug del “plan / mapa / checklist que se pierden al volver” resuelto ✅
+
+Ahora viene lo que habíamos dejado en pausa: **documentar esto y pensar el siguiente mini-paso del módulo de financiamiento**.
+
+Te dejo el README de esta parte ya escrito, para que lo pegues en `docs/financing-module.md` o en la sección que uses:
+
+---
+
+````md
+# Módulo de financiamiento – v1
+
+## 1. Contexto general
+
+Desde la pantalla principal de evaluación (`app/page.tsx`, tab **Informe** / `?tab=explain`):
+
+1. El usuario completa el wizard.
+2. Hace clic en **“Solicita Informe con IA”**.
+3. El backend (`/api/evaluate` + `/api/plan` + `/api/competitive-intel`) devuelve:
+   - Informe IA (scores + texto).
+   - Plan de acción (plan100 + bullets).
+   - Mapa competitivo.
+   - Checklist regulatorio.
+4. En esa misma pantalla aparece el bloque:
+
+   - **“Evaluación (IA)”**
+   - **Plan de Acción — ¡No te detengas!**
+   - **Mapa competitivo**
+   - **Checklist regulatorio**
+   - Nuevo bloque **“¿Listo para buscar financiamiento?”** con el botón  
+     **“Seguir a formulario de financiamiento”**.
+
+Adicionalmente, el informe IA + plan se **persisten en el navegador** para que no se pierdan si el usuario navega a `/funding/intro` y luego vuelve a la pantalla de informe.
+
+---
+
+## 2. Modelo de base de datos
+
+Archivo: `prisma/schema.prisma`
+
+```prisma
+model FundingSession {
+  id        String   @id @default(cuid())
+  userId    String?        // Usuario autenticado (si existe)
+  clientId  String?        // Organización / cliente institucional (opcional)
+  reportId  String         // Reporte base sobre el que se hace la postulación
+
+  status    String   @default("draft") // "draft" | "completed" (y futuros estados)
+  payload   Json     @default("{}")    // Respuestas del módulo de financiamiento (F1–F5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User?   @relation(fields: [userId], references: [id])
+  client Client? @relation(fields: [clientId], references: [id])
+  report Report  @relation(fields: [reportId], references: [id])
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([reportId])
+}
+````
+
+> **Nota**: por ahora solo se usa a nivel de modelo. La creación/actualización de `FundingSession` se conectará en una siguiente etapa cuando exista el formulario completo de financiamiento.
+
+---
+
+## 3. Persistencia en el navegador
+
+### 3.1. Clave de `sessionStorage`: `aret3:lastEvaluate`
+
+* Se escribe al terminar `handleEvaluateAI()` en `app/page.tsx`.
+
+* Guarda al menos:
+
+  ```ts
+  {
+    iaRaw: <respuesta completa de /api/evaluate>,
+    idea,
+    rubro,
+    ubicacion,
+    // opcionalmente: aiPlan (cuando se añada el guardado)
+  }
+  ```
+
+* **Uso principal**: rehidratar el informe IA y el plan al volver desde `/funding/intro`.
+
+### 3.2. Hidratación del informe IA + plan
+
+En `app/page.tsx`:
+
+```ts
+const [aiReport, setAiReport] = useState<StandardReport | null>(null);
+const [iaData, setIaData] = useState<any>(null);
+const [aiPlan, setAiPlan] = useState<any>(null);
+
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const raw = window.sessionStorage.getItem("aret3:lastEvaluate");
+    if (!raw) return;
+
+    const saved = JSON.parse(raw);
+
+    // 1) Informe IA (para el bloque “Evaluación (IA)”)
+    const d = saved?.iaRaw;
+    if (d) {
+      const reportFromAPI = (d as any).data || (d as any).standardReport || null;
+      if (reportFromAPI) setAiReport(reportFromAPI);
+
+      setIaData(
+        (d as any).ia ??
+        ((d as any).scores ? d : ((d as any).data ?? d))
+      );
+    }
+
+    // 2) Plan IA completo (si está guardado)
+    if (saved.aiPlan) {
+      setAiPlan(saved.aiPlan);
+    }
+  } catch (e) {
+    console.error("No se pudo rehidratar informe IA desde sessionStorage:", e);
+  }
+}, []);
+```
+
+Con esto, cuando el usuario:
+
+1. Genera el informe con IA.
+2. Hace clic en **Seguir a formulario de financiamiento** → `/funding/intro?...`
+3. Luego vuelve hacia atrás al informe,
+
+se reconstruyen:
+
+* Bloque de **Evaluación (IA)**.
+* **Plan de Acción** (plan100 + bullets).
+* **Mapa competitivo**.
+* **Checklist regulatorio**.
+
+---
+
+## 4. Botón “Seguir a formulario de financiamiento”
+
+Ubicación: `app/page.tsx`, tab de **Informe**.
+
+```tsx
+<Button
+  size="sm"
+  variant="outline"
+  onClick={handleStartFunding}
+  disabled={!aiReport}
+  className={`border border-black/70 text-black ${
+    !aiReport ? "opacity-100 cursor-not-allowed" : ""
+  }`}
+>
+  <BotIcon className="mr-2 h-4 w-4" />
+  Seguir a formulario de financiamiento
+</Button>
+```
+
+Lógica actual:
+
+```ts
+const router = useRouter();
+
+const handleStartFunding = () => {
+  if (!aiReport) return; // seguridad: solo si ya hay informe IA
+
+  const params = new URLSearchParams();
+  if (idea) params.set("idea", String(idea));
+  if (rubro) params.set("rubro", String(rubro));
+  if (ubicacion) params.set("ubicacion", String(ubicacion));
+
+  router.push(`/funding/intro?${params.toString()}`);
+};
+```
+
+* El botón **siempre se muestra**, pero está deshabilitado mientras no exista `aiReport`.
+* Una vez generado el informe con IA, se habilita y redirige a
+  `/funding/intro?idea=...&rubro=...&ubicacion=...`.
+
+---
+
+## 5. Pantalla `/funding/intro`
+
+Archivo: `app/funding/intro/page.tsx` (no se detalla todo el código aquí).
+
+Responsabilidades:
+
+1. Leer `idea`, `rubro`, `ubicacion` desde `useSearchParams()`.
+2. Mostrar el módulo **“Paso 1 – Módulo de financiamiento”**.
+3. Permitir que el usuario vuelva al informe principal.
+
+> **Importante**: hoy esta pantalla todavía **no crea** un `FundingSession` en la base de datos. Solo funciona como “Intro / Paso 1” en frontend. La vinculación con `FundingSession` se hará cuando se implemente el formulario completo (F1–F5).
+
+---
+
+## 6. Próximos pasos sugeridos
+
+1. **Guardar también `aiPlan` en `sessionStorage`** dentro de `handleEvaluateAI`
+   (cuando ya está disponible el plan), para que el snapshot quede 100% completo:
+
+   ```ts
+   window.sessionStorage.setItem(
+     "aret3:lastEvaluate",
+     JSON.stringify({
+       iaRaw: data,
+       idea,
+       rubro,
+       ubicacion,
+       aiPlan, // 👈 añadir cuando ya esté armado
+     })
+   );
+   ```
+
+2. **Conectar `FundingSession`**:
+
+   * Crear endpoint tipo `POST /api/funding/session` que:
+
+     * Reciba `reportId` (y opcionalmente `clientId`, `userId` vía sesión).
+     * Cree / reutilice una sesión en estado `"draft"`.
+     * Devuelva `sessionId`.
+   * Actualizar `handleStartFunding` para redirigir a
+     `/funding/intro?sessionId=...&idea=...&rubro=...`.
+
+3. **Diseñar el formulario de financiamiento (F1–F5)** sobre `FundingSession.payload`.
+
+4. (Opcional) **Cobro de créditos**:
+
+   * Amarrar el gasto de `3 créditos` a la creación real de `FundingSession` en el backend, no solo a la navegación.
+
+---
+
+Con esto dejamos documentado lo que ya existe y claro qué sería lo lógico “que sigue”.
+Si quieres, en el próximo paso te puedo:
+
+* Escribir el endpoint `POST /api/funding/session` + el `router.push` con `sessionId`, **o**
+* Bajar más a detalle el diseño del formulario F1–F5 y el shape del `payload`.

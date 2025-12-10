@@ -1,7 +1,8 @@
 // middleware.ts (raíz)
-export { default } from "next-auth/middleware";
 
-// Solo protegemos estas zonas por ahora (deja el wizard libre)
+export { default as middleware } from "next-auth/middleware";
+
+// Solo protegemos estas zonas por ahora
 export const config = {
   matcher: [
     "/wizard/:path*",
