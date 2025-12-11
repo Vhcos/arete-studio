@@ -1,3 +1,4 @@
+//lib/renderReportHtml.ts
 /* Render común (email) para que el informe sea idéntico al de la pantalla */
 
 type AnyObj = Record<string, any>;
@@ -320,7 +321,11 @@ export function renderReportEmailHtml(args: RenderEmailArgs): string {
     </div>
 
     <h3>Resumen ejecutivo</h3>
-    <div class="card"><p style="margin:0">${escapeHtml(executive)}</p></div>
+    <div class="card">
+      <p style="margin:0;white-space:pre-line">
+        ${escapeHtml(executive)}
+      </p>
+    </div>
 
     ${preAIHtml}
 

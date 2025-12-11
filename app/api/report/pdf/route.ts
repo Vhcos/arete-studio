@@ -9,15 +9,21 @@ import puppeteerCore, { type Browser } from "puppeteer-core";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Solo usamos chromium + puppeteer-core en entorno serverless real (Vercel prod / AWS)
+function isServerlessRuntime() {
+  const isProd = process.env.NODE_ENV === "production";
+  const isVercel = process.env.VERCEL === "1";
+  const isAws = !!process.env.AWS_REGION;
+  return isProd && (isVercel || isAws);
+}
+
 /**
  * Lanza un navegador:
- * - En Vercel / serverless: puppeteer-core + @sparticuz/chromium
- * - En local: puppeteer normal (con Chrome local)
+ * - En Vercel / serverless PROD: puppeteer-core + @sparticuz/chromium
+ * - En local / dev: puppeteer normal (con Chrome que trae puppeteer)
  */
 async function launchBrowser(): Promise<Browser> {
-  const isServerless = !!process.env.VERCEL || !!process.env.AWS_REGION;
-
-  if (isServerless) {
+  if (isServerlessRuntime()) {
     const executablePath = await chromium.executablePath();
 
     if (!executablePath) {
@@ -26,7 +32,6 @@ async function launchBrowser(): Promise<Browser> {
       );
     }
 
-    // Cast a any UNA VEZ y usamos ese objeto
     const chromiumAny = chromium as any;
 
     return (await puppeteerCore.launch({
@@ -39,7 +44,7 @@ async function launchBrowser(): Promise<Browser> {
     } as any)) as Browser;
   }
 
-  // ---- Modo local: puppeteer completo ----
+  // ---- Modo local / no serverless: puppeteer completo ----
   const puppeteer = (await import("puppeteer")).default;
 
   return await puppeteer.launch({

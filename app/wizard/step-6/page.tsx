@@ -399,21 +399,29 @@ export default function Step6Page() {
         throw new Error(first?.message || "Revisa los campos");
       }
 
-           const s6ToStore = {
-        ...s6ForValidation,
-        ventaAnio1: ventaAnualNum,
-        // guardamos lo que devolvió la IA para usarlo en el informe final
-        ventasIAExplicacion: aiExplain || undefined,
-        ventasIAFuentes: aiSources && aiSources.length ? aiSources : undefined,
-      };
+   const s6ToStore = {
+  ...s6ForValidation,
+  ventaAnio1: ventaAnualNum,
+  // guardamos lo que devolvió la IA para usarlo en el informe final
+  ventasIAExplicacion: aiExplain || undefined,
+  ventasIAFuentes: aiSources && aiSources.length ? aiSources : undefined,
+};
 
+setStep6(s6ToStore as any);
 
-      setStep6(s6ToStore as any);
+const legacy = toLegacyForm({ ...data, step6: s6ToStore } as any);
 
-      const legacy = toLegacyForm({ ...data, step6: s6ToStore } as any);
-      localStorage.setItem("arete:legacyForm", JSON.stringify(legacy));
+// IMPORTANTE: inyectar el benchmark de IA en el objeto plano
+const legacyWithMeta = {
+  ...legacy,
+  ventasIAExplicacion: aiExplain || undefined,
+  ventasIAFuentes: aiSources && aiSources.length ? aiSources : undefined,
+};
 
-      router.push("/wizard/step-7");
+localStorage.setItem("arete:legacyForm", JSON.stringify(legacyWithMeta));
+
+router.push("/wizard/step-7");
+
     } catch (e: any) {
       setErr(e?.message ?? "Error al guardar");
     } finally {

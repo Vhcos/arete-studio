@@ -10,26 +10,25 @@ datasource db {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  email         String?       @unique
+  id            String    @id @default(cuid())
+  email         String?   @unique
   emailVerified DateTime?
   name          String?
   image         String?
-  
 
   // Multi-tenant: usuario pertenece (opcionalmente) a un cliente
   clientId String?
-  client   Client?    @relation(fields: [clientId], references: [id])
+  client   Client? @relation(fields: [clientId], references: [id])
 
-  accounts     Account[]
-  sessions     Session[]
-  projects     Project[]
-  creditWallet CreditWallet?
-  usageEvents  UsageEvent[]
-  reports      Report[]
-  newsPosts    NewsPost[]
+  accounts        Account[]
+  sessions        Session[]
+  projects        Project[]
+  creditWallet    CreditWallet?
+  usageEvents     UsageEvent[]
+  reports         Report[]
+  newsPosts       NewsPost[]
+  fundingSessions FundingSession[]
 }
-
 
 model Account {
   id                String  @id @default(cuid())
@@ -86,15 +85,16 @@ model Lead {
 // --- multi-tenant: clientes e informes ---
 
 model Client {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  contactEmail String?
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  contactEmail  String?
   driveFolderId String?
-  createdAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
 
-  users   User[]
-  reports Report[]
+  users           User[]
+  reports         Report[]
+  fundingSessions FundingSession[]
 }
 
 model Report {
@@ -102,13 +102,15 @@ model Report {
   clientId    String
   userId      String?
   projectName String?
-  kind        String   // "evaluate" | "plan" | "summary" | etc.
+  kind        String // "evaluate" | "plan" | "summary" | etc.
   summary     String?
   driveFileId String?
   createdAt   DateTime @default(now())
 
   client Client @relation(fields: [clientId], references: [id])
   user   User?  @relation(fields: [userId], references: [id])
+
+  fundingSessions FundingSession[]
 
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
@@ -139,16 +141,16 @@ model UsageEvent {
 }
 
 model NewsPost {
-  id          String   @id @default(cuid())
-  slug        String   @unique
+  id          String    @id @default(cuid())
+  slug        String    @unique
   title       String
   subtitle    String?
-  content     String   // Markdown o texto largo para el cuerpo de la noticia
+  content     String // Markdown o texto largo para el cuerpo de la noticia
   imageUrl    String?
-  status      String   @default("draft") // draft | published
+  status      String    @default("draft") // draft | published
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   authorId   String?
   authorName String?
@@ -156,4 +158,24 @@ model NewsPost {
   author User? @relation(fields: [authorId], references: [id])
 
   @@index([status, publishedAt])
+}
+
+model FundingSession {
+  id             String   @id @default(cuid())
+  userId         String
+  clientId       String?
+  reportId       String?
+  creditsCharged Boolean  @default(false) // ya se cobraron los 3 créditos para esta sesión
+  status         String   @default("draft") // "draft" | "completed"
+  payload        Json     @default("{}") // respuestas del wizard (F1–F5)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  client Client? @relation(fields: [clientId], references: [id])
+  report         Report? @relation(fields: [reportId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([clientId, createdAt])
+  @@index([reportId])
 }

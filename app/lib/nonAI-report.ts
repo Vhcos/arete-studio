@@ -19,10 +19,9 @@ export function buildInvestorNarrative(input: any, meta: any): string {
                     .format(Math.max(0, Math.round(n||0)));
   const fN  = (n:number)=> new Intl.NumberFormat('es-CL',{ maximumFractionDigits:0 })
                     .format(Math.max(0, Math.round(n||0)));
-                    
-    const ubicacionTxt = (() => {
+
+  const ubicacionTxt = (() => {
     if (input?.ubicacion) return txt(input.ubicacion);
-    // si no hay "ubicacion", intenta reconstruir con otros campos posibles
     const partes = [
       input?.ciudad,
       input?.city,
@@ -34,8 +33,18 @@ export function buildInvestorNarrative(input: any, meta: any): string {
     return partes.length ? partes.join(', ') : '—';
   })();
 
-  // ——— Resumen ejecutivo (ES) ———
-  // Normaliza rubro a español si viene como slug/inglés; si ya viene en ES, lo respeta
+  // Idea y ventaja competitiva
+  const ideaTxt = input?.idea ? txt(input.idea) : '';
+  const ventajaTxtBruta =
+    input?.ventajaTexto ??
+    input?.ventaja ??
+    input?.propuestaValor ??
+    input?.propuestaDeValor ??
+    '';
+
+  const ventajaTxt = ventajaTxtBruta ? txt(ventajaTxtBruta) : '';
+
+  // Rubro en español (mismo mapa que ya tenías)
   const rubroTxt = (() => {
     const es = input?.rubro_es ?? input?.rubroEs ?? input?.rubroTexto;
     const raw = es ?? input?.rubro ?? '—';
@@ -65,7 +74,6 @@ export function buildInvestorNarrative(input: any, meta: any): string {
     };
     const key = String(raw || '').toLowerCase();
     if (map[key]) return map[key];
-    // slug → Title Case
     return String(raw).replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
   })();
 
@@ -81,28 +89,67 @@ export function buildInvestorNarrative(input: any, meta: any): string {
 
   // Datos de Brújula (para el resumen narrativo)
   const mesesPlan       = Number(input?.mesesPE ?? meta?.mesesPE ?? meta?.pe?.mesesPE ?? 6);
-  const capitalTrabajo  = Number(meta?.capitalTrabajo ?? meta?.peCurve?.acumDeficitUsuario ?? meta?.peCurve?.acumDeficit
-    ?? meta?.acumDeficitUsuario
-    ?? 0
+  const capitalTrabajo  = Number(
+    meta?.capitalTrabajo ??
+    meta?.peCurve?.acumDeficitUsuario ??
+    meta?.peCurve?.acumDeficit ??
+    meta?.acumDeficitUsuario ??
+    0
   );
   const ventasPE        = Number(meta?.ventasPE ?? 0);
   const clientsPE       = Number(meta?.clientsPE ?? 0);
+
+  // ---------- Benchmark de ventas (IA Step-6) ----------
+  const benchExplain =
+    meta?.ventasIAExplicacion ??
+    input?.ventasIAExplicacion ??
+    meta?.ventasIA?.explicacion ??
+    '';
+
+  const benchSourcesRaw: any[] =
+    meta?.ventasIAFuentes ??
+    input?.ventasIAFuentes ??
+    meta?.ventasIA?.fuentes ??
+    [];
+
+  const benchSourcesStr =
+    Array.isArray(benchSourcesRaw) && benchSourcesRaw.length
+      ? benchSourcesRaw
+          .map((s, i) => `${s.title || `Fuente ${i + 1}`}: ${s.url}`)
+          .join(' | ')
+      : '';
+
   return [
-        `Estás incursionando en ${rubroTxt} en ${ubicacionTxt}.`,
+    // idea + ventaja competitiva
+    ideaTxt && `Tu idea de negocio es: ${ideaTxt}.`,
+    ventajaTxt && `Tu propuesta de valor o ventaja competitiva es: ${ventajaTxt}.`,
+
+    // narrativa económica
+    `Estás incursionando en ${rubroTxt} en ${ubicacionTxt}.`,
     `Tu ticket promedio es $${fCL(price)} y el margen de contribución por unidad se estima en $${fCL(mcUnit)}.`,
     `Con tus supuestos (primer objetivo), proyectamos ${fN(uMes)} clientes/mes (~${fN(uMes * 12)} al año) y ventas anuales por $${fCL((vMens || 0) * 12)}.`,
     `El resultado anual estimado (antes de impuestos) es $${fCL(resAn)}.`,
-    N ? `Para alcanzar esa meta mensual de ${fN(N)} clientes, con una conversión del ${convPct}%, necesitas cerca de ${fN(Q)} visitas al mes.` : '',
+    N
+      ? `Para alcanzar esa meta mensual de ${fN(N)} clientes, con una conversión del ${convPct}%, necesitas cerca de ${fN(Q)} visitas al mes.`
+      : '',
     M > 0
-      ? `Con un presupuesto de marketing de $${fCL(M)}/mes, tu costo por visita ronda $${fCL(CPL)} y el costo por cliente que gastas en marketing o lo que te 
-       cuestra atraerlo para te compre es ~$${fCL(CAC)} esto proviene de tu presupeusto de marketing / numero de clientes.`
-      : (CAC_goal > 0 ? `Como guía, busca que el costo por cliente sea cercano a $${fCL(CAC_goal)}.` : ''),
-    // Reemplazo de “LTV/CAC ≥ 3” por lenguaje simple
-    `Regla práctica: procura que el valor total que te deja o renta  cada cliente a lo largo del tiempo sea al menos tres veces lo que te cuesta conseguirlo (relación 3 a 1).`,
-    `Para iniciar tu negocio con tranquilidad y considerando que tu plan es en ${mesesPlan} meses estar en punto de equilibrio, necesitarás al menos un capital de trabajo de $${fCL(capitalTrabajo)}; es tu colchón para ejecutar sin apuros. Tu punto de equilibrio está en $${fCL(ventasPE)} de venta mensual que lo alcanzarás en el periodo de ${mesesPlan} meses, lo que implica ${fN(Math.round(clientsPE))} clientes al mes. Con estas metas a la vista, cada campaña y mejora del producto puede medirse contra ellas: si nos acercamos a esta meta mes a mes, vamos en ruta; si no, ajustamos rápido. El objetivo es simple: enfocarse en cumplir el plan, crecer y mucha disciplina, evitando la ansiedad de caja y que el proyecto no llegue a puerto, mientras conviertes este periodo de aprendizaje en un negocio exitoso.`,
-  ,
-  ].filter(Boolean).join(' ');
+      ? `Con un presupuesto de marketing de $${fCL(M)}/mes, tu costo por visita ronda $${fCL(CPL)} y el costo por cliente que gastas en marketing, es decir lo que te cuesta atraerlo para que te compre, es ~$${fCL(CAC)}.`
+      : (CAC_goal > 0
+          ? `Como guía, busca que el costo por cliente sea cercano a $${fCL(CAC_goal)}.`
+          : ''),
+    `Regla práctica: procura que el valor total que te deja o renta cada cliente a lo largo del tiempo sea al menos tres veces lo que te cuesta conseguirlo (relación 3 a 1).`,
+    `Para iniciar tu negocio con tranquilidad y considerando que tu plan es en ${mesesPlan} meses estar en punto de equilibrio, necesitarás al menos un capital de trabajo de $${fCL(capitalTrabajo)}; es tu colchón para ejecutar sin apuros. Tu punto de equilibrio está en $${fCL(ventasPE)} de venta mensual que lo alcanzarás en esos ${mesesPlan} meses, lo que implica ${fN(Math.round(clientsPE))} clientes al mes.`,
+
+    // párrafo de benchmark IA
+    benchExplain && `Benchmark de ventas (IA Aret3): ${benchExplain}`,
+    benchSourcesStr && `Fuentes usadas para esta estimación: ${benchSourcesStr}.`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
+
+
+// ---------- NUEVO: reporte estándar no-AI ----------
 export function buildNonAIReport(input: any, meta: any): StandardReport {
   const { rubro, ubicacion, ingresosMeta, ticket, costoUnit, cac, frecuenciaAnual,
           gastosFijos, capitalTrabajo } = input ?? {};

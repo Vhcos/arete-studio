@@ -15,6 +15,8 @@ import BotIcon from "@/components/icons/BotIcon";
 import { getTemplateForSector } from "@/lib/model/step6-distributions";
 import type { SectorId } from "@/lib/model/sectors";
 import { Download, Rocket, Settings, Sparkles } from "lucide-react";
+import { useWizardStore } from "@/lib/state/wizard-store";
+import type { LegacyForm } from "@/lib/bridge/wizard-to-legacy";
 import {
   Radar,
   RadarChart,
@@ -33,11 +35,10 @@ import {
 } from "recharts";
 import type { CSSProperties } from "react";
 // ✅ ahora (funciona con tu estructura):
-import type { StandardReport } from './types/report';
-import { buildNonAIReport } from './lib/nonAI-report';
-import { buildInvestorNarrative } from "@/app/lib/nonAI-report"; // recomendado con alias "@"
-import type { AiPlan, CompetitiveRow, RegulationRow } from './types/plan';
-import type { ChartPoint } from './types/report';
+import type { StandardReport } from "./types/report";
+import type { CompetitiveRow, RegulationRow } from "./types/plan";
+import type { ChartPoint } from "./types/report";
+import { buildNonAIReport, buildInvestorNarrative } from "./lib/nonAI-report";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import PanelNavegacion from "@/components/report/PanelNavegacion";
@@ -383,6 +384,11 @@ const [redApoyo, setRedApoyo] = useState(2);
         model?: string;                       // opcional, si lo devuelves
       };
 
+    const [ventasIAExplicacion, setVentasIAExplicacion] = useState("");
+    const [ventasIAFuentes, setVentasIAFuentes] = useState<
+      { title?: string; url: string }[]
+      >([]);
+
   // Email
   const [emailSending, setEmailSending] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
@@ -580,6 +586,11 @@ async function sendReportEmail(args: {
       setPdfDownloading(false);
     }
   }
+
+
+
+
+  
 // -------------------- FIN Formulario --------------------
 // -------------------- Cálculo --------------------
   //Campos: Proyecto, Emprendedor y Email (obligatorio)
@@ -760,27 +771,81 @@ const costoVariableMes =
     return computeScores(input);
   }, [idea, ventajaTexto, rubro, ubicacion, capitalTrabajo, gastosFijos, ticket, costoUnit, frecuenciaAnual, urgencia, accesibilidad, competencia, experiencia, pasion, planesAlternativos, toleranciaRiesgo, testeoPrevio, redApoyo, supuestos, 
     clientesManual, mesesPE, ventaAnual, convPct, marketingMensual, costoPct, traficoMes, inversionInicial, cac]);
-  // ---- Informe SIN IA + IA ----
-   const nonAIReport = useMemo(
-     () => buildNonAIReport(baseOut.report.input, baseOut.report.meta),
-     [baseOut]
-   );
-   const [aiReport, setAiReport] = useState<StandardReport | null>(null);
 
-
+  // === Construcción de informes ===
+    // ---- Informe SIN IA + IA ----
+  const nonAIReport = useMemo(
+    () => buildNonAIReport(baseOut.report.input, baseOut.report.meta),
+    [baseOut]
+  );
+  const [aiReport, setAiReport] = useState<StandardReport | null>(null);
   const [iaData, setIaData] = useState<any>(null);
   const [iaLoading, setIaLoading] = useState(false);
+  const [fundingLoading, setFundingLoading] = useState(false);
+  const [fundingError, setFundingError] = useState<string | null>(null);
+
+
+ // Helper para persistir/mergear el estado IA en sessionStorage
+const persistLastEvaluate = (patch: any) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const raw = window.sessionStorage.getItem("aret3:lastEvaluate");
+    const prev = raw ? JSON.parse(raw) : {};
+    const next = { ...prev, ...patch };
+    window.sessionStorage.setItem(
+      "aret3:lastEvaluate",
+      JSON.stringify(next)
+    );
+  } catch (e) {
+    console.warn("No se pudo guardar el informe IA en sessionStorage:", e);
+  }
+};
+
+  // Rehidratar informe IA si el usuario vuelve desde otra pantalla
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.sessionStorage.getItem("aret3:lastEvaluate");
+      if (!raw) return;
+
+      const saved = JSON.parse(raw);
+      const d = saved?.iaRaw;
+      if (!d) return;
+
+      const reportFromAPI =
+        (d && (d.data || d.standardReport)) || null;
+
+      if (reportFromAPI) {
+        setAiReport(reportFromAPI);
+      }
+
+      setIaData(d?.ia ?? (d?.scores ? d : (d?.data ?? d)));
+    } catch (e) {
+      console.error(
+        "No se pudo rehidratar informe IA desde sessionStorage:",
+        e
+      );
+    }
+  }, []);
+
+  // === Informe FINAL con IA aplicado ===
   const outputs = useMemo(() => applyIA(baseOut, iaData), [baseOut, iaData]);
   const scoreColor = colorFor(outputs.totalScore);
   const chartDataUI: ChartPoint[] = useMemo(
-  () =>
-    outputs.chartData.map((d: ChartPoint) => ({
-      ...d,
-      name: uiTitle(String(d.name)), // renombra para la UI
-    })),
-  [outputs.chartData]
-);
+    () =>
+      outputs.chartData.map((d: ChartPoint) => ({
+        ...d,
+        name: uiTitle(String(d.name)), // renombra para la UI
+      })),
+    [outputs.chartData]
+  );
 
+
+// -------------------- Gráficos --------------------  
+
+  // === Tooltip personalizado para el chart ===
   const TooltipContent = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null;
     const d = payload[0]?.payload || {};
@@ -825,58 +890,74 @@ const costoVariableMes =
     const data = await res.json();
      console.log("[/api/evaluate] payload", data);
 
-// 1) Soporta ambas formas: { data: {...} } ó { standardReport: {...} }
-const reportFromAPI =
-  (data && (data.data || data.standardReport)) || null;
+  // 1) Soporta ambas formas: { data: {...} } ó { standardReport: {...} }
+  const reportFromAPI =
+    (data && (data.data || data.standardReport)) || null;
 
-// 2) Guarda el informe IA para que se muestre el bloque “Evaluación (IA)”
-setAiReport(reportFromAPI);
+  // 2) Guarda el informe IA para que se muestre el bloque “Evaluación (IA)”
+  setAiReport(reportFromAPI);
 
-// 3) Si luego fusionas “scores/meta” con tu base, usa el payload interno si existe
-setIaData(data?.ia ?? data?.scores ? data : (data?.data ?? data));
+  // 3) Si luego fusionas “scores/meta” con tu base, usa el payload interno si existe
+  setIaData(data?.ia ?? (data?.scores ? data : (data?.data ?? data)));
 
-    // ==== Extra: pedir plan competitivo / regulatorio a la IA ====
-    try {
-  const requestId = crypto.randomUUID(); // para trazas y potencial dedupe
+    // 4) Persistir en sessionStorage para no perder el informe al navegar
+  persistLastEvaluate({
+    iaRaw: data,      // respuesta completa de /api/evaluate
+    idea,
+    rubro,
+    ubicacion,
+  });
+
+
+
+// ==== Extra: pedir plan competitivo / regulatorio a la IA ====
+try {
+  const requestId = crypto.randomUUID();
 
   const resPlan = await fetch('/api/plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      input,                      // lo que ya envías a /api/evaluate
-      objetivo: '6w',             // 👈 forzamos 6 semanas
-      requestId,                  // 👈 útil para revisar en UsageEvent
-      meta: { rubro, ubicacion, idea }, // si ya lo estabas enviando, mantenlo
+      input,
+      objetivo: '6w',
+      requestId,
+      meta: { rubro, ubicacion, idea },
     }),
   });
 
-    const dataPlan = await resPlan.json();
+  const dataPlan = await resPlan.json();
 
-// Soportar todos los shapes que he visto en tus pruebas:
-// { ok:true, plan:{...} }  ó  { ok:true, data:{...} }  ó  { ok:true, plan100:'...', ... }
-const plan =
-  dataPlan?.plan ??
-  dataPlan?.data ??
-  (dataPlan?.ok && (dataPlan?.plan100 || dataPlan?.competencia || dataPlan?.regulacion) ? dataPlan : null);
+  const plan =
+    dataPlan?.plan ??
+    dataPlan?.data ??
+    (dataPlan?.ok && (dataPlan?.plan100 || dataPlan?.competencia || dataPlan?.regulacion)
+      ? dataPlan
+      : null);
 
-if (plan) {
-  setAiPlan({
+  if (plan) {
+    const finalPlan = {
       ...plan,
       competencia: Array.isArray((plan as any)?.competencia)
         ? (plan as any).competencia
-        : (Array.isArray((plan as any)?.competition) ? (plan as any).competition : ((plan as any)?.mapaCompetitivo ?? [])),
+        : (Array.isArray((plan as any)?.competition)
+            ? (plan as any).competition
+            : ((plan as any)?.mapaCompetitivo ?? [])),
       regulacion: Array.isArray((plan as any)?.regulacion)
         ? (plan as any).regulacion
-        : (Array.isArray((plan as any)?.regulation) ? (plan as any).regulation : ((plan as any)?.checklist ?? [])),
-    });
-} else {
-  console.warn("Plan IA no disponible:", dataPlan);
+        : (Array.isArray((plan as any)?.regulation)
+            ? (plan as any).regulation
+            : ((plan as any)?.checklist ?? [])),
+    };
+
+    setAiPlan(finalPlan);
+    // 👇 guardamos también el plan en sessionStorage
+    persistLastEvaluate({ aiPlan: finalPlan });
+  } else {
+    console.warn("Plan IA no disponible:", dataPlan);
+  }
+} catch (e) {
+  console.error('No se pudo obtener plan IA:', e);
 }
-
-
-   } catch (e) {
-     console.error('No se pudo obtener plan IA:', e);
-   }
 
     // === Competitive Intel (Perplexity): Mapa competitivo + Checklist ===
   try {
@@ -900,15 +981,24 @@ if (plan) {
 // { ok:true, competencia: [...], regulacion: [...], sources: [...] }
 
     if (resIntel.ok && intel?.ok) {
-      setAiPlan((prev: any) => ({
-        ...(prev || {}),
-        competencia: intel.competencia,
-        regulacion: intel.regulacion,
-        intelSources: intel.sources || [],
-      }));
-    } else {
-      console.warn('competitive-intel no disponible:', intel);
-    }
+  setAiPlan((prev: any) => {
+    const merged = {
+      ...(prev || {}),
+      competencia: intel.competencia,
+      regulacion: intel.regulacion,
+      intelSources: intel.sources || [],
+    };
+
+    // 👇 actualizamos lo que está guardado en sessionStorage
+    persistLastEvaluate({ aiPlan: merged });
+
+    return merged;
+  });
+} else {
+  console.warn('competitive-intel no disponible:', intel);
+}
+
+
   } catch (e) {
     console.warn('competitive-intel error:', e);
   }
@@ -963,6 +1053,7 @@ if (plan) {
           : Math.round((ventasAnual ?? 0));
 
 
+///////////////////////////////////////////////////////////////////////////////////
 //----------------------FIN DE LOS USESTATE Y FUNCIONES----------------------
 // ——————————— Hidratación desde el Wizard (Formulario legacy) ———————————
 
@@ -971,256 +1062,289 @@ const num = (v: any) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-// helper: hidrata el formulario leyendo arete:fromWizard y, si falta algo,
-// cae al persist del wizard (para compat invertida)
 useEffect(() => {
   if (typeof window === "undefined") return;
 
   try {
+    // 1) arete:fromWizard -> meta
     const raw = localStorage.getItem("arete:fromWizard");
-    if (!raw) return;
+    const parsed = raw ? JSON.parse(raw) ?? {} : {};
+    const meta: any = parsed.meta ?? parsed ?? {};
 
-    // Soporta ambos shapes: { meta: {...} } o directamente {...}
-    const parsed = JSON.parse(raw) ?? {};
-    const meta = (parsed?.meta ?? parsed) ?? {};
-
-    // --- Ubicación (con fallback al persist del wizard) ---
-let ubic: string =
-  (meta as any)?.ubicacion != null ? String((meta as any).ubicacion) : "";
-
-if (!ubic) {
-  try {
-    const wraw = localStorage.getItem("wizard");
-    if (wraw) {
-      const w = JSON.parse(wraw);
-      ubic =
-        w?.state?.data?.step2?.ubicacion ||
-        [w?.state?.data?.step2?.city, w?.state?.data?.step2?.countryCode]
-          .filter(Boolean)
-          .join(", ");
+    // 2) Persistencia del wizard como fallback
+    let wizard: any = null;
+    try {
+      const wraw = localStorage.getItem("wizard");
+      if (wraw) wizard = JSON.parse(wraw);
+    } catch {
+      /* silencioso */
     }
-  } catch {
-    /* silencioso */
-  }
-}
 
-setUbicacion(ubic || "");
+    const s1 = wizard?.state?.data?.step1 ?? {};
+    const s2 = wizard?.state?.data?.step2 ?? {};
+    const s5 = wizard?.state?.data?.step5 ?? {};
+    const s6 = wizard?.state?.data?.step6 ?? {};
 
+    const toInput = (v: any) =>
+      v == null || v === "" ? "" : toInputCLP(v);
 
-            //HIDRATACION DEL FORM//
-  // --- Inversión inicial (meta -> wizard.step6) ---
-
-
-    // --- Capital de trabajo disponible ($) ---
-{
-  let v: unknown = (meta as any)?.capitalTrabajo;
-  if (v == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.capitalTrabajo;
-    } catch {}
-  }
-  setCapitalTrabajo(v == null || v === "" ? "" : toInputCLP(v));
-}
-
-// --- % Conversión (0–100) ---
-{
-  let v: unknown = (meta as any)?.conversionPct;
-  if (v == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.conversionPct;
-    } catch {}
-  }
-  // en tu Form es string
-  setConvPct(v == null || v === "" ? "" : String(v).replace(/[^\d]/g, ""));
-}
-
-// --- Gastos fijos mensuales ($) ---
-{
-  let v: unknown = (meta as any)?.gastosFijosMensuales;
-  if (v == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.gastosFijosMensuales;
-    } catch {}
-  }
-  setGastosFijos(v == null || v === "" ? "" : toInputCLP(v));
-}
-
-// --- Costo variable unitario ($) ---
-{
-  let v: unknown = (meta as any)?.costoVarUnit;
-  if (v == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.costoVarUnit;
-    } catch {}
-  }
-  setCostoUnit(v == null || v === "" ? "" : toInputCLP(v));
-}
-
-// --- Presupuesto de marketing mensual ($) ---
-{
-  let v: unknown = (meta as any)?.presupuestoMarketing;
-  if (v == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.presupuestoMarketing;
-    } catch {}
-  }
-  setMarketingMensual(v == null || v === "" ? "" : toInputCLP(v));
-}
-
-// --- Frecuencia de compra: meses -> veces/año (number) ---
-{
-  let meses: unknown = (meta as any)?.frecuenciaCompraMeses;
-  if (meses == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) meses = JSON.parse(wraw)?.state?.data?.step6?.frecuenciaCompraMeses;
-    } catch {}
-  }
-  const m = Number(meses);
-  const freqAnual = Number.isFinite(m) && m > 0 ? Math.max(1, Math.round(12 / m)) : 6;
-  setFrecuenciaAnual(freqAnual); // ← NUMBER (evita el error ts2345)
-}
-
-// --- Meses para punto de equilibrio (si tienes este setter como number) ---
-{
-  let v: unknown = (meta as any)?.mesesPE;
-  if (v == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) v = JSON.parse(wraw)?.state?.data?.step6?.mesesPE;
-    } catch {}
-  }
-  const n = Number(v);
-  if (typeof setMesesPE === "function") {
-    setMesesPE(Number.isFinite(n) ? n : 6);
-  }
-}
-
-    // --- Ticket ($) ---
-{
-  let tk: unknown = (meta as any)?.ticket;
-  if (tk == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) {
-        const w = JSON.parse(wraw);
-        tk = w?.state?.data?.step6?.ticket;
-      }
-    } catch {}
-  }
-  setTicket(tk == null || tk === "" ? "" : toInputCLP(tk)); // usa tu helper de CLP
-}
-
-// --- Venta anual ($) --- (mapea meta.ventaAnual <- step6.ventaAnio1)
-{
-  let anual: unknown =
-    (meta as any)?.ventaAnual ??
-    (meta as any)?.ventaAnio1; // por si ya existiera con ese nombre
-
-  if (anual == null) {
-    try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) {
-        const w = JSON.parse(wraw);
-        anual = w?.state?.data?.step6?.ventaAnio1;
-      }
-    } catch {}
-  }
-  setVentaAnual(anual == null || anual === "" ? "" : toInputCLP(anual));
-}
-
-    let inv: unknown = (meta as any)?.inversionInicial;
-    if (inv == null) {
-      try {
-        const wraw = localStorage.getItem("wizard");
-        if (wraw) {
-          const w = JSON.parse(wraw);
-          inv = w?.state?.data?.step6?.inversionInicial;
-        }
-      } catch {
-        /* silencioso */
-      }
+    // -------- Ubicación ----------
+    let ubic = "";
+    if (meta.ubicacion) {
+      ubic = String(meta.ubicacion);
+    } else if (s2.ubicacion) {
+      ubic = String(s2.ubicacion);
+    } else {
+      const city = s2.city;
+      const country = s2.countryCode || s2.pais;
+      const parts = [city, country].filter(Boolean);
+      ubic = parts.join(", ");
     }
-    setInversionInicial(inv == null || inv === "" ? "" : toInputCLP(inv)
+    setUbicacion(ubic || "");
+
+    // -------- Datos Step 1 / contexto ----------
+    setProjectName(meta.projectName ?? s1.projectName ?? "");
+    setFounderName(meta.founderName ?? s1.founderName ?? "");
+    setEmail(meta.email ?? meta.notifyEmail ?? s1.email ?? "");
+    setIdea(meta.idea ?? s2.idea ?? "");
+    setVentajaTexto(meta.ventajaTexto ?? s2.ventajaTexto ?? "");
+    setRubro(meta.rubro ?? meta.sectorId ?? s2.rubro ?? "");
+
+    // -------- Datos Step 6 (números) ----------
+    setInversionInicial(
+      toInput(meta.inversionInicial ?? s6.inversionInicial)
+    );
+    setCapitalTrabajo(
+      toInput(meta.capitalTrabajo ?? s6.capitalTrabajo)
     );
 
+    const ventaAnualRaw =
+      meta.ventaAnual ??
+      meta.ventaAnio1 ??
+      s6.ventaAnual ??
+      s6.ventaAnio1;
+    setVentaAnual(toInput(ventaAnualRaw));
 
-    // --- Step-5 → Form (9 sliders 0–10) ---
-const getS5 = (k: string) => {
-  let v: any = (meta as any)?.[k];
-  if (v == null) {
+    setTicket(toInput(meta.ticket ?? s6.ticket));
+    setGastosFijos(
+      toInput(meta.gastosFijosMensuales ?? s6.gastosFijosMensuales)
+    );
+    setCostoUnit(
+      toInput(meta.costoVarUnit ?? s6.costoVarUnit)
+    );
+    setMarketingMensual(
+      toInput(
+        meta.presupuestoMarketing ??
+          meta.marketingMensual ??
+          s6.presupuestoMarketing ??
+          s6.marketingMensual
+      )
+    );
+
+    const conv = meta.conversionPct ?? s6.conversionPct;
+    setConvPct(
+      conv == null || conv === ""
+        ? ""
+        : String(conv).replace(/[^\d]/g, "")
+    );
+
+    const freqMeses =
+      meta.frecuenciaCompraMeses ?? s6.frecuenciaCompraMeses;
+    const m = Number(freqMeses);
+    const freqAnual =
+      Number.isFinite(m) && m > 0 ? Math.max(1, Math.round(12 / m)) : 6;
+    setFrecuenciaAnual(freqAnual);
+
+    const mPE = Number(meta.mesesPE ?? s6.mesesPE);
+    if (typeof setMesesPE === "function") {
+      setMesesPE(Number.isFinite(mPE) ? mPE : 6);
+    }
+
+    // -------- Sliders Step 5 --------
+    const getS5 = (k: string) => {
+      const v = (meta as any)[k] ?? (s5 as any)[k];
+      const n = Number(v);
+      return Number.isFinite(n)
+        ? Math.max(0, Math.min(10, Math.round(n)))
+        : null;
+    };
+
+    { const n = getS5("urgencia"); if (n !== null) setUrgencia(n); }
+    { const n = getS5("accesibilidad"); if (n !== null) setAccesibilidad(n); }
+    { const n = getS5("competencia"); if (n !== null) setCompetencia(n); }
+    { const n = getS5("experiencia"); if (n !== null) setExperiencia(n); }
+    { const n = getS5("pasion"); if (n !== null) setPasion(n); }
+    { const n = getS5("planesAlternativos"); if (n !== null) setPlanesAlternativos(n); }
+    { const n = getS5("toleranciaRiesgo"); if (n !== null) setToleranciaRiesgo(n); }
+    { const n = getS5("testeoPrevio"); if (n !== null) setTesteoPrevio(n); }
+    { const n = getS5("redApoyo"); if (n !== null) setRedApoyo(n); }
+
+    // -------- Benchmark de ventas con IA (Step 6) ----------
     try {
-      const wraw = localStorage.getItem("wizard");
-      if (wraw) v = JSON.parse(wraw)?.state?.data?.step5?.[k];
-    } catch {}
-  }
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.max(0, Math.min(10, Math.round(n))) : null;
-};
+      const rawLegacy = localStorage.getItem("arete:legacyForm");
+      if (rawLegacy) {
+        const legacy = JSON.parse(rawLegacy) ?? {};
 
-// problema → urgencia
-{ const n = getS5("urgencia"); if (n !== null) setUrgencia(n); }
+        if (
+          typeof legacy.ventasIAExplicacion === "string" &&
+          legacy.ventasIAExplicacion.trim()
+        ) {
+          setVentasIAExplicacion(legacy.ventasIAExplicacion.trim());
+        }
 
-// accesibilidad
-{ const n = getS5("accesibilidad"); if (n !== null) setAccesibilidad(n); }
+        if (Array.isArray(legacy.ventasIAFuentes)) {
+          const fuentesLimpias = legacy.ventasIAFuentes
+            .filter(
+              (f: any) =>
+                f &&
+                (typeof f.url === "string" || typeof f.title === "string")
+            )
+            .map((f: any) => ({ title: f.title, url: f.url }));
+          setVentasIAFuentes(fuentesLimpias);
+        }
+      }
+    } catch {
+      /* silencioso */
+    }
 
-// competencia
-{ const n = getS5("competencia"); if (n !== null) setCompetencia(n); }
-
-// experiencia
-{ const n = getS5("experiencia"); if (n !== null) setExperiencia(n); }
-
-// pasión
-{ const n = getS5("pasion"); if (n !== null) setPasion(n); }
-
-// planes alternativos
-{ const n = getS5("planesAlternativos"); if (n !== null) setPlanesAlternativos(n); }
-
-// riesgo → tolerancia al riesgo
-{ const n = getS5("toleranciaRiesgo"); if (n !== null) setToleranciaRiesgo(n); }
-
-// testeo previo
-{ const n = getS5("testeoPrevio"); if (n !== null) setTesteoPrevio(n); }
-
-// red de apoyo
-{ const n = getS5("redApoyo"); if (n !== null) setRedApoyo(n); }
-
-
-    // (opcionales) logs de verificación
-    console.log("[FORM] meta al montar:", meta);
-    console.log("[FORM] ubicacion resuelta:", ubic);
-    console.log("[FORM] inversionInicial resuelta:", inv);
-
-    // Resto de campos (como ya los tenías)
-    setProjectName(meta.projectName ?? "");
-    setFounderName(meta.founderName ?? "");
-    setEmail(meta.email ?? meta.notifyEmail ?? "");
-    setIdea(meta.idea ?? ""); // mapeo correcto
-    setRubro(meta.sectorId ?? ""); // si tu UI muestra 'rubro'
-    setUbicacion(ubic ?? "");
-    if (meta.ventajaTexto) setVentajaTexto(meta.ventajaTexto);
+    console.log("[Formulario] meta al montar:", meta);
+    console.log("[Formulario] ubicacion resuelta:", ubic);
   } catch (e) {
     console.error("[Formulario] hydration error", e);
   }
 }, []);
+///////////////////////////////////////////////////////////////////////////////////
+     //----------Sincronizar tus Tabs con ?tab= cambio de formulario----------
+  // para que puedas compartir URLs con tab fijo
+  // o volver al tab previo al recargar la página
+  const router = useRouter();
+  const search = useSearchParams();
 
-    //----------Sincronizar tus Tabs con ?tab= cambio de formulario----------
-    // para que puedas compartir URLs con tab fijo
-    // o volver al tab previo al recargar la página
-    const router = useRouter();
-    const search = useSearchParams();
+  // ——————————— Hidratación del informe IA + aiPlan (plan / mapa / checklist) ———————————
 
-    const initialTab = (() => {
-     const t = search?.get("tab") ?? null;  // ← safe
-       return t === "board" || t === "explain" || t === "form" ? (t as "board" | "explain" | "form") : "form";
-   })();
+useEffect(() => {
+  if (typeof window === "undefined") return;
 
-    const [tab, setTab] = useState<"form" | "board" | "explain">(initialTab);
+  try {
+    const rawLegacy = localStorage.getItem("arete:legacyForm");
+    if (!rawLegacy) return;
+
+    const legacy = JSON.parse(rawLegacy);
+
+    // Texto explicativo de la IA
+    if (
+      typeof legacy.ventasIAExplicacion === "string" &&
+      legacy.ventasIAExplicacion.trim()
+    ) {
+      setVentasIAExplicacion(legacy.ventasIAExplicacion.trim());
+    }
+
+    // Fuentes (lista de {title,url})
+    if (Array.isArray(legacy.ventasIAFuentes)) {
+      const fuentesLimpias = legacy.ventasIAFuentes
+        .filter(
+          (f: any) =>
+            f && (typeof f.url === "string" || typeof f.title === "string")
+        )
+        .map((f: any) => ({
+          title: f.title,
+          url: f.url,
+        }));
+
+      setVentasIAFuentes(fuentesLimpias);
+    }
+  } catch (e) {
+    console.error("No se pudo rehidratar informe IA desde sessionStorage:", e);
+  }
+}, []);
+
+
+    // Botón "Seguir a formulario de financiamiento" (con consumo de créditos)
+const handleStartFunding = async () => {
+  if (!aiReport || fundingLoading) return;
+
+  setFundingError(null);
+  setFundingLoading(true);
+
+  try {
+    const countryCode = inferCountryCodeFromUbicacion(
+      (ubicacion ||
+        (baseOut.report.input as any)?.ubicacion ||
+        (baseOut.report.input as any)?.pais ||
+        "") as string
+    );
+    const reportId = (baseOut as any)?.report?.id as string | undefined;
+    console.log("[handleStartFunding] idea/rubro/ubicacion/reportId:", {
+  idea,
+  rubro,
+  ubicacion,
+  reportId,
+  baseOut,
+});
+
+    const res = await fetch("/api/funding-session/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idea,
+        rubro,
+        ubicacion,
+        countryCode,
+        reportId,
+        source: "evaluate",
+        meta: {
+          from: "evaluate",
+          idea,
+          rubro,
+          ubicacion,
+          iaReportRaw: iaData ?? null,
+          aiPlan: aiPlan ?? null,
+        },
+      }),
+    });
+
+    const json = await res.json().catch(() => ({} as any));
+
+    if (!res.ok || !json?.ok) {
+      if (json?.error === "INSUFFICIENT_CREDITS") {
+        setFundingError(
+          "No tienes créditos suficientes para usar el módulo de financiamiento."
+        );
+      } else {
+        setFundingError(
+          "No se pudo iniciar el módulo de financiamiento. Intenta de nuevo."
+        );
+      }
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (idea) params.set("idea", String(idea));
+    if (rubro) params.set("rubro", String(rubro));
+    if (ubicacion) params.set("ubicacion", String(ubicacion));
+    if (json.fundingSessionId) params.set("fs", String(json.fundingSessionId));
+
+    router.push(`/funding/intro?${params.toString()}`);
+  } catch (err) {
+    console.error("[handleStartFunding] error", err);
+    setFundingError(
+      "Error inesperado al iniciar el módulo de financiamiento."
+    );
+  } finally {
+    setFundingLoading(false);
+  }
+};
+
+
+  const initialTab = (() => {
+    const t = search?.get("tab") ?? null; // safe
+    return t === "board" || t === "explain" || t === "form"
+      ? (t as "board" | "explain" | "form")
+      : "form";
+  })();
+
+  const [tab, setTab] = useState<"form" | "board" | "explain">(initialTab);
+
 
    useEffect(() => { setTab(initialTab); }, [initialTab]);
 
@@ -1252,6 +1376,21 @@ useEffect(() => {
   const [copied, setCopied] = useState(false);
 
   // -------------------- Render --------------------
+  const metaForNarrative = useMemo(
+    () => ({
+      ...(outputs?.report?.meta || {}),
+      peCurve: outputs?.peCurve,
+      pe: outputs?.pe,
+      capitalTrabajo: parseNumberCL(capitalTrabajo),
+      acumDeficitUsuario: outputs?.peCurve?.acumDeficitUsuario ?? 0,
+      ventasPE: outputs?.pe?.ventasPE ?? 0,
+      clientsPE: outputs?.pe?.clientsPE ?? 0,
+      // vienen del Step-6 (cargados en sus propios useState más abajo en el archivo)
+      ventasIAExplicacion,
+      ventasIAFuentes,
+    }),
+    [outputs, capitalTrabajo, ventasIAExplicacion, ventasIAFuentes]
+  );
 
   return (
    <div className="min-h-screen p-6" style={styleAccent}>
@@ -2021,6 +2160,49 @@ useEffect(() => {
         </span>
       </div>
     </button>
+    {/* NUEVO bloque: paso siguiente → financiamiento */}
+      <div className="mt-4 border-t pt-4">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          ¿Listo para buscar financiamiento? (Se activa tras generar informe con IA)
+        </h3>
+
+        <p className="mt-1 text-xs text-muted-foreground">
+          Con el informe que generes aquí, aret3 puede pre-llenar por ti los
+          formularios de fondos como Sercotec, Corfo y aceleradoras, para que
+          solo tengas que revisar y enviar.
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+
+          <Button
+  size="sm"
+  variant="outline"
+  onClick={handleStartFunding}
+  disabled={!aiReport || fundingLoading}
+  className={`border border-black/70 text-black ${
+    !aiReport || fundingLoading ? "opacity-60 cursor-not-allowed" : ""
+  }`}
+>
+  <BotIcon className="mr-2 h-4 w-4" />
+  {fundingLoading
+    ? "Abriendo módulo de financiamiento..."
+    : "Seguir a formulario de financiamiento"}
+</Button>
+
+<p className="text-[11px] text-muted-foreground">
+  Este paso usa <strong>3 créditos</strong> una sola vez para este
+  proyecto, y podrás volver cuando quieras sin perder la información.
+</p>
+
+{fundingError && (
+  <p className="mt-1 text-xs text-red-600">
+    {fundingError}
+  </p>
+)}
+
+
+        </div>
+      </div>
   </div>
 
   {/* COLUMNA DERECHA: EMAIL + PDF */}
@@ -2038,11 +2220,8 @@ useEffect(() => {
           report: aiReport ?? nonAIReport,
           aiPlan,
           // Resumen narrativo (ya con datos de P.E. y curva)
-          summary: buildInvestorNarrative(baseOut.report.input, {
-            ...(outputs?.report?.meta || {}),
-            peCurve: outputs?.peCurve,
-            pe: outputs?.pe,
-          }),
+          summary: buildInvestorNarrative(baseOut.report.input, metaForNarrative),
+
           // Datos para el encabezado del informe
           user: {
             projectName,
@@ -2098,13 +2277,9 @@ useEffect(() => {
         const payload = {
           preAI: preAIRef?.current?.innerHTML || "",
           report: aiReport ?? nonAIReport,
-          summary: buildInvestorNarrative(baseOut.report.input, {
-            ...(outputs?.report?.meta || {}),
-            peCurve:
-              outputs?.report?.meta?.peCurve ?? outputs?.peCurve,
-            pe: outputs?.pe,
-          }),
+          summary: buildInvestorNarrative(baseOut.report.input, metaForNarrative),
           aiPlan,
+          // Datos para el encabezado del informe
           user: {
             projectName,
             founderName,
@@ -2151,14 +2326,58 @@ useEffect(() => {
                   <div><span className="font-semibold">Email:</span> {email || '—'}</div>
                </div>
                
-               <div id="informe" className="space-y-6">
-                 <div>
-                   <h2 className="text-lg font-bold">Resumen ejecutivo</h2>
-                     <div className={`${cardStrong} p-4 text-sm leading-6`}>
-                        {buildInvestorNarrative(baseOut.report.input, { ...(outputs?.report?.meta || {}), peCurve: outputs?.peCurve, pe: outputs?.pe, capitalTrabajo: parseNumberCL(capitalTrabajo), acumDeficitUsuario: (outputs?.peCurve?.acumDeficitUsuario ?? 0), ventasPE: (outputs?.pe?.ventasPE ?? 0), clientsPE: (outputs?.pe?.clientsPE ?? 0) })}
-                     </div>
-                   <div ref={preAIRef}><PreAIReportView outputs={outputs} /></div>
-                 </div>
+              <div id="informe" className="space-y-6">
+<div>
+  <h2 className="text-lg font-bold">Resumen ejecutivo</h2>
+  <div
+    className={`${cardStrong} p-4 text-sm leading-6 whitespace-pre-line`}
+  >
+    {buildInvestorNarrative(baseOut.report.input, metaForNarrative)}
+
+    {/* Bloque que trae lo del Step-6 */}
+    {ventasIAExplicacion && (
+  <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-[13px] leading-relaxed space-y-2">
+    <p className="text-[11px] text-slate-500">
+      <strong>Nota IA Aret3:</strong> esta es una{" "}
+      <em>estimación orientativa de ventas</em> para negocios similares al tuyo.
+      Úsala como referencia y ajústala con tus propios datos
+      (precios, aforo, rotación y demanda local).
+    </p>
+
+    <p className="whitespace-pre-line text-slate-700">
+      {ventasIAExplicacion}
+    </p>
+
+    {Array.isArray(ventasIAFuentes) && ventasIAFuentes.length > 0 && (
+      <div className="pt-2 border-t border-slate-200">
+        <div className="mb-1 text-[11px] font-semibold text-slate-600">
+          Fuentes IA
+        </div>
+        <ul className="list-disc pl-5 space-y-0.5 text-[11px]">
+          {ventasIAFuentes.map((f, i) => (
+            <li key={i}>
+              <a
+                href={f.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sky-700 hover:underline"
+              >
+                {f.title || f.url}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+)}
+
+  </div>
+
+  <div ref={preAIRef}>
+    <PreAIReportView outputs={outputs} />
+  </div>
+</div>
 
                  {aiReport && (
                    <>
@@ -2169,6 +2388,47 @@ useEffect(() => {
                       <ReportView report={aiReport} />
                    </div>
 
+                    {/* NUEVO bloque: paso siguiente → financiamiento */}
+      <div className="mt-4 border-t pt-4">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          ¿Listo para buscar financiamiento? (Se activa tras generar informe con IA)
+        </h3>
+
+        <p className="mt-1 text-xs text-muted-foreground">
+          Con el informe que generes aquí, aret3 puede pre-llenar por ti los
+          formularios de fondos como Sercotec, Corfo y aceleradoras, para que
+          solo tengas que revisar y enviar.
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button
+  size="sm"
+  variant="outline"
+  onClick={handleStartFunding}
+  disabled={!aiReport || fundingLoading}
+  className={`border border-black/70 text-black ${
+    !aiReport || fundingLoading ? "opacity-60 cursor-not-allowed" : ""
+  }`}
+>
+  <BotIcon className="mr-2 h-4 w-4" />
+  {fundingLoading
+    ? "Abriendo módulo de financiamiento..."
+    : "Seguir a formulario de financiamiento"}
+</Button>
+
+<p className="text-[11px] text-muted-foreground">
+  Este paso usa <strong>3 créditos</strong> una sola vez para este
+  proyecto, y podrás volver cuando quieras sin perder la información.
+</p>
+
+{fundingError && (
+  <p className="mt-1 text-xs text-red-600">
+    {fundingError}
+  </p>
+)}
+
+        </div>
+      </div>
                   {/* Plan 100 palabras */}
 {aiPlan && (
   <>
@@ -2235,9 +2495,10 @@ useEffect(() => {
     'Rango de precio de lista; destaca tu ticket y tiempos de entrega.',
     'Ventajas defendibles: canal directo, servicio postventa, casos y reseñas.',
     'Evita competir en todo: elige 2–3 atributos clave y sé n°1 allí.',
-  ]).map((b, i) => <li key={`reg-${i}`}>{b}</li>)}
-+   </ul>
+    ]).map((b, i) => <li key={`reg-${i}`}>{b}</li>)}
+ </ul>
 </div>
+                    {/* IA – Mapa competitivo + Checklist (bullets como en el email) */}
 
 <h3 className="text-lg font-bold mt-6">Checklist regulatorio</h3>
 <div className="mt-2 rounded-xl border-2 p-4" style={{ borderColor: accent, background: accentSoft }}>
@@ -2703,8 +2964,6 @@ function applyIA(baseOut: any, ia: any) {
     report: { ...(baseOut.report ?? {}), ranking: { ...(baseOut.report?.ranking ?? {}) } },
   };
 }
-
-
 
 // -------------------- Smoke tests (console) --------------------
 (function runAreteSmokeTests() {

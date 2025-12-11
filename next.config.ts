@@ -8,12 +8,15 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@arete-studio/ui"],
 
   experimental: {
+    // ✅ OK en Next 16
     optimizePackageImports: ["@arete-studio/ui"],
-    serverComponentsExternalPackages: [
-      "@sparticuz/chromium",
-      "puppeteer-core",
-    ],
   },
+
+  // ✅ Nueva forma en Next 16 para dejar estos paquetes externos
+  serverExternalPackages: [
+    "@sparticuz/chromium",
+    "puppeteer-core",
+  ],
 
   async redirects() {
     return [

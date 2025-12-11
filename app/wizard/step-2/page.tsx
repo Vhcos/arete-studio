@@ -3,7 +3,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useWizardStore } from "@/lib/state/wizard-store";
+import { useWizardStore, type Step1 } from "@/lib/state/wizard-store";
 import { NextButton, PrevButton } from "@/components/wizard/WizardNav";
 import UpsellBanner from "@/components/wizard/UpsellBanner";
 import BotIcon from "@/components/icons/BotIcon";
@@ -15,8 +15,19 @@ const AI_IDEA_ENDPOINT =
 function Spinner({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" aria-hidden="true">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
     </svg>
   );
 }
@@ -27,6 +38,8 @@ const CURRENT_STEP = 2;
 export default function Step2Page() {
   const router = useRouter();
   const sp = useSearchParams();
+
+  // Este paso trabaja sobre step1: ahí vive la idea
   const { data, setStep1 } = useWizardStore();
   const s1 = data.step1 ?? {};
 
@@ -35,7 +48,7 @@ export default function Step2Page() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Soporta prefill desde query (?prefill=... o ?p=...) si el campo está vacío
+  // Prefill desde query (?prefill=... o ?p=...) si el campo está vacío
   useEffect(() => {
     const q = sp?.get("prefill") ?? sp?.get("p");
     if (q && !idea.trim()) setIdea(q);
@@ -60,16 +73,24 @@ export default function Step2Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea: txt }),
       });
-      if (!r.ok) throw new Error(`Créditos insuficientes revisa nuestros planes y adquiere más créditos (${r.status})`);
+      if (!r.ok)
+        throw new Error(
+          `Créditos insuficientes revisa nuestros planes y adquiere más créditos (${r.status})`
+        );
       const j = await r.json();
-      const improved = (j?.idea ?? j?.text ?? j?.content ?? "").toString().trim();
+      const improved = (j?.idea ?? j?.text ?? j?.content ?? "")
+        .toString()
+        .trim();
       if (!improved) throw new Error("Respuesta de IA vacía.");
       setIdea(improved);
       try {
         window.dispatchEvent(new Event("focus"));
       } catch {}
     } catch (e: any) {
-      setAiError(e?.message || "No se pudo mejorar con IA. Configura el endpoint y reintenta.");
+      setAiError(
+        e?.message ||
+          "No se pudo mejorar con IA. Configura el endpoint y reintenta."
+      );
     } finally {
       setAiLoading(false);
     }
@@ -81,8 +102,14 @@ export default function Step2Page() {
       setError("Escribe al menos 5 caracteres para continuar.");
       return;
     }
-    // Mantener compat: idea en step1
-    setStep1({ ...(data.step1 ?? {}), idea: txt });
+
+    // Guardamos la idea dentro de step1, preservando lo demás
+    const nextStep1: Step1 = {
+      ...(data.step1 ?? {}),
+      idea: txt,
+    };
+
+    setStep1(nextStep1);
     router.push("/wizard/step-3");
   }
 
@@ -112,14 +139,18 @@ export default function Step2Page() {
         {/* Encabezado cálido y centrado */}
         <header className="text-center">
           <div className="mx-auto mb-2 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50">
-            <span className="text-lg" aria-hidden>💡</span>
+            <span className="text-lg" aria-hidden>
+              💡
+            </span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">
             Paso 2 · ¿Cuál es tu idea de negocio?
           </h1>
           <p className="mx-auto mt-1 max-w-2xl text-sm text-slate-600">
-            Escribe una oración clara que explique de qué se trata tu idea, qué ofreces y para quién es.
-            Sino sabes que anotar deja que la <span className="font-medium">IA Aret3</span>  lo haga por ti solo aprieta el botón  las veces que quieras.
+            Escribe una oración clara que explique de qué se trata tu idea, qué
+            ofreces y para quién es. Sino sabes que anotar deja que la{" "}
+            <span className="font-medium">IA Aret3</span> lo haga por ti solo
+            aprieta el botón las veces que quieras.
           </p>
         </header>
 
@@ -145,7 +176,7 @@ export default function Step2Page() {
               className={[
                 "mt-1 shrink-0 w-[64px] rounded-xl border px-3 py-2",
                 "flex flex-col items-center justify-center",
-                "transition-colors duration-150",
+                "transition-colors duración-150",
                 "bg-blue-100 border-blue-300 text-blue-700",
                 "hover:bg-blue-200 hover:border-blue-400 hover:text-blue-800",
                 "active:bg-blue-300 active:border-blue-500",
@@ -156,18 +187,23 @@ export default function Step2Page() {
               {aiLoading ? (
                 <Spinner className="h-5 w-5" />
               ) : (
-                 <BotIcon className="h-8 w-8" variant="t3" glowHue="gold"/>
+                <BotIcon className="h-8 w-8" variant="t3" glowHue="gold" />
               )}
-              <span className="mt-1 text-[10px] leading-none">Escribe con IA Aret3</span>
+              <span className="mt-1 text-[10px] leading-none">
+                Escribe con IA Aret3
+              </span>
             </button>
           </div>
 
           {/* Ejemplo + errores */}
           <p className="mt-2 text-sm text-slate-400">
-            Ejemplo: Abrir un bar experto en mixología para que los clientes se sientan como en su casa, en un ambiente cálido y acogedor.
+            Ejemplo: Abrir un bar experto en mixología para que los clientes se
+            sientan como en su casa, en un ambiente cálido y acogedor.
           </p>
           {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
-          {aiError && <p className="mt-2 text-xs text-rose-600">IA: {aiError}</p>}
+          {aiError && (
+            <p className="mt-2 text-xs text-rose-600">IA: {aiError}</p>
+          )}
 
           {/* Nav */}
           <div className="mt-6 flex items-center justify-between">

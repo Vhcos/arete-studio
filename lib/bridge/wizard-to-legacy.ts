@@ -15,20 +15,20 @@ export interface LegacyPlan {
   inversionInicial: number;
   capitalTrabajo: number;
 
-  ventaAnual: number;          // == ingresos meta 12m
+  ventaAnual: number; // == ingresos meta 12m
   ticket: number;
-  convPct: number;             // % conversión
+  convPct: number; // % conversión
 
-  costoPct: number;            // % del precio (solo por referencia)
-  costoUnit: number;           // costo variable unitario ($)
+  costoPct: number; // % del precio (solo por referencia)
+  costoUnit: number; // costo variable unitario ($)
 
   traficoMensual: number;
-  gastosFijos: number;         // $/año
-  marketingMensual: number;    // $/mes
-  ingresosMeta: number;        // alias de ventaAnual
+  gastosFijos: number; // $/año
+  marketingMensual: number; // $/mes
+  ingresosMeta: number; // alias de ventaAnual
 
   // métricas de frecuencia y P.E.
-  frecuenciaAnual: number;     // veces/año (12 / meses)
+  frecuenciaAnual: number; // veces/año (12 / meses)
   mesesPE: number;
 }
 
@@ -58,6 +58,10 @@ export interface LegacyForm {
 
   // bloque económico calculado
   plan: LegacyPlan;
+
+  // --- NUEVO: benchmark de ventas (IA Step-6) guardado para el informe ---
+  ventasIAExplicacion?: string;
+  ventasIAFuentes?: { title?: string; url: string }[];
 
   // meta
   meta: {
@@ -92,10 +96,9 @@ export function toLegacyForm(input: unknown): LegacyForm {
       : 6;
 
   const mesesPE = s6.mesesPE ?? 6;
-  
-  // Reconstrucción de ubicación desde step2
 
-    const ubicacionFromStep2 = (() => {
+  // Reconstrucción de ubicación desde step2
+  const ubicacionFromStep2 = (() => {
     const s2any = s2 as any;
     if (!s2any) return "";
 
@@ -105,13 +108,15 @@ export function toLegacyForm(input: unknown): LegacyForm {
     }
 
     // 2) Intentar reconstruir con ciudad + país
-    const city =
-      s2any.city ||
-      s2any.ciudad ||
-      "";
+    const city = s2any.city || s2any.ciudad || "";
 
-    const countryCodeRaw =
-      (s2any.countryCode || s2any.pais || "").toString().toUpperCase();
+    const countryCodeRaw = (
+      s2any.countryCode ||
+      s2any.pais ||
+      ""
+    )
+      .toString()
+      .toUpperCase();
 
     const COUNTRY_NAMES: Record<string, string> = {
       CL: "Chile",
@@ -139,9 +144,7 @@ export function toLegacyForm(input: unknown): LegacyForm {
     return (s2any.region as string) || "";
   })();
 
-// Construcción del objeto legacy
-
-
+  // Construcción del objeto legacy
   const legacy: LegacyForm = {
     // Cabecera
     projectName: s1?.projectName ?? "",
@@ -155,7 +158,6 @@ export function toLegacyForm(input: unknown): LegacyForm {
     rubro: s2?.rubro ?? "",
     ubicacion: ubicacionFromStep2,
 
-    
     // Cualitativos (opcional)
     urgencia: s5?.urgencia,
     accesibilidad: s5?.accesibilidad,
@@ -187,6 +189,10 @@ export function toLegacyForm(input: unknown): LegacyForm {
       frecuenciaAnual,
       mesesPE,
     },
+
+    // Benchmark de ventas (IA Step-6) que guardaste en Step6Page
+    ventasIAExplicacion: (s6 as any).ventasIAExplicacion ?? undefined,
+    ventasIAFuentes: (s6 as any).ventasIAFuentes ?? undefined,
 
     meta: {
       savedAt: new Date().toISOString(),
