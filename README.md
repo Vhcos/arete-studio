@@ -1070,3 +1070,571 @@ Si quieres, en el próximo paso te puedo:
 
 * Escribir el endpoint `POST /api/funding/session` + el `router.push` con `sessionId`, **o**
 * Bajar más a detalle el diseño del formulario F1–F5 y el shape del `payload`.
+Va, cerramos esta y dejamos todo listo para la nueva 🔥
+
+Te dejo dos cosas separadas:
+
+1. **Prompt Maestro – Formulario 2.0 (F1–F5)** para pegar en el nuevo chat.
+2. **README corto de la rama `feat/funding-forms-v2`** para el repo.
+
+---
+
+## 1️⃣ Prompt Maestro – Módulo Funding Formulario 2.0 (F1–F5)
+
+> **Rol**
+> Compórtate como mi pair-programmer senior para mi SaaS **aret3** (Next.js 15.5.7 + TypeScript + Prisma + NextAuth, deploy en Vercel). Tu prioridad es mantener **estabilidad**: no romper nada del flujo de informe actual, escribir código limpio, y pensar en arquitectura antes de tocar archivos.
+
+---
+
+### 1. Contexto técnico actual (ya funcionando, NO tocar salvo que lo pida)
+
+1. **Wizard 1–11**
+
+   * El usuario recorre un wizard de 11 pasos.
+   * Estado en el frontend: `useWizardStore`.
+   * Al finalizar se construye un `legacyForm` con:
+
+     * `lib/bridge/wizard-to-legacy.ts`
+     * Se guarda en `localStorage.setItem("arete:legacyForm", JSON.stringify(legacyWithMeta))`.
+   * Ese `legacyForm` incluye la info de ventas IA de Step-6:
+
+     * `ventasIAExplicacion`
+     * `ventasIAFuentes`.
+
+2. **Informe en pantalla (tablero)**
+
+   * Ruta principal: `app/page.tsx` (tab `?tab=explain`).
+   * Se genera un **resumen ejecutivo** con:
+
+     ```ts
+     const summary = buildInvestorNarrative(baseOut.report.input, metaForNarrative);
+     ```
+   * En el resumen se muestra:
+
+     * El `summary`.
+     * Debajo, bloque con:
+
+       * Nota sobre ventas IA.
+       * `ventasIAExplicacion` (texto largo).
+       * `ventasIAFuentes` (links).
+
+3. **Informe por email + PDF**
+
+   * Renderer central: `lib/renderReportHtml.ts` → `renderReportEmailHtml(...)`.
+   * Se usa desde:
+
+     * `/api/email-report`
+     * `/api/report/pdf`
+   * Parámetros clave:
+
+     * `user` (nombre, email, etc.)
+     * `report` (AI / non-AI)
+     * `aiPlan`
+     * `summary`
+     * `preAI` (HTML del tablero)
+   * El PDF está implementado en `app/api/report/pdf/route.ts` con:
+
+     * En **Vercel**: `@sparticuz/chromium` + `puppeteer-core` vía `serverExternalPackages`.
+     * En **local**: `puppeteer` normal.
+   * Esto ya está funcionando en `main` y en producción.
+
+   > ❗ **No quiero que modifiques Step-6, `renderReportEmailHtml`, ni el `route.ts` del PDF**, a menos que lo pida explícitamente.
+
+4. **Stack y versiones**
+
+   * `next`: **15.5.7**
+   * `next-auth`: 4.24.x con Prisma Adapter.
+   * `nodemailer`: 7.x
+   * Deploy en Vercel ya compilando sin errores.
+
+---
+
+### 2. Contexto de Funding (F1–F5) y problemas actuales
+
+Hay un módulo de **Funding Session** (F1–F5) que se abre desde el informe:
+
+* F1–F4 son formularios tipo:
+
+  * F1: datos del postulante.
+  * F2: estado y avance del negocio.
+  * F3: monto y uso de fondos.
+  * F4: tipo de instrumento / institución (Sercotec, Corfo, municipio, etc.).
+* F5 genera un **borrador de postulación** con IA.
+
+Problemas detectados:
+
+1. **No se prellenan F1–F4**:
+   Preguntan cosas que ya están en el wizard/informe (nombre, ciudad, rubro, ventas, etc.).
+
+2. **F5 “pegado” a proyectos antiguos**:
+
+   * El borrador de F5 a veces describe una **cafetería** cuando el proyecto actual es una **joyería**, lo que indica que está usando datos viejos o mapeo incorrecto.
+
+3. **Lenguaje “idea” vs. “problema que resuelve”**:
+
+   * El wizard habla de *idea de negocio*.
+   * Los formularios de Corfo/Sercotec hablan de *“qué problema resuelves”*.
+   * Falta una pieza clara tipo “Este proyecto resuelve el problema de…”.
+
+4. **Costo en créditos**:
+
+   * El módulo de formularios debe costar **3 créditos por proyecto**.
+   * Idea general:
+
+     * Cobrar 3 créditos al iniciar la Funding Session (primer uso).
+     * El **borrador base** NO debería gastar IA extra (solo datos ya generados).
+     * Si el usuario quiere “Mejorar redacción con IA para Corfo/Sercotec”, ahí sí se gasta crédito adicional.
+
+5. **Dolor principal del usuario**:
+
+   * Lo que más cuesta a los emprendedores es **llenar formularios largos y confusos**.
+   * aret3 debe minimizar el re-typing: máximo auto-relleno, mínimo campos manuales.
+
+---
+
+### 3. Objetivo de esta nueva rama: “Formulario 2.0”
+
+En la nueva rama (`feat/funding-forms-v2`) quiero:
+
+1. **Auto-relleno F1–F4** usando SOLO datos ya recolectados:
+
+   * `legacyForm`
+   * `aiReport` / `nonAIReport`
+   * `aiPlan`
+   * Datos de usuario / client / report
+
+2. **Nuevo “Informe de postulación” (F6 o vista final)**:
+
+   * Un resumen ordenado, estilo borrador de Corfo/Sercotec, con secciones:
+
+     1. Datos del postulante (nombre, RUT, ciudad, email, teléfono).
+     2. Problema que resuelve.
+     3. Solución / propuesta de valor.
+     4. Mercado y clientes.
+     5. Tracción / proyecciones (ventas, clientes, PE).
+     6. Monto y uso del financiamiento.
+     7. Instrumento / fondo sugerido (Sercotec, Corfo, municipio…).
+   * Armado **sin nuevas llamadas a IA** (solo con info existente + F1–F4).
+   * Que se pueda copiar/pegar a un formulario real o más adelante mandar a PDF.
+
+3. **Integrar el concepto “problema que resuelve”**:
+
+   * Reusar texto que ya exista en `aiReport` / `summary`.
+   * O, si hace falta, ajustar prompts existentes para que siempre generen un bloque:
+
+     * `problemaQueResuelve: string` dentro del informe.
+
+4. **Definir y aplicar la lógica de créditos**:
+
+   * Cobrar **3 créditos** cuando se inicia una `FundingSession` para un `reportId`.
+   * No volver a cobrar si el usuario entra de nuevo a la misma sesión.
+   * Reservar créditos extra solo para botones explícitos de IA (“mejorar redacción”, etc.).
+
+5. **Mantener UI simple**:
+
+   * Pocas preguntas nuevas.
+   * Todo lo que se pueda, viene prellenado del informe.
+   * Textos y labels alineados con formularios reales (Corfo/Sercotec/Semilla Expande).
+
+---
+
+### 4. Forma de trabajo que quiero
+
+1. Primero, **análisis y arquitectura**:
+
+   * Revisar el modelo `FundingSession` en Prisma.
+   * Ver cómo se relaciona con `Report`, `Client`, `User`.
+   * Diseñar el mapeo “campo del formulario ↔ campo de aret3”.
+
+2. Luego, ir **archivo por archivo**:
+
+   * Empezar por F1 (auto-relleno).
+   * Luego F2, F3, F4.
+   * Después la vista de “Informe de postulación”.
+   * Finalmente, la lógica de créditos en `/api/funding-session/start` y cualquier otro endpoint necesario.
+
+3. Estilo de respuesta:
+
+   * Explicar brevemente la arquitectura.
+   * Proponer cambios con **archivos completos listos para pegar** (no diffs), indicando ruta del archivo.
+   * No tocar Step-6, informe, email ni PDF, a menos que yo lo pida muy explícitamente.
+
+---
+
+### 5. Instrucción final
+
+1. Resume con tus palabras:
+
+   * Qué está funcionando ahora (wizard → informe → email/PDF).
+   * Qué hace mal hoy el módulo de Funding (F1–F5).
+   * Qué queremos lograr con el Formulario 2.0.
+2. Después, pídele al usuario los archivos mínimos para empezar:
+
+   * Fragmento relevante de `schema.prisma` (`FundingSession`, `Report`, `Client` si aplica).
+   * Componentes de F1–F5 (`app/funding/[id]/f1/page.tsx`, etc.).
+   * El helper que carga la funding session (si existe).
+   * Un ejemplo de `legacyForm` o el tipo/interface que lo describe.
+
+Con eso, empezamos mejorando primero el **auto-relleno de F1** y vamos avanzando paso a paso.
+
+---
+
+## 2️⃣ README – Rama `feat/funding-forms-v2`
+
+Este README es para el repo, en `docs/funding-forms-v2.md` o similar, o al inicio de la rama.
+
+---
+
+### Título
+
+**Módulo Funding – Formulario 2.0 (F1–F5) – Rama `feat/funding-forms-v2`**
+
+---
+
+### 1. Contexto
+
+aret3 es una app SaaS que:
+
+* Lleva al usuario por un **wizard de 11 pasos** para evaluar su idea de negocio.
+* Genera un **informe de negocio** (resumen ejecutivo, proyecciones, plan de acción).
+* Permite **enviar el informe por email** y **descargar un PDF**.
+
+Estado actual en `main`:
+
+* Wizard 1–11 funcionando.
+* Conversión a `legacyForm` en `lib/bridge/wizard-to-legacy.ts`.
+* Informe en pantalla (`app/page.tsx`) usando:
+
+  * `buildInvestorNarrative` para el resumen ejecutivo.
+  * Bloque de ventas IA (explicación + fuentes).
+* Email de informe y PDF:
+
+  * `lib/renderReportHtml.ts` → `renderReportEmailHtml`.
+  * `/api/email-report` y `/api/report/pdf`.
+  * PDF estable en:
+
+    * **Vercel**: `@sparticuz/chromium` + `puppeteer-core`.
+    * **Local**: `puppeteer` normal.
+* Stack:
+
+  * Next.js **15.5.7**
+  * TypeScript, App Router.
+  * Prisma + NextAuth 4 + Prisma Adapter.
+  * Nodemailer 7.
+
+El módulo actual de **Funding** (F1–F5) existe, pero es V1 y tiene problemas de UX y mapeo de datos.
+
+---
+
+### 2. Problema
+
+1. **Duplicación de datos**
+
+   * F1–F4 piden campos que ya se ingresaron en el wizard/informe (nombre, ciudad, rubro, ventas, etc.).
+   * No usan `legacyForm`, `aiReport` ni `aiPlan` para auto-rellenar.
+
+2. **Inconsistencia de contenido en F5**
+
+   * El borrador de postulación (F5) puede seguir hablando de una cafetería aunque el proyecto actual sea una joyería → mezcla de sesiones / mapeo incorrecto.
+
+3. **Desalineación con formularios reales**
+
+   * El lenguaje del wizard es de “idea de negocio”.
+   * Los instrumentos reales (Corfo, Sercotec, etc.) preguntan por:
+
+     * Problema que resuelve.
+     * Solución.
+     * Mercado y tracción.
+     * Monto y uso de fondos.
+   * F5 no se parece a un “formulario Corfo/Sercotec” real.
+
+4. **Créditos**
+
+   * El uso del módulo de formularios debe costar **3 créditos** por proyecto, pero la lógica no está implementada o está incompleta.
+   * Queremos que el borrador base sea gratis (dentro de esos 3 créditos) y solo cobrar extra si se usa IA para mejorar el texto.
+
+---
+
+### 3. Objetivos de la rama
+
+1. **Auto-relleno inteligente de F1–F4**
+
+   * Aprovechar `legacyForm`, `aiReport`, `aiPlan` y datos de usuario para:
+
+     * Prellenar todos los campos posibles.
+     * Reducir al mínimo lo que el usuario tiene que escribir a mano.
+
+2. **Nuevo “Informe de postulación”**
+
+   * Crear una vista final (F6 o similar) que combine:
+
+     * Datos del postulante.
+     * Problema que resuelve el proyecto.
+     * Descripción de la solución y propuesta de valor.
+     * Mercado, clientes y tracción.
+     * Monto solicitado y uso de fondos.
+     * Instrumentos / fondos sugeridos.
+   * Este informe debe poder:
+
+     * Copiarse fácilmente a un formulario real.
+     * Utilizarse luego como base para un PDF específico de postulación (futuro).
+
+3. **Integrar el concepto “problema que resuelve”**
+
+   * Asegurarnos de que el informe siempre exponga un bloque explícito de problema/dolor.
+   * Guardarlo en el modelo para uso en F1–F6.
+
+4. **Lógica de créditos para Funding**
+
+   * Cobrar 3 créditos cuando se inicia una `FundingSession`:
+
+     * Endpoint: `/api/funding-session/start`.
+     * Usar `tryDebitCredit` con razon `"funding-session"`.
+   * No volver a cobrar si la misma sesión se abre de nuevo.
+   * Definir endpoints opcionales para:
+
+     * “Mejorar redacción con IA” → crédito extra por llamada.
+
+5. **No romper el flujo actual de informe**
+
+   * Mantener intactos:
+
+     * Step-6.
+     * `renderReportEmailHtml`.
+     * `/api/report/pdf`.
+   * Todos los cambios de esta rama se acotan al módulo Funding y helpers relacionados.
+
+---
+
+### 4. Plan de implementación (alto nivel)
+
+1. **Revisar modelos de datos**
+
+   * Revisar `schema.prisma`:
+
+     * `FundingSession`
+     * `Report`
+     * `Client` (si aplica)
+   * Confirmar qué se serializa en `FundingSession.meta`.
+
+2. **Diseñar el mapeo de campos**
+
+   * Crear una tabla (en código o docs) que asocie:
+
+     * Campo del formulario (F1–F4) ↔ Campo en `legacyForm` / `report` / `aiPlan`.
+   * Decidir qué se prellena y qué se sigue preguntando.
+
+3. **Implementar auto-relleno F1 → F4**
+
+   * Cargar `FundingSession` + `Report` + `legacyForm` en el server component.
+   * Armar `initialValues` por formulario.
+   * Permitir edición y posterior update vía API.
+
+4. **Implementar “Informe de postulación”**
+
+   * Nuevo componente/página para el resumen final.
+   * Armar secciones solo con datos existentes.
+   * Diseñar layout claro, listo para copy-paste.
+
+5. **Implementar lógica de créditos**
+
+   * Añadir lógica en `/api/funding-session/start`:
+
+     * Cobro de 3 créditos.
+     * Idempotencia por `reportId`.
+   * Preparar la base para futuras llamadas IA opcionales.
+
+---
+
+### 5. Cómo correr esta rama localmente
+
+```bash
+git checkout main
+git pull origin main
+
+git checkout -b feat/funding-forms-v2
+
+npm install
+npm run dev
+# abrir http://localhost:3000
+```
+
+---
+
+Aquí tienes **(1) un README** para pegar en tu repo y **(2) un prompt maestro** para abrir una nueva conversación sin perder el foco.
+
+---
+
+# README — Módulo Funding (F1–F5): Capital de trabajo + persistencia F3
+
+## Contexto
+
+En **aret3** (Next.js + TypeScript + Prisma, deploy en Vercel) estamos construyendo el **módulo Funding** con pasos **F1–F5** para que el usuario complete un formulario de postulación (Corfo/Sercotec/municipal, etc.) usando la info ya levantada en el wizard.
+
+El cuello de botella de este chat fue:
+
+1. **Capital de trabajo** dependía del número de meses (3/6/9/12), por lo que **no podía venir “cerrado” desde Step-6**.
+2. En **F3** se perdía lo escrito (incluida la respuesta de IA) al navegar/recargar.
+3. “Monto aproximado que te gustaría pedir” quedaba con un valor viejo en algunos casos.
+
+---
+
+## Objetivo logrado en este chat
+
+1. **Capital de trabajo** se calcula/traspasa bien para Funding (y se puede derivar aunque el usuario no haya hecho Step-9).
+2. En **F3** se implementó **persistencia fuerte**: lo que escribe el usuario (y lo que devuelve IA) **queda guardado** y no se pierde.
+3. Se dejó el backend de guardado (`save-step`) listo para que el front pueda rehidratar desde base de datos (DB) sin depender solo de localStorage.
+
+---
+
+## Cambios principales
+
+### A) Wizard: Step-7 como fuente correcta del capital de trabajo
+
+* El capital de trabajo depende de `mesesPE` (3/6/9/12) y se calcula con una rampa tipo Step-9.
+* Step-7 guarda en el store (y luego en el legacy) un campo:
+
+  * `capitalTrabajo`
+  * más `mesesPE`, `conversionPct`, `traficoMensual`, y marketing.
+
+**Decisión funcional clave:** el cálculo usa tu definición actual:
+
+* **gastos del mes = gastos fijos + marketing**
+  → por lo tanto el capital de trabajo **incluye marketing** dentro del “colchón”.
+
+---
+
+### B) Helper: resolver capital de trabajo desde varias fuentes
+
+Archivo: `lib/funding/resolveCapitalTrabajo.ts`
+
+* Función `resolveCapitalTrabajo({ legacy, plan })` intenta rescatar:
+
+  * `plan.capitalTrabajo`
+  * `legacy.plan.capitalTrabajo`
+  * `legacy.step9.capitalTrabajo`
+  * `legacy.step6.capitalTrabajo`
+  * y fallback sumando déficits si existe una tabla mensual (best effort).
+* Devuelve `{ value, source }` para debug (“de dónde lo saqué”).
+
+---
+
+### C) Funding F3: monto + usos con IA + NO perder texto
+
+Archivo: `app/funding/[sessionId]/f3/page.tsx`
+
+Se dejó funcionando:
+
+* **Auto-relleno** de:
+
+  * capital de trabajo (desde resolver/fallback)
+  * dinero propio disponible (desde inversión inicial)
+  * inversión total (regla payback 3 años)
+  * sugerencia de monto a pedir (cuando corresponde)
+* **Persistencia real** de lo escrito en “¿En qué usarías principalmente estos fondos?”:
+
+  * Guardado local por sesión: `aret3:funding:f3:${sessionId}`
+  * Autosave con debounce a endpoint `/api/funding-session/save-step`
+  * Cuando IA responde, se guarda **al tiro** (local + DB), para que no se pierda aunque el usuario se vaya.
+
+---
+
+### D) Endpoint IA: mejorar usos de fondos
+
+Archivo: `app/api/ai/funding-uses-improve/route.ts`
+
+* Usa OpenAI (modelo configurable por `OPENAI_MODEL`)
+* Respeta créditos (tryDebitCredit / refundCredit)
+* Instrucciones para que:
+
+  * primera viñeta sea capital de trabajo si existe
+  * el resto reparta el monto restante de forma razonable
+  * no invente montos absurdos
+
+---
+
+### E) Guardado DB: save-step devuelve lo guardado
+
+Archivo: `app/api/funding-session/save-step/route.ts`
+
+Se ajustó para:
+
+* Forzar consistencia: `data.step = stepKey`
+* Mergear `payload.steps[stepKey] = data`
+* Mantener bloque normalizado `postulante` cuando `stepKey === "F1"`
+* **Devolver** en la respuesta:
+
+  * `step`, `savedAt`
+  * `data` guardada para ese step
+  * `postulante` normalizado
+
+Esto permite que el front (si queremos) rehidrate desde DB sin depender de localStorage.
+
+---
+
+## Cómo probar (checklist corto)
+
+1. Completar Wizard hasta Step-7, cambiar `mesesPE` (3/6/9/12) y avanzar.
+2. Ir a Funding F3:
+
+   * Debe aparecer capital de trabajo correcto (según Step-7 / fallback).
+   * Debe aparecer dinero propio correcto.
+   * “Monto aproximado que te gustaría pedir” debe sugerirse cuando corresponde.
+3. Escribir texto en “¿En qué usarías principalmente estos fondos?”:
+
+   * Cambiar de página (F2 → F3 → F4), volver: **no se pierde**.
+   * Recargar (refresh): **no se pierde**.
+4. Usar botón IA:
+
+   * Debe reemplazar el texto.
+   * Irse y volver: **debe mantenerse**.
+
+---
+
+## Próximos pasos sugeridos
+
+* Replicar el patrón de persistencia (local + DB) en **F1 y F2** (para no perder nada).
+* Opcional: en F3, rehidratar desde DB al cargar (si el payload ya existe).
+* Mantener el foco: **F1–F5 deben nutrirse con info ya recolectada**, y el formulario final debe parecerse al que definimos.
+
+---
+
+---
+
+# Prompt maestro — Continuar Funding F1–F5 (sin perder el foco)
+
+**Rol**
+Actúa como mi pair-programmer senior para **aret3** (Next.js + TypeScript + Prisma, deploy en Vercel). Quiero avanzar ordenado, sin inventar rutas/archivos, y con cambios mínimos que no rompan lo que ya funciona.
+
+**Contexto (lo que ya está hecho y funcionando)**
+
+* Wizard Step-7 calcula capital de trabajo según meses (3/6/9/12) y lo guarda para que Funding lo use.
+* En Funding:
+
+  * F3 ya auto-rellena capital de trabajo / dinero propio / regla payback 3 años.
+  * F3 ahora guarda texto del usuario + respuesta IA y no se pierde (localStorage + DB).
+* Endpoint `/api/funding-session/save-step` mergea payload por step, normaliza `postulante` en F1 y devuelve lo guardado.
+
+**Objetivo de la nueva conversación**
+Seguir con **F1–F5** para llegar a un **formulario de postulación real** (el que definimos), usando la información ya levantada, y con persistencia robusta como en F3.
+
+**Reglas de trabajo**
+
+1. Antes de proponer cambios, confirmar nombres/rutas exactas de archivos (sin inventar).
+2. Cuando haya cambios, entrégame archivo completo “donde dice / se cambia por”.
+3. Prioridad: persistencia (no perder datos), consistencia de cálculos, y que el formulario quede coherente.
+
+**Qué necesito que hagamos ahora**
+
+1. Revisar F1 y F2 para que:
+
+   * Se rehidraten desde DB (payload.steps.F1/F2) y/o localStorage por sesión
+   * Autosave con debounce igual que F3
+2. Confirmar que el flujo completo F1→F5 no pierde nada aunque el usuario recargue o salga.
+3. Dejar lista una tabla/estructura de “mapping” entre:
+
+   * campos del wizard/legacy/plan
+   * campos del formulario Funding (F1–F5)
+4. Si aparece un descalce (ej: capital de trabajo, monto a pedir, aportes), corregir sin romper lo demás.
+
+

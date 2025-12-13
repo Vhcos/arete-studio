@@ -1,0 +1,64 @@
+// app/api/funding-session/[sessionId]/debug/route.ts
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+function resolveReport(payload: any): { report: any; sourcePath: string | null } {
+  if (payload?.iaReportRaw) return { report: payload.iaReportRaw, sourcePath: "payload.iaReportRaw" };
+  if (payload?.meta?.iaReportRaw) return { report: payload.meta.iaReportRaw, sourcePath: "payload.meta.iaReportRaw" };
+  if (payload?.meta?.meta?.iaReportRaw) return { report: payload.meta.meta.iaReportRaw, sourcePath: "payload.meta.meta.iaReportRaw" };
+  return { report: null, sourcePath: null };
+}
+
+export async function GET(_req: Request, { params }: { params: { sessionId: string } }) {
+  const session = await getServerSession(authOptions).catch(() => null);
+  const userId = (session as any)?.user?.id as string | undefined;
+
+  if (!userId) {
+    return NextResponse.json(
+      { ok: false, error: "UNAUTH" },
+      { status: 401, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  const fundingSession = await prisma.fundingSession.findFirst({
+    where: { id: params.sessionId, userId },
+  });
+
+  if (!fundingSession) {
+    return NextResponse.json(
+      { ok: false, error: "FUNDING_SESSION_NOT_FOUND" },
+      { status: 404, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  const payload: any = (fundingSession as any)?.payload ?? {};
+  const { report, sourcePath } = resolveReport(payload);
+  const sections = report?.sections ?? null;
+
+  const preview = sections
+    ? {
+        finalVerdict: sections.finalVerdict ?? null,
+        industryBrief: sections.industryBrief ?? null,
+        swotAndMarket: sections.swotAndMarket ?? null,
+        competitionLocal: sections.competitionLocal ?? null,
+      }
+    : null;
+
+  return NextResponse.json(
+    {
+      ok: true,
+      sessionId: fundingSession.id,
+      reportId: payload?.reportId ?? null,
+      reportSourcePath: sourcePath,
+      hasReport: !!report,
+      hasSections: !!sections,
+      preview,
+    },
+    { headers: { "Cache-Control": "no-store" } }
+  );
+}

@@ -1,0 +1,106 @@
+*** Begin Patch
+*** Update File: app/funding/[sessionId]/f3/page.tsx
+@@
+ import BotIcon from "@/components/icons/BotIcon";
+ import { getTemplateForSector } from "@/lib/model/step6-distributions";
+ import type { SectorId } from "@/lib/model/sectors";
++import { resolveCapitalTrabajo } from "@/lib/funding/resolveCapitalTrabajo";
+@@
+       const s6: any = (legacy as any)?.step6 ?? {};
+       const sectorId: SectorId =
+         (plan?.sectorId as SectorId) ??
+         (legacy?.sectorId as SectorId) ??
+         ("retail_local" as SectorId);
+ 
+-      const capitalTrabajoDerivado =
+-        computeCapitalTrabajoFromLegacy(legacy) ??
+-        toNumber(plan?.capitalTrabajo) ??
+-        toNumber(s6.capitalTrabajo);
++      const resolvedCap = resolveCapitalTrabajo({ legacy, plan });
++      const capitalTrabajoDerivado =
++        resolvedCap.value ??
++        computeCapitalTrabajoFromLegacy(legacy) ??
++        toNumber(plan?.capitalTrabajo) ??
++        toNumber(s6.capitalTrabajo);
+ 
+       const inversionInicialNum =
+         toNumber(plan?.inversionInicial) ?? toNumber(s6.inversionInicial);
+@@
+       // ---- Tarjeta: Capital de trabajo
+       if (typeof capitalTrabajoDerivado === "number") {
+            setCapitalTrabajo(capitalTrabajoDerivado);
+            setCapitalTrabajoSugerido(
+          Math.round(capitalTrabajoDerivado).toLocaleString("es-CL")
+          );
+         }
++      // Debug útil (solo consola, no rompe UX)
++      if (process.env.NODE_ENV !== "production") {
++        // eslint-disable-next-line no-console
++        console.info("[F3] capitalTrabajo source:", resolvedCap.source, "value:", resolvedCap.value);
++      }
+@@
+         <CardContent className="space-y-4 text-sm">
+-          {(capitalTrabajoSugerido || dineroPropioDisponible) && (
+-           <div className="mb-2 grid gap-3 sm:grid-cols-2 text-xs">
+-    {(capitalTrabajoSugerido !== "") && (
+-      <div className="rounded-lg border bg-slate-50 px-3 py-2">
+-        <div className="font-medium text-[11px] text-slate-700">
+-          Capital de trabajo estimado (12 meses)
+-        </div>
+-        <div className="mt-1 text-sm font-semibold">
+-          ${capitalTrabajoSugerido}
+-        </div>
+-        <p className="mt-1 text-[11px] text-slate-500">
+-          Calculado a partir de tu flujo de caja (peldaños del Paso 9). En el uso de fondos se considera como un ítem separado.
+-        </p>
+-      </div>
+-    )}
+-
+-              {dineroPropioDisponible && (
+-                <div className="rounded-lg border bg-slate-50 px-3 py-2">
+-                  <div className="font-medium text-[11px] text-slate-700">
+-                    Dinero propio disponible
+-                  </div>
+-                  <div className="mt-1 text-sm font-semibold">
+-                    ${dineroPropioDisponible}
+-                  </div>
+-                  <p className="mt-1 text-[10px] text-slate-500">
+-                    Monto que declaraste en “¿Cuánto dinero dispones para tu idea?” (Paso 6).
+-                  </p>
+-                </div>
+-              )}
+-            </div>
+-          )}
++          {(dineroPropioDisponible || capitalTrabajoSugerido !== "") && (
++            <div className="mb-2 grid gap-3 sm:grid-cols-2 text-xs">
++              {/* Capital de trabajo: SIEMPRE visible cuando mostramos el resumen */}
++              <div className="rounded-lg border bg-slate-50 px-3 py-2">
++                <div className="font-medium text-[11px] text-slate-700">
++                  Capital de trabajo estimado (12 meses)
++                </div>
++                <div className="mt-1 text-sm font-semibold">
++                  {capitalTrabajoSugerido !== "" ? `$${capitalTrabajoSugerido}` : "No disponible aún"}
++                </div>
++                <p className="mt-1 text-[11px] text-slate-500">
++                  {capitalTrabajoSugerido !== ""
++                    ? "Calculado a partir de tu flujo de caja (Paso 9). En el uso de fondos se considera como un ítem separado."
++                    : "No pudimos rescatar el capital de trabajo desde tu plan/flujo. Revisa que el Paso 9 esté guardado o vuelve a completar tu flujo de caja."}
++                </p>
++              </div>
++
++              {dineroPropioDisponible && (
++                <div className="rounded-lg border bg-slate-50 px-3 py-2">
++                  <div className="font-medium text-[11px] text-slate-700">
++                    Dinero propio disponible
++                  </div>
++                  <div className="mt-1 text-sm font-semibold">
++                    ${dineroPropioDisponible}
++                  </div>
++                  <p className="mt-1 text-[10px] text-slate-500">
++                    Monto que declaraste en “¿Cuánto dinero dispones para tu idea?” (Paso 6).
++                  </p>
++                </div>
++              )}
++            </div>
++          )}
+*** End Patch

@@ -1,7 +1,7 @@
 // app/funding/[sessionId]/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,60 @@ const COUNTRY_OPTIONS = [
   { code: "BO", label: "Bolivia" },
   { code: "EC", label: "Ecuador" },
 ];
+
+// Tipo amplio para no reventar si legacy tiene más cosas
+type LegacyForm = {
+  projectName?: string;
+  founderName?: string;
+  email?: string;
+  idea?: string;
+  ventajaTexto?: string;
+  ubicacion?: string;
+  rubro?: string;
+  sectorId?: string;
+  countryCode?: string | null;
+  meta?: {
+    countryCode?: string | null;
+    ubicacion?: string | null;
+    [key: string]: any;
+  } | null;
+  postulante?: {
+    tipoPostulante?: "persona_natural" | "empresa";
+    countryCode?: string | null;
+
+    // Persona natural
+    nombreCompleto?: string | null;
+    rut?: string | null;
+    fechaNacimiento?: string | null;
+    genero?: "" | "M" | "F" | "O" | "N";
+    region?: string | null;
+    comuna?: string | null;
+    telefono?: string | null;
+
+    // Empresa
+    razonSocial?: string | null;
+    rutEmpresa?: string | null;
+    fechaInicioActividades?: string | null;
+    giroPrincipal?: string | null;
+    representanteNombre?: string | null;
+    representanteRut?: string | null;
+    telefonoContacto?: string | null;
+  } | null;
+
+  [key: string]: any;
+};
+
+// Utilidad segura para leer JSON del localStorage
+function readJSON<T = any>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
 
 export default function FundingWizardPage() {
   const params = useParams();
@@ -53,6 +107,181 @@ export default function FundingWizardPage() {
 
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+
+  // Guardamos el legacy en un ref para no recalcular mil veces
+  const legacyRef = useRef<LegacyForm | null>(null);
+  const tipoInitRef = useRef(false);
+  const countryInitRef = useRef(false);
+
+  // Cargar legacyForm una vez
+  useEffect(() => {
+    try {
+      const global = typeof window !== "undefined" ? (window as any).__arete : undefined;
+      const legacyFromGlobal: LegacyForm | null = global?.form ?? null;
+      const legacyFromStorage: LegacyForm | null =
+        readJSON<LegacyForm>("arete:legacyForm") ?? readJSON<LegacyForm>("arete:form");
+
+      const legacy: LegacyForm | null = legacyFromGlobal ?? legacyFromStorage;
+      if (!legacy) return;
+
+      legacyRef.current = legacy;
+    } catch (e) {
+      console.error("[F1] Error leyendo legacyForm:", e);
+    }
+  }, []);
+
+  // Auto-relleno reactivo según tipo (natural/empresa) + legacy
+  useEffect(() => {
+    const legacy = legacyRef.current;
+    if (!legacy) return;
+
+    const meta = legacy.meta ?? {};
+    const postulante = legacy.postulante ?? {};
+
+    // --- UBICACIÓN ---
+    const rawUbicacion = (legacy.ubicacion ?? meta.ubicacion ?? "").toString();
+    let locComuna = "";
+    let locRegion = "";
+    let locCountryLabel = "";
+
+    if (rawUbicacion) {
+      const parts = rawUbicacion
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+
+      if (parts.length === 1) {
+        locComuna = parts[0];
+      } else if (parts.length === 2) {
+        [locComuna, locCountryLabel] = parts;
+      } else if (parts.length >= 3) {
+        [locComuna, locRegion, locCountryLabel] = parts;
+      }
+    }
+
+    // Mapear nombre del país a código
+    const label = locCountryLabel.toLowerCase();
+    const countryFromUbicacion =
+      label.includes("chile") ? "CL" :
+      label.includes("colombia") ? "CO" :
+      label.includes("méxico") || label.includes("mexico") ? "MX" :
+      label.includes("argentina") ? "AR" :
+      label.includes("perú") || label.includes("peru") ? "PE" :
+      label.includes("uruguay") ? "UY" :
+      label.includes("paraguay") ? "PY" :
+      label.includes("bolivia") ? "BO" :
+      label.includes("ecuador") ? "EC" :
+      undefined;
+
+    // --- País: solo lo inicializamos una vez ---
+    if (!countryInitRef.current) {
+      const inferredCountry =
+        postulante.countryCode ??
+        meta.countryCode ??
+        legacy.countryCode ??
+        countryFromUbicacion ??
+        "CL";
+
+      if (typeof inferredCountry === "string" && inferredCountry.length === 2) {
+        setCountryCode(inferredCountry);
+      }
+      countryInitRef.current = true;
+    }
+
+    // --- Tipo: si el legacy guardó uno, lo usamos la primera vez ---
+    if (!tipoInitRef.current && postulante.tipoPostulante) {
+      if (postulante.tipoPostulante === "empresa") {
+        setTipo("empresa");
+      } else {
+        setTipo("natural");
+      }
+      tipoInitRef.current = true;
+    }
+
+    // Decidir qué tipo está activo para el autocompletado
+    const activeTipo: TipoPostulante = tipo;
+
+    if (activeTipo === "natural") {
+      // Persona natural: usamos postulante o founderName + ubicacion
+      if (!nombre && (postulante.nombreCompleto || legacy.founderName)) {
+        setNombre(postulante.nombreCompleto ?? legacy.founderName ?? "");
+      }
+      if (!rutPersona && postulante.rut) {
+        setRutPersona(postulante.rut);
+      }
+      if (!fechaNac && postulante.fechaNacimiento) {
+        setFechaNac(postulante.fechaNacimiento);
+      }
+      if (!genero && postulante.genero) {
+        setGenero(postulante.genero);
+      }
+      if (!regionPersona && (postulante.region || locRegion)) {
+        setRegionPersona(postulante.region ?? locRegion ?? "");
+      }
+      if (!comunaPersona && (postulante.comuna || locComuna)) {
+        setComunaPersona(postulante.comuna ?? locComuna ?? "");
+      }
+      if (!telefonoPersona && postulante.telefono) {
+        setTelefonoPersona(postulante.telefono);
+      }
+    }
+
+    if (activeTipo === "empresa") {
+      // Empresa: usamos postulante o projectName/rubro/sectorId + ubicacion + founderName
+      if (!razonSocial && (postulante.razonSocial || legacy.projectName)) {
+        setRazonSocial(postulante.razonSocial ?? legacy.projectName ?? "");
+      }
+      if (!rutEmpresa && postulante.rutEmpresa) {
+        setRutEmpresa(postulante.rutEmpresa);
+      }
+      if (!fechaInicio && postulante.fechaInicioActividades) {
+        setFechaInicio(postulante.fechaInicioActividades);
+      }
+      if (!giro && (postulante.giroPrincipal || legacy.rubro || legacy.sectorId)) {
+        setGiro(
+          postulante.giroPrincipal ??
+          legacy.rubro ??
+          legacy.sectorId ??
+          ""
+        );
+      }
+      if (!regionEmpresa && (postulante.region || locRegion)) {
+        setRegionEmpresa(postulante.region ?? locRegion ?? "");
+      }
+      if (!comunaEmpresa && (postulante.comuna || locComuna)) {
+        setComunaEmpresa(postulante.comuna ?? locComuna ?? "");
+      }
+      if (!repNombre && (postulante.representanteNombre || legacy.founderName)) {
+        setRepNombre(postulante.representanteNombre ?? legacy.founderName ?? "");
+      }
+      if (!repRut && postulante.representanteRut) {
+        setRepRut(postulante.representanteRut);
+      }
+      if (!telefonoEmpresa && (postulante.telefonoContacto || postulante.telefono)) {
+        setTelefonoEmpresa(
+          postulante.telefonoContacto ?? postulante.telefono ?? ""
+        );
+      }
+    }
+  }, [
+    tipo,
+    nombre,
+    rutPersona,
+    fechaNac,
+    genero,
+    regionPersona,
+    comunaPersona,
+    telefonoPersona,
+    razonSocial,
+    rutEmpresa,
+    fechaInicio,
+    giro,
+    regionEmpresa,
+    comunaEmpresa,
+    repNombre,
+    repRut,
+    telefonoEmpresa,
+  ]);
 
   const handleBack = () => {
     router.back();
@@ -93,29 +322,28 @@ export default function FundingWizardPage() {
           };
 
     try {
-    const res = await fetch("/api/funding-session/save-step", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId,
-        data: payloadF1,
-      }),
-    });
+      const res = await fetch("/api/funding-session/save-step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          data: payloadF1,
+        }),
+      });
 
-    if (!res.ok) {
-      const errJson = await res.json().catch(() => ({}));
-      console.error("[F1] Error al guardar paso F1:", errJson);
-    } else {
-      setSavedMsg("Datos del postulante guardados.");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        console.error("[F1] Error al guardar paso F1:", errJson);
+      } else {
+        setSavedMsg("Datos del postulante guardados.");
+      }
+    } catch (err) {
+      console.error("[F1] Error de red al guardar paso F1:", err);
+    } finally {
+      setSaving(false);
+      router.push(`/funding/${sessionId}/f2`);
     }
-  } catch (err) {
-    console.error("[F1] Error de red al guardar paso F1:", err);
-  } finally {
-    setSaving(false);
-    // Pasamos igual al siguiente paso (por ahora)
-    router.push(`/funding/${sessionId}/f2`);
-  }
-};
+  };
 
   if (!sessionId) {
     return (
@@ -129,31 +357,29 @@ export default function FundingWizardPage() {
 
   return (
     <main className="container max-w-3xl mx-auto py-8 space-y-4">
-  <header className="mb-4 text-center space-y-2">
-    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
-      Módulo perfil postulante
-    </p>
-    <h1 className="text-2xl font-semibold">
-      Paso F1 – Perfil del postulante
-    </h1>
-    <p className="mt-1 text-sm text-muted-foreground max-w-xl mx-auto">
-      Cuéntanos quién va a postular al fondo. Esta información es la base de casi
-            todos los formularios (Sercotec, Corfo, fondos municipales, etc.).
-
-    </p>
-    <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-[11px]">
-      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-700">
-        F1 de F5 · Perfil del postulante
-      </span>
-      <span className="text-slate-400">
-        ID sesión:{" "}
-        <code className="font-mono text-[10px] bg-slate-50 px-1.5 py-0.5 rounded">
-          {sessionId}
-        </code>
-      </span>
-    </div>
-  </header>
-
+      <header className="mb-4 text-center space-y-2">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">
+          Módulo perfil postulante
+        </p>
+        <h1 className="text-2xl font-semibold">
+          Paso F1 – Perfil del postulante
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground max-w-xl mx-auto">
+          Cuéntanos quién va a postular al fondo. Esta información es la base
+          de casi todos los formularios (Sercotec, Corfo, fondos municipales, etc.).
+        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-[11px]">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-700">
+            F1 de F8 · Perfil del postulante
+          </span>
+          <span className="text-slate-400">
+            ID sesión:{" "}
+            <code className="font-mono text-[10px] bg-slate-50 px-1.5 py-0.5 rounded">
+              {sessionId}
+            </code>
+          </span>
+        </div>
+      </header>
 
       <Card>
         <CardHeader className="pb-3 space-y-3">
@@ -333,7 +559,9 @@ export default function FundingWizardPage() {
                 </label>
 
                 <label className="space-y-1 sm:col-span-2">
-                  <span className="text-xs font-medium">Rubro o giro principal</span>
+                  <span className="text-xs font-medium">
+                    Rubro o giro principal
+                  </span>
                   <input
                     type="text"
                     className="w-full rounded-md border px-2 py-1.5 text-sm"

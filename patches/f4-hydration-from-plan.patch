@@ -1,0 +1,107 @@
+*** Begin Patch
+*** Update File: app/funding/[sessionId]/f4/page.tsx
+@@
+ type PlanPreview = {
+   inversionInicial?: number;
+   capitalTrabajo?: number;
+   marketingMensual?: number;
+   ventaAnual?: number;
+   ventaMensual?: number;
++  ingresosMeta?: number;
++  ticket?: number;
++  costoUnit?: number;
++  convPct?: number;
++  traficoMensual?: number;
++  gastosFijos?: number; // en legacy suele venir anual (ver debug)
+   sectorId?: string;
+   [key: string]: any;
+ };
+@@
+ function deriveFromLegacy(legacy: LegacyForm | null): Derived | null {
+   if (!legacy) return null;
+ 
+   const plan: PlanPreview | null = legacy.plan ?? null;
+   const s6: any = legacy.step6 ?? legacy.data?.step6 ?? {};
+ 
+-  const ventaAnual =
+-    toNumber(plan?.ventaAnual) ??
+-    toNumber(s6.ventaAnual ?? s6.ventaAnio1) ??
+-    0;
+-
+-  const ventaMensual =
+-    toNumber(plan?.ventaMensual) ??
+-    (ventaAnual > 0 ? Math.round(ventaAnual / 12) : 0);
+-
+-  const ticket =
+-    Math.max(0, toNumber(s6.ticket) ?? 0);
+-
+-  // Step-6 NO guarda clientesMensuales. Derivamos desde venta/ticket (sin inventar).
+-  const clientesMensuales =
+-    ticket > 0 && ventaMensual > 0 ? Math.round(ventaMensual / ticket) : 0;
+-
+-  const costoVarUnit = Math.max(0, toNumber(s6.costoVarUnit) ?? 0);
+-
+-  const gastosFijosMensuales = Math.max(0, toNumber(s6.gastosFijosMensuales) ?? 0);
+-
+-  const marketingMensual = Math.max(
+-    0,
+-    toNumber(s6.marketingMensual ?? s6.presupuestoMarketing ?? plan?.marketingMensual) ?? 0
+-  );
++  // 1) Ventas (preferimos plan; fallback step6)
++  const ventaAnual =
++    toNumber(plan?.ventaAnual) ??
++    toNumber(plan?.ingresosMeta) ??
++    toNumber(s6.ventaAnual ?? s6.ventaAnio1) ??
++    0;
++
++  const ventaMensual =
++    toNumber(plan?.ventaMensual) ??
++    (ventaAnual > 0 ? Math.round(ventaAnual / 12) : 0);
++
++  // 2) Ticket (preferimos plan.ticket, porque Step-7/9 lo consolidan ahí)
++  const ticket = Math.max(0, toNumber(plan?.ticket) ?? toNumber(s6.ticket) ?? 0);
++
++  // 3) Costo unitario (preferimos plan.costoUnit; fallback step6 unit o pct)
++  const costoFromPct =
++    ticket > 0 ? (ticket * Math.max(0, toNumber(s6.costoVarPct) ?? 0)) / 100 : 0;
++  const costoVarUnit = Math.max(
++    0,
++    toNumber(plan?.costoUnit) ??
++      toNumber(s6.costoVarUnit) ??
++      costoFromPct ??
++      0
++  );
++
++  // 4) Gastos fijos: en legacy.plan suele venir anual (gastosFijos). Paso a mensual.
++  const gastosFijosMensuales = Math.max(
++    0,
++    toNumber(s6.gastosFijosMensuales) ??
++      (toNumber(plan?.gastosFijos) ? Math.round((toNumber(plan?.gastosFijos) ?? 0) / 12) : 0)
++  );
++
++  // 5) Marketing mensual: preferimos plan.marketingMensual (ya mensual)
++  const marketingMensual = Math.max(
++    0,
++    toNumber(plan?.marketingMensual) ??
++      toNumber(s6.marketingMensual ?? s6.presupuestoMarketing) ??
++      0
++  );
++
++  // 6) Clientes/mes: preferimos lógica Step-7/9 (tráfico × conversión); fallback venta/ticket.
++  const convPct = Math.max(0, toNumber(plan?.convPct) ?? toNumber(s6.conversionPct) ?? 0);
++  const traficoMensual = Math.max(0, toNumber(plan?.traficoMensual) ?? toNumber(s6.traficoMensual) ?? 0);
++  const clientesDesdeTrafico =
++    traficoMensual > 0 && convPct > 0 ? Math.round((traficoMensual * convPct) / 100) : 0;
++
++  const clientesMensuales =
++    clientesDesdeTrafico > 0
++      ? clientesDesdeTrafico
++      : ticket > 0 && ventaMensual > 0
++      ? Math.round(ventaMensual / ticket)
++      : 0;
+ 
+   const mcUnit = Math.max(ticket - costoVarUnit, 0);
+ 
+   const margenBrutoPct =
+     ticket > 0 ? clampPct((mcUnit / ticket) * 100) : null;
+*** End Patch

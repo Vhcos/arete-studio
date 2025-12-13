@@ -1,4 +1,3 @@
-// app/wizard/step-9/page.tsx
 "use client";
 import React from "react";
 import { useRouter } from "next/navigation";
@@ -7,6 +6,7 @@ import { PrevButton, NextButton } from "@/components/wizard/WizardNav";
 import UpsellBanner from "@/components/wizard/UpsellBanner";
 import EconomicHeader from "@/components/wizard/EconomicHeader";
 import BotIcon from "@/components/icons/BotIcon";
+import { calcBreakEven } from "@/lib/economics/break-even";
 
 /* ============== Utils ============== */
 const formatCLP = (n: number) =>
@@ -18,13 +18,6 @@ const formatCLP = (n: number) =>
 
 const ceil = (x: number) => (x > 0 ? Math.ceil(x) : 0);
 
-function deriveCostoUnit(ticket: number, costoVarPct?: number, costoVarUnit?: number) {
-  if (typeof costoVarUnit === "number" && costoVarUnit > 0) return Math.min(costoVarUnit, ticket);
-  if (typeof costoVarPct === "number" && costoVarPct > 0) return Math.min((ticket * costoVarPct) / 100, ticket);
-  return 0;
-}
-const calcMcUnit = (ticket: number, costoUnit: number) => Math.max(ticket - costoUnit, 0);
-
 /* ============== Page ============== */
 export default function Step9Page() {
   const router = useRouter();
@@ -34,14 +27,25 @@ export default function Step9Page() {
   // ---- Base (Step-6/7) ----
   const ticket = Math.max(0, Number(s6.ticket ?? 0));
   const ventaAnual = Math.max(0, Number(s6.ventaAnual ?? s6.ventaAnio1 ?? 0));
-  const marketingMensual = Math.max(0, Number(s6.marketingMensual ?? s6.presupuestoMarketing ?? 0));
+  const marketingMensual = Math.max(
+    0,
+    Number(s6.marketingMensual ?? s6.presupuestoMarketing ?? 0)
+  );
   const gastosFijosMensuales = Math.max(0, Number(s6.gastosFijosMensuales ?? 0));
   const mesesPE = Math.max(1, Math.round(Number(s6.mesesPE ?? 6)));
 
-  const costoUnit = deriveCostoUnit(ticket, Number(s6.costoVarPct ?? 0), Number(s6.costoVarUnit ?? 0));
-  const mcUnit = calcMcUnit(ticket, costoUnit);
+  // ✅ Fuente única de P.E. (Punto de Equilibrio): incluye gastos fijos + marketing
+  const be = calcBreakEven({
+    ticket,
+    costoVarPct: Number(s6.costoVarPct ?? 0),
+    costoVarUnit: Number(s6.costoVarUnit ?? 0),
+    gastosFijosMensuales,
+    marketingMensual,
+  });
 
-  const clientesPE = mcUnit > 0 && gastosFijosMensuales > 0 ? Math.ceil(gastosFijosMensuales / mcUnit) : 0;
+  const costoUnit = be.costoUnit;
+  const mcUnit = be.mcUnit;
+  const clientesPE = be.clientesPE;
 
   const clientesObjetivoMes =
     Number(s6.clientesMensuales ?? 0) > 0
@@ -51,7 +55,12 @@ export default function Step9Page() {
       : 0;
 
   // Caja inicial editable (se hidrata del Step-6; el usuario puede ajustar aquí)
-  const [cajaInicial, setCajaInicial] = React.useState<number>(Math.round(Number(s6.inversionInicial ?? 0)));
+  const [cajaInicial, setCajaInicial] = React.useState<number>(
+    Math.round(Number(s6.inversionInicial ?? 0))
+  );
+
+  // Debug opcional
+  const [showDebug, setShowDebug] = React.useState(false);
 
   // ---- Créditos (para habilitar CSV) ----
   const [credits, setCredits] = React.useState<number | null>(null);
@@ -89,12 +98,16 @@ export default function Step9Page() {
   for (let m = 1; m <= 12; m++) {
     const factor = mesesPE > 0 ? m / mesesPE : 1; // mantiene pendiente si mesesPE < 12
     const basePE = ceil(clientesPE * factor);
-    const clientes = clientesObjetivoMes > 0 ? Math.min(basePE, clientesObjetivoMes) : basePE;
+    const clientes =
+      clientesObjetivoMes > 0 ? Math.min(basePE, clientesObjetivoMes) : basePE;
 
     const ingresos = clientes * ticket;
     const costoVar = clientes * costoUnit;
     const mc = Math.max(0, ingresos - costoVar);
-    const gastos = gastosFijosMensuales + marketingMensual;
+
+    // ✅ Gastos coherentes con el P.E. (fijos + marketing)
+    const gastos = be.gastosMensuales;
+
     const resultado = mc - gastos;
     caja += resultado;
 
@@ -103,20 +116,33 @@ export default function Step9Page() {
       minCajaMes = m;
     }
 
-    rows.push({ mes: m, factor, clientes, ingresos, costoVar, mc, gastos, resultado, cajaAcum: caja });
+    rows.push({
+      mes: m,
+      factor,
+      clientes,
+      ingresos,
+      costoVar,
+      mc,
+      gastos,
+      resultado,
+      cajaAcum: caja,
+    });
   }
 
   // KPIs de flujo
-  const capitalTrabajo = rows.filter(r => r.resultado < 0).reduce((acc, r) => acc + Math.abs(r.resultado), 0);
+  const capitalTrabajo = rows
+    .filter((r) => r.resultado < 0)
+    .reduce((acc, r) => acc + Math.abs(r.resultado), 0);
+
   const cajaMinimaDeseada = Math.max(0, Math.round(cajaInicial - minCaja));
   const restanteInversion = cajaInicial - capitalTrabajo;
 
   const breakevenMonth = (() => {
-    const idx = rows.findIndex(r => r.clientes >= clientesPE && clientesPE > 0);
+    const idx = rows.findIndex((r) => r.clientes >= clientesPE && clientesPE > 0);
     return idx >= 0 ? rows[idx].mes : 0;
   })();
 
-  const maxAbsResultado = Math.max(1, ...rows.map(r => Math.abs(r.resultado)));
+  const maxAbsResultado = Math.max(1, ...rows.map((r) => Math.abs(r.resultado)));
   const showWarning = ticket <= 0 || mcUnit <= 0;
 
   // ---- Mes 0 (solo muestra la caja inicial en "Ingresos") ----
@@ -141,7 +167,7 @@ export default function Step9Page() {
   function exportCSV() {
     if (!credits || credits <= 0) return;
     const header = ["Mes", "Clientes", "Ingresos", "Margen contrib.", "Gastos", "Resultado", "Caja acumulada"];
-    const lines = rowsWithM0.map(r =>
+    const lines = rowsWithM0.map((r) =>
       ["M" + r.mes, r.clientes, Math.round(r.ingresos), Math.round(r.mc), Math.round(r.gastos), Math.round(r.resultado), Math.round(r.cajaAcum)].join(",")
     );
     const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -158,18 +184,30 @@ export default function Step9Page() {
       <EconomicHeader
         title="Paso 9 · Flujo de caja (12 meses)"
         subtitle={
-          <>Proyectamos tu caja con <b>peldaños iguales</b> hasta tu <b>Punto de Equilibrio</b> y mantenemos la pendiente hasta 12 meses (o hasta tu meta de clientes).</>
+          <>
+            Proyectamos tu caja con <b>peldaños iguales</b> hasta tu <b>P.E. (Punto de Equilibrio)</b>
+            y mantenemos la pendiente hasta 12 meses (o hasta tu meta de clientes).
+          </>
         }
       />
 
-      {/* Explicación técnica (fuera del <p> del header) */}
       <details className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-700">
-        <summary className="cursor-pointer font-medium text-slate-800">¿Cómo calculamos tu proyección de flujo de caja?</summary>
+        <summary className="cursor-pointer font-medium text-slate-800">
+          ¿Cómo calculamos tu proyección de flujo de caja?
+        </summary>
         <ol className="mt-2 list-decimal pl-5 space-y-1">
-          <li><b>Clientes para P.E. (mensual)</b> = Gastos fijos ÷ Margen por unidad (redondeado hacia arriba).</li>
-          <li><b>Peldaños iguales</b>: con {mesesPE} meses al P.E., avanzas 1/{mesesPE}, 2/{mesesPE}, 3/{mesesPE}…</li>
-          <li>Si <b>mesesPE &lt; 12</b>, mantenemos la pendiente hasta el mes 12 (o hasta tu meta de clientes).</li>
-          <li><b>Resultado</b> = Margen contribución − (Gastos fijos + Marketing). La <b>caja</b> se acumula mes a mes.</li>
+          <li>
+            <b>Clientes para P.E. (mensual)</b> = (Gastos fijos + Marketing) ÷ Margen por unidad (redondeado hacia arriba).
+          </li>
+          <li>
+            <b>Peldaños iguales</b>: con {mesesPE} meses al P.E., avanzas 1/{mesesPE}, 2/{mesesPE}, 3/{mesesPE}…
+          </li>
+          <li>
+            Si <b>mesesPE &lt; 12</b>, mantenemos la pendiente hasta el mes 12 (o hasta tu meta de clientes).
+          </li>
+          <li>
+            <b>Resultado</b> = Margen contribución − (Gastos fijos + Marketing). La <b>caja</b> se acumula mes a mes.
+          </li>
         </ol>
       </details>
 
@@ -198,19 +236,20 @@ export default function Step9Page() {
         </div>
       </section>
 
-      {/* Supuestos + Ajustes + NUEVOS KPIs */}
+      {/* Supuestos + Ajustes + KPIs */}
       <section className="mt-6 grid gap-6 md:grid-cols-2">
         <div className="rounded-2xl border bg-white shadow-sm p-5">
           <h3 className="font-medium">Supuestos</h3>
           <ul className="mt-3 text-sm text-slate-700 space-y-1">
-            <li>Ticket: <strong>{formatCLP(ticket)}</strong></li>
-            <li>Costo variable unitario: <strong>{formatCLP(costoUnit)}</strong></li>
-            <li>Margen por unidad: <strong>{formatCLP(mcUnit)}</strong></li>
-            <li>Clientes para P.E. (mensual): <strong>{clientesPE}</strong></li>
+            <li>Ticket: <strong>{formatCLP(be.ticket)}</strong></li>
+            <li>Costo variable unitario: <strong>{formatCLP(be.costoUnit)}</strong></li>
+            <li>Margen por unidad: <strong>{formatCLP(be.mcUnit)}</strong></li>
+            <li>Gastos fijos mensuales: <strong>{formatCLP(be.gastosFijosMensuales)}</strong></li>
+            <li>Marketing mensual: <strong>{formatCLP(be.marketingMensual)}</strong></li>
+            <li>Gastos mensuales (fijos + marketing): <strong>{formatCLP(be.gastosMensuales)}</strong></li>
+            <li>Clientes para P.E. (mensual): <strong>{be.clientesPE}</strong></li>
             <li>Meses para llegar al P.E.: <strong>{mesesPE}</strong></li>
             <li>Clientes objetivo (tope): <strong>{clientesObjetivoMes || "—"}</strong></li>
-            <li>Gastos fijos mensuales: <strong>{formatCLP(gastosFijosMensuales)}</strong></li>
-            <li>Marketing mensual: <strong>{formatCLP(marketingMensual)}</strong></li>
           </ul>
 
           <div className="mt-4 grid grid-cols-1 gap-3">
@@ -223,13 +262,33 @@ export default function Step9Page() {
                 onChange={(e) => setCajaInicial(Number(e.target.value || 0))}
               />
             </label>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="dbg-step9"
+                type="checkbox"
+                checked={showDebug}
+                onChange={(e) => setShowDebug(e.target.checked)}
+              />
+              <label htmlFor="dbg-step9" className="text-xs text-slate-600 cursor-pointer">
+                Mostrar debug del cálculo
+              </label>
+            </div>
+
+            {showDebug && (
+              <div className="text-xs rounded-xl border px-3 py-2 bg-slate-50 text-slate-700">
+                <div className="font-semibold mb-1">Debug</div>
+                <div>ventasPE: <b>{formatCLP(be.ventasPE)}</b></div>
+              </div>
+            )}
+
             <div className="text-sm rounded-xl border px-3 py-2 bg-slate-50">
               <div className="flex items-center justify-between">
                 <span className="font-medium">Caja mínima deseada (sugerida)</span>
                 <strong>{formatCLP(cajaMinimaDeseada)}</strong>
               </div>
               <div className="mt-1 text-[11px] text-slate-600">
-                Fórmula: <em>Caja inicial − Mínimo de caja observada</em>.
+                Fórmula: <em>Caja inicial − Mínimo de caja observado</em>.
               </div>
             </div>
           </div>
@@ -260,13 +319,13 @@ export default function Step9Page() {
         </div>
       </section>
 
-      {/* Tabla — con M0 y barra en Resultado (sin “Costo variable”) */}
+      {/* Tabla */}
       <section className="mt-6 rounded-2xl border bg-white shadow-sm p-5 overflow-x-auto">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-medium">Tabla de flujo de caja (12 meses)</h3>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowAll(s => !s)}
+              onClick={() => setShowAll((s) => !s)}
               className="rounded-lg border px-2.5 py-1.5 text-xs hover:bg-slate-50"
             >
               {showAll ? "Ver 6 meses" : "Ver 12 meses"}
@@ -274,8 +333,18 @@ export default function Step9Page() {
             <button
               onClick={exportCSV}
               disabled={credits === null || credits <= 0}
-              title={credits === null ? "Cargando créditos…" : credits! <= 0 ? "Requiere créditos activos" : "Exportar CSV"}
-              className={`rounded-lg border px-2.5 py-1.5 text-xs ${credits && credits > 0 ? "hover:bg-slate-50" : "opacity-50 cursor-not-allowed"}`}
+              title={
+                credits === null
+                  ? "Cargando créditos…"
+                  : credits! <= 0
+                  ? "Requiere créditos activos"
+                  : "Exportar CSV"
+              }
+              className={`rounded-lg border px-2.5 py-1.5 text-xs ${
+                credits && credits > 0
+                  ? "hover:bg-slate-50"
+                  : "opacity-50 cursor-not-allowed"
+              }`}
             >
               Descargar CSV
             </button>
@@ -297,8 +366,11 @@ export default function Step9Page() {
           <tbody>
             {displayRows.map((r) => {
               const isBE = r.mes !== 0 && breakevenMonth === r.mes && breakevenMonth > 0;
-              const barBase = Math.max(1, maxAbsResultado); // evita NaN/0
-              const barPct = r.mes === 0 ? 0 : Math.min(100, Math.round((Math.abs(r.resultado) / barBase) * 100));
+              const barBase = Math.max(1, maxAbsResultado);
+              const barPct =
+                r.mes === 0
+                  ? 0
+                  : Math.min(100, Math.round((Math.abs(r.resultado) / barBase) * 100));
               const positive = r.resultado >= 0;
 
               return (
@@ -336,7 +408,9 @@ export default function Step9Page() {
                             style={{ width: `${barPct}%` }}
                           />
                         </div>
-                        <span className="text-xs" aria-hidden>{positive ? "🟢" : "🔴"}</span>
+                        <span className="text-xs" aria-hidden>
+                          {positive ? "🟢" : "🔴"}
+                        </span>
                       </div>
                     )}
                   </td>
@@ -350,11 +424,11 @@ export default function Step9Page() {
         </table>
 
         <p className="mt-3 text-xs text-slate-500">
-          Inicial,  luego cada negocio tendra estacionalidad. En móvil puedes desplazar la tabla <b>horizontalmente</b> para ver todas las columnas.
+          Inicial, luego cada negocio tendrá estacionalidad. En móvil puedes desplazar la tabla{" "}
+          <b>horizontalmente</b> para ver todas las columnas.
         </p>
       </section>
 
-      {/* Navegación */}
       <div className="mt-6 flex items-center justify-between">
         <PrevButton href="/wizard/step-8" />
         <NextButton onClick={() => router.push("/wizard/step-10")} />
@@ -365,7 +439,7 @@ export default function Step9Page() {
       <p className="mt-4 text-xs text-slate-500">
         Nota: estos números son orientativos. La{" "}
         <span className="inline-flex items-center gap-1 font-medium">
-          <BotIcon className="w-3.5 h-3.5" /> IA Aret3
+          <BotIcon className="w-3.5 h-3.5" /> IA (inteligencia artificial) Aret3
         </span>{" "}
         los usará para ajustar tu Tablero e Informe final.
       </p>

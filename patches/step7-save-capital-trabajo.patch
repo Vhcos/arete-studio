@@ -1,0 +1,22 @@
+*** Begin Patch
+*** Update File: app/wizard/step-7/page.tsx
+@@
+   function onNext() {
+     const conv = Math.max(0, Math.min(100, Math.round(conversionPct)));
+     const traf = Number.isFinite(traficoSugerido) ? traficoSugerido : undefined;
+     const mkt = parseCLP(marketingMensual);
+ 
+     setStep6({
+       ...(data.step6 ?? {}),
+       mesesPE,
+       conversionPct: conv,
+       traficoMensual: traf,
+       presupuestoMarketing: mkt > 0 ? mkt : undefined,
+       marketingMensual: mkt > 0 ? mkt : undefined, // alias compat
++      // ✅ clave: persistimos el capital de trabajo calculado para que exista en F3 e informe
++      capitalTrabajo: capitalTrabajoNecesario,
+     } as any);
+ 
+     router.push("/wizard/step-8");
+   }
+*** End Patch

@@ -1,0 +1,84 @@
+*** Begin Patch
+*** Update File: app/api/funding-session/[sessionId]/drafts/route.ts
+@@
+ function detectNoSales(F2: any): boolean {
+   if (!F2 || typeof F2 !== "object") return false;
+   const raw = JSON.stringify(F2).toLowerCase();
+   if (raw.includes("sin_ventas")) return true;
+   if (raw.includes("sin ventas")) return true;
+   if (raw.includes("no tengo ventas")) return true;
+   if (raw.includes("no hay ventas")) return true;
+ 
+   const v: any = F2 as any;
++  // Si está en etapa idea y no hay ventas/clientes, lo tratamos como "sin ventas"
++  if (typeof v.estadoNegocio === "string" && v.estadoNegocio.toLowerCase().includes("idea")) {
++    const vm = typeof v.ventasMensuales === "number" ? v.ventasMensuales : null;
++    const cm = typeof v.clientesMensuales === "number" ? v.clientesMensuales : null;
++    if ((vm === 0 || vm === null) && (cm === 0 || cm === null)) return true;
++  }
+   if (v.tieneVentas === false) return true;
+   if (
+     typeof v.tieneVentas === "string" &&
+     v.tieneVentas.toLowerCase().includes("no")
+   )
+     return true;
+@@
+ function buildTraccionSection(facts: any): string {
+   const estado = facts?.estado ?? {};
+   const noSales = !!facts?.flags?.noSales;
+ 
+   const anio = estado.anioInicio ? String(estado.anioInicio) : "[completar]";
+   const est = estado.estadoNegocio ?? "[completar]";
++  const estNorm = String(est ?? "").toLowerCase();
++
++  // Si el usuario declaró "idea", no digamos "en marcha"
++  if (estNorm.includes("idea")) {
++    return [
++      `Actualmente el proyecto se encuentra en etapa de idea (según F2) y aún sin ventas.`,
++      `Año de inicio: ${anio}. Estado declarado: ${est}.`,
++      `Validación y avance actual: [completar con hitos reales: prototipo, primeras publicaciones, catálogo, proveedores, etc.].`,
++      `Próximos hitos (30–60 días): [completar].`,
++    ].join("\\n");
++  }
+ 
+   if (noSales) {
+     return [
+       `Actualmente el negocio está en marcha pero aún sin ventas (según F2).`,
+       `Año de inicio: ${anio}. Estado declarado: ${est}.`,
+       `Validación y avance actual: [completar con hitos reales: prototipo, primeras publicaciones, catálogo, proveedores, etc.].`,
+       `Próximos hitos (30–60 días): [completar].`,
+     ].join("\n");
+   }
+@@
+ }
+ 
++function buildMercadoSection(facts: any): string {
++  const ex = facts?.informe_extracto ?? null;
++  const industry = typeof ex?.industryBrief === "string" && ex.industryBrief.trim() ? ex.industryBrief.trim() : "[completar]";
++  const swot = typeof ex?.swotAndMarket === "string" && ex.swotAndMarket.trim() ? ex.swotAndMarket.trim() : "[completar]";
++  const comp = typeof ex?.competitionLocal === "string" && ex.competitionLocal.trim() ? ex.competitionLocal.trim() : "[completar]";
++
++  // IMPORTANTE: no inventamos. Solo reordenamos texto existente.
++  return [
++    `Contexto de industria (según informe):`,
++    industry,
++    ``,
++    `Fortalezas, oportunidades y riesgos (según informe):`,
++    swot,
++    ``,
++    `Competencia local y referencias (según informe):`,
++    comp,
++  ].join("\\n");
++}
++
+@@
+     // 6) Override “críticos” (hard-anchored)
+     drafts.traccion_y_estado_actual = buildTraccionSection(facts);
+     drafts.monto_y_uso_de_fondos = buildMontoUsoSection(facts);
+     drafts.impacto_y_resultados_esperados = buildImpactoSection(facts);
++    // ✅ Para auditar que realmente usa el informe: este bloque queda 100% anclado
++    drafts.mercado_y_clientes_objetivo = buildMercadoSection(facts);
+ 
+     // 7) Guardar payload (cache + steps.F7)
+     const nowIso = new Date().toISOString();
+*** End Patch
