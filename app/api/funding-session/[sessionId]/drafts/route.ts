@@ -1,3 +1,4 @@
+// app/api/funding-session/[sessionId]/drafts/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,6 @@ export type FundingDrafts = {
 /* ===================== Helpers: report/plan ===================== */
 
 function getReportFromPayload(payload: any) {
-  // Soporta: legacy y el nuevo (meta.meta)
   return (
     payload?.iaReportRaw ??
     payload?.meta?.iaReportRaw ??
@@ -37,26 +37,16 @@ function getReportFromPayload(payload: any) {
 }
 
 function unwrapIAReport(raw: any) {
-  // Queremos llegar a un objeto con { sections: {...} }
-  // Formatos vistos:
-  // 1) { ranking, sections }
-  // 2) { ok: true, data: { ranking, sections }, model, usage }
-  // 3) { data: { ranking, sections } }
   if (!raw || typeof raw !== "object") return null;
 
-  // Caso 2 y 3: raw.data
   const d = (raw as any).data;
   if (d && typeof d === "object") {
-    // Si d.sections existe, es el bueno
     if ((d as any).sections && typeof (d as any).sections === "object") return d;
-    // Por si viene doblemente anidado (raro, pero safe)
     const d2 = (d as any).data;
     if (d2 && typeof d2 === "object" && (d2 as any).sections) return d2;
-    // Si no hay sections, igual devolvemos d para debug
     return d;
   }
 
-  // Caso 1: raw.sections
   if ((raw as any).sections && typeof (raw as any).sections === "object") return raw;
 
   return raw;
@@ -154,21 +144,65 @@ function looksLikeLinksStep(x: any) {
 
 function extractBenchmarkFromPayload(payload: any): {
   ventasIAExplicacion: string | null;
-  ventasIAFuentes: string | null;
+  ventasIAFuentes: any | null;
 } {
   let explicacion: string | null = null;
-  let fuentes: string | null = null;
+  let fuentes: any | null = null;
 
   const visit = (node: any) => {
     if (!node || typeof node !== "object") return;
+
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        visit(item);
+        if (explicacion && fuentes) return;
+      }
+      return;
+    }
+
+    // Si el nodo tiene un subobjeto ventasIA con { explicacion, fuentes }
+    const ventasIA: any = (node as any).ventasIA;
+    if (ventasIA && typeof ventasIA === "object") {
+      if (
+        !explicacion &&
+        typeof ventasIA.explicacion === "string" &&
+        ventasIA.explicacion.trim()
+      ) {
+        explicacion = ventasIA.explicacion.trim();
+      }
+      if (!fuentes && ventasIA.fuentes != null) {
+        fuentes = ventasIA.fuentes;
+      }
+    }
+
     for (const [k, v] of Object.entries(node)) {
       if (!explicacion && k === "ventasIAExplicacion" && typeof v === "string" && v.trim()) {
         explicacion = v.trim();
-      } else if (!fuentes && k === "ventasIAFuentes" && typeof v === "string" && v.trim()) {
-        fuentes = v.trim();
       }
-      if (v && typeof v === "object") visit(v);
-      if (explicacion && fuentes) return;
+
+      if (!fuentes && k === "ventasIAFuentes" && v != null) {
+        // Puede venir como string o como array
+        fuentes = v;
+      }
+
+      // Fallback genérico: { explicacion, fuentes } sin prefijo ventasIA
+      if (
+        !explicacion &&
+        k === "explicacion" &&
+        typeof v === "string" &&
+        /benchmark|ventas|ticket promedio/i.test(v)
+      ) {
+        explicacion = v.trim();
+      }
+
+      if (!fuentes && k === "fuentes" && v != null) {
+        fuentes = v;
+      }
+
+      if (v && typeof v === "object") {
+        visit(v);
+        if (explicacion && fuentes) return;
+      }
     }
   };
 
@@ -187,18 +221,14 @@ function buildFacts(payload: any, steps: any, clientId: any) {
   const F6 = steps.F6 ?? (looksLikeInstrumentStep(steps.F4) ? steps.F4 : null);
   const F7 = steps.F7 ?? (looksLikeLinksStep(steps.F5) ? steps.F5 : null); // reservado
 
-  // Informe principal (Step-6 / explain)
   const iaReportRaw = getReportFromPayload(payload);
   const iaReport = unwrapIAReport(iaReportRaw);
   const reportSections = (iaReport as any)?.sections ?? null;
 
-  // Plan si existe
   const aiPlan = getPlanFromPayload(payload);
 
-  // Benchmark de Step-6: lo buscamos en TODO el payload
   const { ventasIAExplicacion, ventasIAFuentes } = extractBenchmarkFromPayload(payload);
 
-  // idea/rubro/ubicación desde payload.meta / top
   const metaTop = payload?.meta ?? {};
   const proyectoIdea = metaTop?.idea ?? payload?.idea ?? null;
   const proyectoRubro = metaTop?.rubro ?? payload?.rubro ?? null;
@@ -237,7 +267,7 @@ function buildFacts(payload: any, steps: any, clientId: any) {
           montoSolicitado: (F3 as any).montoSolicitado ?? null,
           aportePropio: (F3 as any).aportePropio ?? null,
           porcentajeAporte: (F3 as any).porcentajeAporte ?? null,
-          usosPrincipales: (F3 as any).usosPrincipales ?? null, // tal cual
+          usosPrincipales: (F3 as any).usosPrincipales ?? null,
         }
       : null,
     impacto: F4
@@ -260,8 +290,6 @@ function buildFacts(payload: any, steps: any, clientId: any) {
           dispuestoEndeudarse: (F6 as any).dispuestoEndeudarse ?? null,
         }
       : null,
-
-    // Extracto del informe principal (4 secciones)
     informe_extracto: reportSections
       ? {
           finalVerdict: (reportSections as any).finalVerdict ?? null,
@@ -270,8 +298,6 @@ function buildFacts(payload: any, steps: any, clientId: any) {
           competitionLocal: (reportSections as any).competitionLocal ?? null,
         }
       : null,
-
-    // Benchmarking detallado de Step-6 (ventasIAExplicacion y fuentes)
     benchmarking:
       ventasIAExplicacion || ventasIAFuentes
         ? {
@@ -279,16 +305,12 @@ function buildFacts(payload: any, steps: any, clientId: any) {
             ventasIAFuentes,
           }
         : null,
-
     plan: aiPlan ?? null,
-
     flags: {
       noSales: detectNoSales(F2),
     },
     clientId,
     reportId: payload?.reportId ?? null,
-
-    // Debug interno (solo logs)
     __debug: {
       hasReportRaw: !!iaReportRaw,
       rawTopKeys:
@@ -340,14 +362,24 @@ function collectAllowedNumbersFromFacts(facts: any): Set<string> {
   addFromText(facts?.financiamiento?.usosPrincipales);
   addFromText(facts?.impacto?.impactoNarrativa);
 
-  // También dejamos que la IA repita números del informe y del benchmark
   addFromText(facts?.informe_extracto?.competitionLocal);
   addFromText(facts?.informe_extracto?.swotAndMarket);
   addFromText(facts?.informe_extracto?.industryBrief);
   addFromText(facts?.informe_extracto?.finalVerdict);
 
   addFromText(facts?.benchmarking?.ventasIAExplicacion);
-  addFromText(facts?.benchmarking?.ventasIAFuentes);
+
+  const fuentes = facts?.benchmarking?.ventasIAFuentes;
+  if (typeof fuentes === "string") {
+    addFromText(fuentes);
+  } else if (Array.isArray(fuentes)) {
+    for (const s of fuentes) {
+      if (!s) continue;
+      addFromText((s as any).title);
+      addFromText((s as any).url);
+      addFromText((s as any).descripcion);
+    }
+  }
 
   addFromText(facts?.instrumento?.plazoUsoFondos);
 
@@ -383,7 +415,7 @@ function sanitizeDraftsNumbers(d: FundingDrafts, allowed: Set<string>): FundingD
   return out as FundingDrafts;
 }
 
-/* ===================== Secciones “críticas” (hard-anchored) ===================== */
+/* ===================== Secciones “críticas” ===================== */
 
 function buildTraccionSection(facts: any): string {
   const estado = facts?.estado ?? {};
@@ -462,41 +494,6 @@ function buildImpactoSection(facts: any): string {
     `- Margen bruto: ${vPct(k.margenBrutoPct_meta)}`,
     `- Resultado mensual operativo: ${vMoney(k.resultadoMensual_meta)}`,
   ].join("\n");
-}
-
-/**
- * Mercado y clientes objetivo:
- * - Toma el texto generado por la IA.
- * - Le agrega, si existe, el bloque completo de benchmark de Step-6
- *   (ventasIAExplicacion y ventasIAFuentes).
- */
-function buildMercadoSection(facts: any, base: string): string {
-  const textoBase = typeof base === "string" ? base.trim() : "";
-
-  const benchmarking = facts?.benchmarking ?? null;
-  const explicacion =
-    typeof benchmarking?.ventasIAExplicacion === "string"
-      ? benchmarking.ventasIAExplicacion.trim()
-      : "";
-  const fuentes =
-    typeof benchmarking?.ventasIAFuentes === "string"
-      ? benchmarking.ventasIAFuentes.trim()
-      : "";
-
-  // Si no hay benchmark, devolvemos lo que vino de la IA tal cual
-  if (!explicacion && !fuentes) return textoBase || "";
-
-  const partes: string[] = [];
-  if (textoBase) partes.push(textoBase);
-  if (explicacion) partes.push(explicacion);
-
-  if (fuentes) {
-    if (!explicacion.includes(fuentes)) {
-      partes.push(`Fuentes usadas para esta estimación: ${fuentes}`);
-    }
-  }
-
-  return partes.join("\n\n");
 }
 
 /* ===================== Prompt ===================== */
@@ -616,14 +613,13 @@ export async function POST(req: Request, ctx: RouteCtx) {
   let didDebit = false;
 
   try {
-    // 1) Crédito (idempotente por sesión)
+    // 1) Crédito
     const creditKey = `funding_drafts:${fundingSession.id}`;
     await tryDebitCredit(userId, creditKey, 1);
-
     creditTxId = creditKey;
     didDebit = true;
 
-    // 2) Facts pack
+    // 2) Facts
     const payload: any = currentPayload ?? {};
     const steps: any = payload.steps ?? {};
     const facts = buildFacts(payload, steps, clientId);
@@ -638,7 +634,7 @@ export async function POST(req: Request, ctx: RouteCtx) {
     // 3) Allowed numbers
     const allowed = collectAllowedNumbersFromFacts(facts);
 
-    // 4) OpenAI (JSON)
+    // 4) OpenAI
     const prompt = buildPrompt(facts);
     const completion = await openai.chat.completions.create({
       model: MODEL,
@@ -652,21 +648,56 @@ export async function POST(req: Request, ctx: RouteCtx) {
     const raw = completion.choices[0].message.content;
     let drafts = toJson<FundingDrafts>(raw);
 
-    // 4.5) Forzar que mercado_y_clientes_objetivo SIEMPRE incluya el benchmark de Step-6
-    drafts.mercado_y_clientes_objetivo = buildMercadoSection(
-      facts,
-      drafts.mercado_y_clientes_objetivo
-    );
+    // 4.5) Añadir benchmarking literal al bloque 5
+    {
+      const benchExplain = facts?.benchmarking?.ventasIAExplicacion;
+      const benchFuentes = facts?.benchmarking?.ventasIAFuentes;
 
-    // 5) Sanitizar números
+      let benchText = "";
+
+      if (typeof benchExplain === "string" && benchExplain.trim()) {
+        benchText += `Benchmark de ventas (IA ARET3): ${benchExplain.trim()}`;
+      }
+
+      if (benchFuentes) {
+        if (Array.isArray(benchFuentes) && benchFuentes.length) {
+          const sourcesStr = benchFuentes
+            .map((s: any, i: number) => {
+              const title = (s?.title ?? `Fuente ${i + 1}`).toString().trim();
+              const url = (s?.url ?? "").toString().trim();
+              return url ? `${title}: ${url}` : title;
+            })
+            .join(" | ");
+
+          if (sourcesStr) {
+            benchText += (benchText ? "\n\n" : "") +
+              `Fuentes usadas para esta estimación: ${sourcesStr}.`;
+          }
+        } else if (typeof benchFuentes === "string" && benchFuentes.trim()) {
+          benchText += (benchText ? "\n\n" : "") +
+            `Fuentes usadas para esta estimación: ${benchFuentes.trim()}`;
+        }
+      }
+
+      if (benchText) {
+        const benchSanitized = sanitizeTextNumbers(benchText, allowed);
+        const base = (drafts.mercado_y_clientes_objetivo ?? "").toString().trim();
+
+        drafts.mercado_y_clientes_objetivo = base
+          ? `${base}\n\n${benchSanitized}`
+          : benchSanitized;
+      }
+    }
+
+    // 5) Sanitizar números en todo
     drafts = sanitizeDraftsNumbers(drafts, allowed);
 
-    // 6) Override “críticos” que NO queremos que la IA toque
+    // 6) Overrides críticos
     drafts.traccion_y_estado_actual = buildTraccionSection(facts);
     drafts.monto_y_uso_de_fondos = buildMontoUsoSection(facts);
     drafts.impacto_y_resultados_esperados = buildImpactoSection(facts);
 
-    // 7) Guardar payload (cache + steps.F7)
+    // 7) Guardar en payload
     const nowIso = new Date().toISOString();
 
     const prevSteps: any = currentPayload.steps ?? {};
