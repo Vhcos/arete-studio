@@ -1,4 +1,3 @@
-// app/api/funding-session/[sessionId]/drafts/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -119,7 +118,10 @@ function detectNoSales(F2: any): boolean {
   if (typeof v.tieneVentas === "string" && v.tieneVentas.toLowerCase().includes("no"))
     return true;
 
-  if (typeof v.estadoNegocio === "string" && v.estadoNegocio.toLowerCase().includes("sin_ventas"))
+  if (
+    typeof v.estadoNegocio === "string" &&
+    v.estadoNegocio.toLowerCase().includes("sin_ventas")
+  )
     return true;
 
   return false;
@@ -133,6 +135,7 @@ function looksLikeInstrumentStep(x: any) {
     Array.isArray(x.institucionesPreferidas)
   );
 }
+
 function looksLikeLinksStep(x: any) {
   return (
     x &&
@@ -147,6 +150,32 @@ function looksLikeLinksStep(x: any) {
   );
 }
 
+/* ============ Benchmark: búsqueda profunda en todo el payload ============ */
+
+function extractBenchmarkFromPayload(payload: any): {
+  ventasIAExplicacion: string | null;
+  ventasIAFuentes: string | null;
+} {
+  let explicacion: string | null = null;
+  let fuentes: string | null = null;
+
+  const visit = (node: any) => {
+    if (!node || typeof node !== "object") return;
+    for (const [k, v] of Object.entries(node)) {
+      if (!explicacion && k === "ventasIAExplicacion" && typeof v === "string" && v.trim()) {
+        explicacion = v.trim();
+      } else if (!fuentes && k === "ventasIAFuentes" && typeof v === "string" && v.trim()) {
+        fuentes = v.trim();
+      }
+      if (v && typeof v === "object") visit(v);
+      if (explicacion && fuentes) return;
+    }
+  };
+
+  visit(payload);
+  return { ventasIAExplicacion: explicacion, ventasIAFuentes: fuentes };
+}
+
 /* ===================== Facts pack ===================== */
 
 function buildFacts(payload: any, steps: any, clientId: any) {
@@ -156,17 +185,20 @@ function buildFacts(payload: any, steps: any, clientId: any) {
   const F4 = steps.F4 ?? null;
   const F5 = steps.F5 ?? null;
   const F6 = steps.F6 ?? (looksLikeInstrumentStep(steps.F4) ? steps.F4 : null);
-  const F7 = steps.F7 ?? (looksLikeLinksStep(steps.F5) ? steps.F5 : null);
+  const F7 = steps.F7 ?? (looksLikeLinksStep(steps.F5) ? steps.F5 : null); // reservado
 
-  // ✅ CLAVE: soportar iaReportRaw.sections y iaReportRaw.data.sections
+  // Informe principal (Step-6 / explain)
   const iaReportRaw = getReportFromPayload(payload);
   const iaReport = unwrapIAReport(iaReportRaw);
   const reportSections = (iaReport as any)?.sections ?? null;
 
-  // (opcional) plan si existe
+  // Plan si existe
   const aiPlan = getPlanFromPayload(payload);
 
-  // idea/rubro/ubicación desde payload.meta
+  // Benchmark de Step-6: lo buscamos en TODO el payload
+  const { ventasIAExplicacion, ventasIAFuentes } = extractBenchmarkFromPayload(payload);
+
+  // idea/rubro/ubicación desde payload.meta / top
   const metaTop = payload?.meta ?? {};
   const proyectoIdea = metaTop?.idea ?? payload?.idea ?? null;
   const proyectoRubro = metaTop?.rubro ?? payload?.rubro ?? null;
@@ -229,7 +261,7 @@ function buildFacts(payload: any, steps: any, clientId: any) {
         }
       : null,
 
-    // ✅ CLAVE: acá es donde “se trae el informe”
+    // Extracto del informe principal (4 secciones)
     informe_extracto: reportSections
       ? {
           finalVerdict: (reportSections as any).finalVerdict ?? null,
@@ -239,6 +271,15 @@ function buildFacts(payload: any, steps: any, clientId: any) {
         }
       : null,
 
+    // Benchmarking detallado de Step-6 (ventasIAExplicacion y fuentes)
+    benchmarking:
+      ventasIAExplicacion || ventasIAFuentes
+        ? {
+            ventasIAExplicacion,
+            ventasIAFuentes,
+          }
+        : null,
+
     plan: aiPlan ?? null,
 
     flags: {
@@ -247,12 +288,18 @@ function buildFacts(payload: any, steps: any, clientId: any) {
     clientId,
     reportId: payload?.reportId ?? null,
 
-    // Debug interno (solo para logs; no se usa en el prompt)
+    // Debug interno (solo logs)
     __debug: {
       hasReportRaw: !!iaReportRaw,
-      rawTopKeys: iaReportRaw && typeof iaReportRaw === "object" ? Object.keys(iaReportRaw) : null,
-      unwrappedTopKeys: iaReport && typeof iaReport === "object" ? Object.keys(iaReport) : null,
-      sectionKeys: reportSections && typeof reportSections === "object" ? Object.keys(reportSections) : null,
+      rawTopKeys:
+        iaReportRaw && typeof iaReportRaw === "object" ? Object.keys(iaReportRaw) : null,
+      unwrappedTopKeys:
+        iaReport && typeof iaReport === "object" ? Object.keys(iaReport) : null,
+      sectionKeys:
+        reportSections && typeof reportSections === "object"
+          ? Object.keys(reportSections)
+          : null,
+      hasBenchmark: !!ventasIAExplicacion || !!ventasIAFuentes,
     },
   };
 
@@ -274,7 +321,6 @@ function collectAllowedNumbersFromFacts(facts: any): Set<string> {
   };
 
   const addMaybeYear = (y: any) => {
-    // tu anioInicio viene como string "2025"
     if (typeof y === "string" && /^\d{4}$/.test(y.trim())) allowed.add(y.trim());
   };
 
@@ -293,10 +339,15 @@ function collectAllowedNumbersFromFacts(facts: any): Set<string> {
 
   addFromText(facts?.financiamiento?.usosPrincipales);
   addFromText(facts?.impacto?.impactoNarrativa);
+
+  // También dejamos que la IA repita números del informe y del benchmark
   addFromText(facts?.informe_extracto?.competitionLocal);
   addFromText(facts?.informe_extracto?.swotAndMarket);
   addFromText(facts?.informe_extracto?.industryBrief);
   addFromText(facts?.informe_extracto?.finalVerdict);
+
+  addFromText(facts?.benchmarking?.ventasIAExplicacion);
+  addFromText(facts?.benchmarking?.ventasIAFuentes);
 
   addFromText(facts?.instrumento?.plazoUsoFondos);
 
@@ -413,10 +464,44 @@ function buildImpactoSection(facts: any): string {
   ].join("\n");
 }
 
+/**
+ * Mercado y clientes objetivo:
+ * - Toma el texto generado por la IA.
+ * - Le agrega, si existe, el bloque completo de benchmark de Step-6
+ *   (ventasIAExplicacion y ventasIAFuentes).
+ */
+function buildMercadoSection(facts: any, base: string): string {
+  const textoBase = typeof base === "string" ? base.trim() : "";
+
+  const benchmarking = facts?.benchmarking ?? null;
+  const explicacion =
+    typeof benchmarking?.ventasIAExplicacion === "string"
+      ? benchmarking.ventasIAExplicacion.trim()
+      : "";
+  const fuentes =
+    typeof benchmarking?.ventasIAFuentes === "string"
+      ? benchmarking.ventasIAFuentes.trim()
+      : "";
+
+  // Si no hay benchmark, devolvemos lo que vino de la IA tal cual
+  if (!explicacion && !fuentes) return textoBase || "";
+
+  const partes: string[] = [];
+  if (textoBase) partes.push(textoBase);
+  if (explicacion) partes.push(explicacion);
+
+  if (fuentes) {
+    if (!explicacion.includes(fuentes)) {
+      partes.push(`Fuentes usadas para esta estimación: ${fuentes}`);
+    }
+  }
+
+  return partes.join("\n\n");
+}
+
 /* ===================== Prompt ===================== */
 
 function buildPrompt(facts: any) {
-  // OJO: acá es donde forzamos “usar SOLO el informe existente”
   return `
 Eres un redactor experto en postulación a fondos, subsidios y créditos (LatAm).
 Debes preparar borradores listos para copiar/pegar en formularios de Sercotec, Corfo, fondos municipales y bancos.
@@ -438,25 +523,44 @@ RESPONDE SOLO JSON válido con esta estructura EXACTA:
 
 REGLAS CRÍTICAS (NO NEGOCIABLES):
 - No inventes datos. Si falta un dato, usa "[completar]".
-- TRACCIÓN: respeta facts.estado + facts.flags.noSales. Si noSales=true, debe decir explícitamente "aún sin ventas (según F2)".
-- MONTO Y USO: usa SOLO facts.financiamiento. Incluye el texto de "usosPrincipales" (según F3) sin crear ítems nuevos.
-- IMPACTO: usa SOLO facts.impacto. No inventes indicadores; usa la narrativa (F4) y los KPI si existen.
-- MERCADO/BENCHMARKING: usa SOLO facts.informe_extracto (finalVerdict/industryBrief/swotAndMarket/competitionLocal). No inventes crecimientos %, tamaños de mercado ni competidores nuevos.
-- NÚMEROS: no inventes números. Si no está en facts, usa "[completar]".
-- Español neutro. 160–220 palabras aprox por bloque.
+- Usa SIEMPRE como fuentes:
+  - facts.informe_extracto.finalVerdict → síntesis del negocio y recomendación general.
+  - facts.informe_extracto.industryBrief → descripción del sector y contexto.
+  - facts.informe_extracto.swotAndMarket → problema principal, oportunidades y mercado.
+  - facts.informe_extracto.competitionLocal → benchmark y competencia local/internacional.
+  - facts.benchmarking.ventasIAExplicacion / ventasIAFuentes → análisis de ventas, tickets, frecuencia, comparables.
+- TRACCIÓN (traccion_y_estado_actual): no la inventes. Se completará aparte, ya está overrideado en backend.
+- MONTO Y USO (monto_y_uso_de_fondos): usa SOLO facts.financiamiento. Incluye el texto de "usosPrincipales" (F3) sin crear ítems nuevos.
+- IMPACTO (impacto_y_resultados_esperados): usa SOLO facts.impacto. No inventes nuevos KPI; usa la narrativa (F4) y los indicadores si existen.
+- MERCADO/BENCHMARKING:
+  - "problema_y_oportunidad" debe enfocarse en el problema, la oportunidad y los desafíos del mercado. Usa sobre todo swotAndMarket.
+  - "propuesta_valor_y_solucion" debe explicar cómo la propuesta responde al problema y cómo se diferencia de la competencia. Usa finalVerdict + competitionLocal.
+  - "mercado_y_clientes_objetivo" debe describir a quién vendes (segmentos, hábitos de compra, contexto del mercado). Usa swotAndMarket + competitionLocal + facts.benchmarking.ventasIAExplicacion.
+  - No repitas el mismo párrafo en 3, 4 y 5. Cada uno debe tener un foco distinto, aunque partan de las mismas fuentes.
+- MODELO DE NEGOCIO E INGRESOS:
+  - Usa facts.plan (si existe) y facts.benchmarking.ventasIAExplicacion.
+  - Explica cómo gana plata el negocio (canales, ticket promedio, frecuencia, tipos de productos), sin inventar números nuevos.
+- NÚMEROS:
+  - No inventes números. Sólo puedes usar números que ya aparezcan en facts.
+  - Si necesitas mencionar montos, tickets o crecimientos que no existan en facts, escribe "[completar]" en su lugar.
+- Español neutro.
+- 160–220 palabras aprox por bloque. No hagas listas interminables.
 
-Facts (source-of-truth):
+Facts (source-of-truth, NO inventes nada fuera de esto):
 ${JSON.stringify(facts, null, 2)}
 `;
 }
 
 /* ===================== Cache ===================== */
 
-function getCachedDraftsPack(payload: any): { drafts: FundingDrafts; draftsGeneratedAt: string | null } | null {
+function getCachedDraftsPack(
+  payload: any
+): { drafts: FundingDrafts; draftsGeneratedAt: string | null } | null {
   const drafts = payload?.drafts ?? payload?.steps?.F7?.drafts ?? null;
   if (!drafts) return null;
 
-  const genAt = payload?.steps?.F7?.draftsGeneratedAt ?? payload?.draftsGeneratedAt ?? null;
+  const genAt =
+    payload?.steps?.F7?.draftsGeneratedAt ?? payload?.draftsGeneratedAt ?? null;
   return { drafts: drafts as FundingDrafts, draftsGeneratedAt: genAt };
 }
 
@@ -498,7 +602,12 @@ export async function POST(req: Request, ctx: RouteCtx) {
   const cached = getCachedDraftsPack(currentPayload);
   if (!force && cached) {
     return NextResponse.json(
-      { ok: true, drafts: cached.drafts, draftsGeneratedAt: cached.draftsGeneratedAt, cached: true },
+      {
+        ok: true,
+        drafts: cached.drafts,
+        draftsGeneratedAt: cached.draftsGeneratedAt,
+        cached: true,
+      },
       { headers: { "Cache-Control": "no-store" } }
     );
   }
@@ -519,15 +628,11 @@ export async function POST(req: Request, ctx: RouteCtx) {
     const steps: any = payload.steps ?? {};
     const facts = buildFacts(payload, steps, clientId);
 
-    // ✅ LOGS PARA “CORROBORAR QUE LO LEE”
     console.log("[drafts] sessionId:", fundingSession.id);
-    console.log("[drafts] has iaReportRaw:", facts?.__debug?.hasReportRaw);
-    console.log("[drafts] iaReportRaw keys:", facts?.__debug?.rawTopKeys);
-    console.log("[drafts] unwrapped report keys:", facts?.__debug?.unwrappedTopKeys);
-    console.log("[drafts] reportSections keys:", facts?.__debug?.sectionKeys);
+    console.log("[drafts] debug:", facts.__debug);
     console.log(
-      "[drafts] sample competitionLocal:",
-      String(facts?.informe_extracto?.competitionLocal ?? "").slice(0, 160)
+      "[drafts] sample ventasIAExplicacion:",
+      String(facts?.benchmarking?.ventasIAExplicacion ?? "").slice(0, 200)
     );
 
     // 3) Allowed numbers
@@ -547,10 +652,16 @@ export async function POST(req: Request, ctx: RouteCtx) {
     const raw = completion.choices[0].message.content;
     let drafts = toJson<FundingDrafts>(raw);
 
+    // 4.5) Forzar que mercado_y_clientes_objetivo SIEMPRE incluya el benchmark de Step-6
+    drafts.mercado_y_clientes_objetivo = buildMercadoSection(
+      facts,
+      drafts.mercado_y_clientes_objetivo
+    );
+
     // 5) Sanitizar números
     drafts = sanitizeDraftsNumbers(drafts, allowed);
 
-    // 6) Override “críticos”
+    // 6) Override “críticos” que NO queremos que la IA toque
     drafts.traccion_y_estado_actual = buildTraccionSection(facts);
     drafts.monto_y_uso_de_fondos = buildMontoUsoSection(facts);
     drafts.impacto_y_resultados_esperados = buildImpactoSection(facts);
@@ -560,9 +671,7 @@ export async function POST(req: Request, ctx: RouteCtx) {
 
     const prevSteps: any = currentPayload.steps ?? {};
     const prevF7 =
-      prevSteps.F7 ??
-      (looksLikeLinksStep(prevSteps.F5) ? prevSteps.F5 : null) ??
-      null;
+      prevSteps.F7 ?? (looksLikeLinksStep(prevSteps.F5) ? prevSteps.F5 : null) ?? null;
 
     const mergedSteps: any = {
       ...prevSteps,

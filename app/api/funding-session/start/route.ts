@@ -1,4 +1,4 @@
-// app/api/funding-session/start/route.ts
+//app/api/funding-session/start/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -54,6 +54,23 @@ function extractReportAndPlan(meta: any): { iaReportRaw: any | null; aiPlan: any
   return { iaReportRaw, aiPlan };
 }
 
+/**
+ * Extrae el legacyForm (con ventasIAExplicacion / ventasIAFuentes, etc.)
+ * desde cualquier forma razonable en que pueda venir en `meta`.
+ */
+function extractLegacyForm(meta: any): any | null {
+  if (!meta || typeof meta !== "object") return null;
+
+  return (
+    meta.legacyForm ??
+    meta.legacy_form ??
+    meta.legacy ??
+    meta.payload?.legacyForm ??
+    meta.meta?.legacyForm ??
+    null
+  );
+}
+
 export async function POST(req: Request) {
   // 1) Sesión y userId
   const session = await getServerSession(authOptions).catch(() => null);
@@ -102,10 +119,13 @@ export async function POST(req: Request) {
   // ✅ extraer informe/plan desde meta (en cualquier forma)
   const { iaReportRaw, aiPlan } = extractReportAndPlan(meta);
 
-  console.log("[/api/funding-session/start] informe/plan detectados:", {
+  // ✅ extraer legacyForm (benchmark, etc.) desde meta
+  const legacyFormFromMeta = extractLegacyForm(meta);
+
+  console.log("[/api/funding-session/start] informe/plan/legacy detectados:", {
     hasIaReportRaw: !!iaReportRaw,
     hasAiPlan: !!aiPlan,
-    // si quieres, esto te ayuda a cachar nesting:
+    hasLegacyForm: !!legacyFormFromMeta,
     metaKeys: meta && typeof meta === "object" ? Object.keys(meta).slice(0, 12) : null,
   });
 
@@ -165,12 +185,16 @@ export async function POST(req: Request) {
     }
   }
 
-  // 4) Payload combinado (meta + steps)
+  // 4) Payload combinado (meta + steps + legacyForm)
   const basePayload = (existing?.payload as any) ?? {};
   const prevSteps = basePayload.steps ?? {};
 
   const payloadUpdate = {
     ...basePayload,
+    // ✅ CLAVE: aquí guardamos legacyForm en top-level del payload
+    // - Si viene nuevo en meta, lo usamos
+    // - Si no viene, mantenemos el que ya tenía el payload
+    legacyForm: legacyFormFromMeta ?? basePayload.legacyForm ?? null,
     meta: {
       ...(basePayload.meta ?? {}),
       ...metaBlock,
@@ -194,6 +218,7 @@ export async function POST(req: Request) {
       {
         hasIaReportRaw: !!metaBlock.iaReportRaw,
         hasAiPlan: !!metaBlock.aiPlan,
+        hasLegacyForm: !!payloadUpdate.legacyForm,
       }
     );
 
@@ -203,6 +228,7 @@ export async function POST(req: Request) {
       debug: {
         hasIaReportRaw: !!metaBlock.iaReportRaw,
         hasAiPlan: !!metaBlock.aiPlan,
+        hasLegacyForm: !!payloadUpdate.legacyForm,
         reportId: reportId ?? null,
       },
     });
@@ -227,6 +253,7 @@ export async function POST(req: Request) {
     clientId,
     hasIaReportRaw: !!metaBlock.iaReportRaw,
     hasAiPlan: !!metaBlock.aiPlan,
+    hasLegacyForm: !!payloadUpdate.legacyForm,
     reportId,
   });
 
@@ -236,6 +263,7 @@ export async function POST(req: Request) {
     debug: {
       hasIaReportRaw: !!metaBlock.iaReportRaw,
       hasAiPlan: !!metaBlock.aiPlan,
+      hasLegacyForm: !!payloadUpdate.legacyForm,
       reportId: reportId ?? null,
     },
   });
